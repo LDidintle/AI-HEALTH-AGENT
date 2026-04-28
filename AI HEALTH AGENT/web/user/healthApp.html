@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyHealthApp</title>
+    <link rel="stylesheet" href="style_2.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- Background -->
+    <div class="bg-overlay"></div>
+
+    <!-- Phone Frame -->
+    <div class="phone-frame">
+
+        <!-- Scrollable Content -->
+        <div class="phone-content">
+
+            <!-- Language Tabs -->
+            <div class="lang-tabs">
+                <button class="tab active" onclick="selectTab(this); changeTextE()">English</button>
+                <button class="tab" onclick="selectTab(this); changeTextI()">Isizulu</button>
+                <button class="tab" onclick="selectTab(this); changeTextA()">Afrikaans</button>
+            </div>
+
+            <!-- Vitals Card -->
+            <div class="card vitals-card">
+                <div class="vital-row">
+                    <div class="vital-left">
+                        <span class="vital-icon heart">
+                            <i class="fas fa-heart"></i>
+                        </span>
+                        <span class="vital-label" id="heart">Heart Rate:</span>
+                    </div>
+                    <div class="vital-right">
+                        <span class="vital-value">98 <span class="vital-unit">BPM</span></span>
+                        <span class="trend trend-up">
+                            <i class="fas fa-chart-line"></i>
+                        </span>
+                    </div>
+                </div>
+                <div class="divider"></div>
+                <div class="vital-row">
+                    <div class="vital-left">
+                        <span class="vital-icon pressure">
+                            <i class="fas fa-heart-pulse"></i>
+                        </span>
+                        <span class="vital-label" id="blood_p">Blood Pressure:</span>
+                    </div>
+                    <div class="vital-right">
+                        <span class="vital-value">135/85 <span class="vital-unit">mmHg</span></span>
+                        <span class="trend trend-down">
+                            <i class="fas fa-chart-line fa-flip-horizontal"></i>
+                        </span>
+                    </div>
+                </div>
+                <div class="divider"></div>
+                <div class="vital-row">
+                    <div class="vital-left">
+                        <span class="vital-icon temp">
+                            <i class="fas fa-temperature-half"></i>
+                        </span>
+                        <span class="vital-label" id="temp">Temperature:</span>
+                    </div>
+                    <div class="vital-right">
+                        <span class="vital-value">37.8 <span class="vital-unit">°C</span></span>
+                        <span class="trend trend-mid">
+                            <i class="fas fa-chart-line"></i>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chart Card -->
+            <div class="card chart-card">
+                <div class="chart-labels">
+                    <span class="chart-label red" id="chart_heart">● Heart Rate</span>
+                    <span class="chart-label teal" id="chart_blood">● Blood Pressure</span>
+                    <span class="chart-label orange" id="chart_temp">● Temperature</span>
+                </div>
+                <canvas id="healthChart"></canvas>
+            </div>
+
+            <!-- Chat with AI Button (Top) -->
+            <button class="chat-btn top-chat" onclick="openChat()">
+                <i class="fas fa-microphone"></i>
+                <span id="chat_ai">Chat with AI</span>
+                <i class="fas fa-chevron-right"></i>
+            </button>
+
+            <!-- Alert Banner -->
+            <div class="alert-banner" id="alertBanner">
+                <i class="fas fa-bolt"></i>
+                <span id="alert_p">ALERT SENT TO PARAMEDICS!</span>
+                <i class="fas fa-bolt"></i>
+            </div>
+
+            <!-- Possible Causes Card -->
+            <div class="card causes-card">
+                <div class="causes-header">
+                    <div class="brain-icon">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <div class="causes-title-block">
+                        <h3 class="causes-title" id="causes">Wellness Suggestions</h3>
+                        <div class="causes-divider-line"></div>
+                    </div>
+                </div>
+                <ul class="causes-list">
+                    <li class="cause-item">
+                        <span class="cause-number">1.</span>
+                        <span class="cause-text" data-key="cause1">Review unusual readings with doctor/staff</span>
+                    </li>
+                    <li class="cause-item">
+                        <span class="cause-number">2.</span>
+                        <span class="cause-text" data-key="cause2">Keep monitoring symptoms and hydration</span>
+                    </li>
+                </ul>
+            </div>
+
+        </div>
+        <!-- End Phone Content -->
+
+    </div>
+    <!-- End Phone Frame -->
+
+    <!-- Chat Modal -->
+    <div class="chat-modal" id="chatModal">
+        <div class="chat-modal-box">
+            <div class="chat-modal-header">
+                <span><i class="fas fa-robot"></i> SmartHealth Assistant</span>
+                <button onclick="closeChat()"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="chat-messages" id="chatMessages">
+                <div class="chat-bubble ai" id="chat_message">Hello! How can I assist you with your health today?</div>
+            </div>
+            <div class="chat-input-row">
+                <input type="text" id="chatInput" placeholder="Type your message..." onkeydown="handleKey(event)" />
+                <button onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script_2.js"></script>
+</body>
+</html>

@@ -1,0 +1,140 @@
+package za.ac.tut.healthmonitor.mobile.insights
+
+import za.ac.tut.healthmonitor.mobile.data.model.LatestReadingsResponse
+
+data class HealthInsight(
+    val title: String,
+    val possibleConcern: String,
+    val suggestion: String,
+    val severity: InsightSeverity
+)
+
+enum class InsightSeverity {
+    Info,
+    Watch,
+    Urgent
+}
+
+object HealthInsightEngine {
+
+    fun hasConnectedWatchData(readings: LatestReadingsResponse?): Boolean {
+        return listOf(
+            readings?.heartRate?.source,
+            readings?.temperature?.source,
+            readings?.bloodPressure?.source
+        ).any { it.equals("HEALTH_CONNECT", ignoreCase = true) }
+    }
+
+    fun hasAnyReading(readings: LatestReadingsResponse?): Boolean {
+        return readings?.heartRate != null || readings?.temperature != null || readings?.bloodPressure != null
+    }
+
+    fun buildInsights(readings: LatestReadingsResponse?): List<HealthInsight> {
+        if (!hasAnyReading(readings)) {
+            return listOf(
+                HealthInsight(
+                    title = "No health data connected yet",
+                    possibleConcern = "No Galaxy Watch or Health Connect readings were found.",
+                    suggestion = "Connect the Galaxy Watch 5 to Samsung Health, allow Samsung Health to share with Health Connect, then sync again in this app.",
+                    severity = InsightSeverity.Info
+                )
+            )
+        }
+
+        val insights = mutableListOf<HealthInsight>()
+        val heartRate = readings?.heartRate?.value
+        val temperature = readings?.temperature?.value
+        val bloodPressure = readings?.bloodPressure
+
+        if (bloodPressure != null) {
+            when {
+                bloodPressure.systolic >= 180 || bloodPressure.diastolic >= 120 -> {
+                    insights += HealthInsight(
+                        title = "Very high blood pressure pattern",
+                        possibleConcern = "Possible hypertensive crisis indicator.",
+                        suggestion = "Rest and re-check. If it stays this high, or there is chest pain, weakness, confusion, severe headache, or shortness of breath, seek urgent medical help.",
+                        severity = InsightSeverity.Urgent
+                    )
+                }
+                bloodPressure.systolic >= 140 || bloodPressure.diastolic >= 90 -> {
+                    insights += HealthInsight(
+                        title = "High blood pressure pattern",
+                        possibleConcern = "Possible hypertension indicator.",
+                        suggestion = "Re-check when rested, avoid caffeine/exercise right before measuring, and discuss repeated high readings with a doctor or clinic.",
+                        severity = InsightSeverity.Watch
+                    )
+                }
+                bloodPressure.systolic < 90 || bloodPressure.diastolic < 60 -> {
+                    insights += HealthInsight(
+                        title = "Low blood pressure pattern",
+                        possibleConcern = "Possible hypotension, dehydration, or medication-related pattern.",
+                        suggestion = "Sit or lie down, drink water if safe for you, and seek care if there is fainting, dizziness, confusion, chest pain, or shortness of breath.",
+                        severity = InsightSeverity.Watch
+                    )
+                }
+            }
+        }
+
+        if (temperature != null) {
+            when {
+                temperature >= 38.0 -> {
+                    insights += HealthInsight(
+                        title = "High temperature pattern",
+                        possibleConcern = "Possible fever or infection indicator.",
+                        suggestion = "Hydrate, rest, monitor symptoms, and contact a clinic if the fever is persistent, very high, or comes with worrying symptoms.",
+                        severity = InsightSeverity.Watch
+                    )
+                }
+                temperature < 35.0 -> {
+                    insights += HealthInsight(
+                        title = "Low temperature pattern",
+                        possibleConcern = "Possible hypothermia or measurement issue.",
+                        suggestion = "Warm up gradually and re-check with a reliable thermometer. Seek urgent care if the person is confused, shivering severely, very drowsy, or the low reading continues.",
+                        severity = InsightSeverity.Urgent
+                    )
+                }
+            }
+        }
+
+        if (heartRate != null) {
+            when {
+                heartRate > 100 -> {
+                    insights += HealthInsight(
+                        title = "Fast heart rate pattern",
+                        possibleConcern = "Possible tachycardia indicator, stress response, dehydration, fever, or recent activity.",
+                        suggestion = "Rest for a few minutes and re-check. If it remains high at rest, or there is chest pain, fainting, or shortness of breath, seek medical help.",
+                        severity = InsightSeverity.Watch
+                    )
+                }
+                heartRate < 60 -> {
+                    insights += HealthInsight(
+                        title = "Slow heart rate pattern",
+                        possibleConcern = "Possible bradycardia indicator, though this can be normal during sleep or in very fit people.",
+                        suggestion = "Check whether the reading was taken at rest or during sleep. Seek care if there is dizziness, fainting, weakness, chest pain, or shortness of breath.",
+                        severity = InsightSeverity.Watch
+                    )
+                }
+            }
+        }
+
+        if (heartRate != null && temperature != null && heartRate > 100 && temperature >= 38.0) {
+            insights += HealthInsight(
+                title = "Fever with fast pulse pattern",
+                possibleConcern = "Possible infection, dehydration, or body stress pattern.",
+                suggestion = "Rest, hydrate, monitor temperature and pulse, and contact a clinic if symptoms worsen or the pattern continues.",
+                severity = InsightSeverity.Watch
+            )
+        }
+
+        if (insights.isEmpty()) {
+            insights += HealthInsight(
+                title = "No obvious warning pattern",
+                possibleConcern = "The latest synced readings are within the simple screening ranges used by this app.",
+                suggestion = "Keep monitoring trends. This app gives suggestions only and cannot rule out illness or replace a healthcare professional.",
+                severity = InsightSeverity.Info
+            )
+        }
+
+        return insights
+    }
+}

@@ -1,0 +1,29 @@
+@import url("style.css");
+
+body {
+    align-items: center;
+    padding-top: 28px;
+}
+
+.form-container {
+    width: min(420px, 100%);
+}
+
+.secondary-link {
+    display: block;
+    margin-top: 14px;
+    text-align: center;
+    color: var(--ink);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.secondary-link:hover {
+    color: var(--primary);
+}
+
+.error {
+    margin-top: 8px;
+    color: var(--danger);
+    font-size: 0.88rem;
+}

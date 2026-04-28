@@ -1,0 +1,31 @@
+SWP_MergedProject
+
+Base project:
+- SWP.zip
+
+Merged in from:
+- SWPGroupProjectApplication.zip
+
+Added from the second project:
+- user login flow
+- health monitoring pages/assets
+- UserConfirmServlet
+- ReadingServlet
+- additional HTML/CSS/JS assets
+
+Kept from the first project:
+- admin dashboard
+- view/edit/delete/read user flow
+- SQL database scripts
+- existing registration flow
+
+Important entry pages:
+- web/index.html
+- web/user_sign.html
+- web/admin_sign.html
+- web/admin_dashboard.jsp
+- web/healthApp.html
+
+Important database files:
+- sql/updated_project_database.sql
+- sql/smart_health_monitor_schema.sql

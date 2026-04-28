@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Registration Form</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="form-container">
+
+    <h2>Registration Form</h2>
+
+    <form action="SaveDataServlet.do" method="post">
+
+        <label>Title:</label>
+        <div class="radio-group">
+                <label class="radio-option"><input type="radio" name="title" value="Mr"> Mr</label>
+                <label class="radio-option"><input type="radio" name="title" value="Ms"> Ms</label>
+                <label class="radio-option"><input type="radio" name="title" value="Mrs"> Mrs</label>
+        </div>
+
+        <label>Name:</label>
+<input type="text" placeholder="First Name" name="first_name" required>
+
+<label>Surname:</label>
+<input type="text" placeholder="Surname" name="surname" required>
+
+<label>Date Of Birth</label>
+<input type="text" id="dob" name="dob" placeholder="DD/MM/YYYY" required 
+pattern="\d{2}/\d{2}/\d{4}" title="Enter date in DD/MM/YYYY format">
+
+<label>Gender:</label>
+<div class="radio-group">
+    <label class="radio-option">
+        <input type="radio" name="gender" value="male"> Male
+    </label>
+    <label class="radio-option">
+        <input type="radio" name="gender" value="female"> Female
+    </label>
+</div>
+
+<label>Marital Status:</label>
+<select name="status">
+    <option>Select Status</option>
+    <option>Single</option>
+    <option>Married</option>
+    <option>Divorced</option>
+</select>
+
+<label>Email:</label>
+<input type="email" placeholder="Email Address@gmail.com" name="email" required 
+pattern="^[a-zA-Z0-9._%+-]+@gmail\.com$">
+
+<label>Cell Number:</label>
+<input type="tel" placeholder="Cell Number" name="cell_number" required>
+
+<label>Address:</label>
+<textarea placeholder="Address" name="address"></textarea>
+        <button type="submit">Submit</button>
+        <a class="back-link" href="index.html">Back to home</a>
+        <a class="back-link" href="user_sign.html">Already have an account? Sign in</a>
+
+    </form>
+
+</div>
+    
+<script src="registration.js"></script>
+
+</body>
+</html>

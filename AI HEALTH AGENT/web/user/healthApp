@@ -1,0 +1,36 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Health Monitor</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="app">
+
+  <div class="tabs">
+    <div class="tab active">English</div>
+    <div class="tab">Español</div>
+    <div class="tab">Afrikaans</div>
+  </div>
+
+  <div class="card">
+    <div class="metric">Heart Rate: <span id="heart">98</span> BPM</div>
+    <div class="metric">Blood Pressure: <span id="bp">135/85</span></div>
+    <div class="metric">Temperature: <span id="temp">37.8</span>°C</div>
+  </div>
+
+  <button onclick="analyzeHealth()">Chat with AI</button>
+
+  <div id="alert" class="alert">ALERT SENT TO PARAMEDICS!</div>
+
+  <div class="causes" id="causes"></div>
+
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
