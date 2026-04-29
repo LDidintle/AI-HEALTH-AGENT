@@ -18,9 +18,18 @@ for key in \
   SMARTHEALTH_STAFF_USER \
   SMARTHEALTH_STAFF_PASSWORD; do
   value="${!key:-}"
-  if [[ "$value" == \"*\" && "$value" == *\" ]]; then
-    export "$key=${value:1:${#value}-2}"
-  fi
+  while [[ ${#value} -ge 2 ]]; do
+    first="${value:0:1}"
+    last="${value: -1}"
+    if [[ "$first" == '"' && "$last" == '"' ]] || [[ "$first" == "'" && "$last" == "'" ]]; then
+      value="${value:1:${#value}-2}"
+      value="${value#"${value%%[![:space:]]*}"}"
+      value="${value%"${value##*[![:space:]]}"}"
+    else
+      break
+    fi
+  done
+  export "$key=$value"
 done
 
 sed -i "s/port=\"8080\"/port=\"${PORT}\"/" "$CATALINA_HOME/conf/server.xml"

@@ -20,12 +20,20 @@ public final class DatabaseConfig {
             "SMARTHEALTH_DB_PASSWORD",
             "SUPABASE_DB_PASSWORD"
     ), passwordFromUrl(RAW_DB_URL));
-    public static final String JDBC_DRIVER = valueOrDefault(configValue(
-            "SMARTHEALTH_DB_DRIVER",
-            "SUPABASE_DB_DRIVER"
-    ), driverFor(JDBC_URL));
+    public static final String JDBC_DRIVER = resolveDriver();
 
     private DatabaseConfig() {
+    }
+
+    private static String resolveDriver() {
+        String configuredDriver = configValue(
+                "SMARTHEALTH_DB_DRIVER",
+                "SUPABASE_DB_DRIVER"
+        );
+        if (!isBlank(configuredDriver)) {
+            return cleanConfigValue(configuredDriver);
+        }
+        return driverFor(JDBC_URL);
     }
 
     private static String configValue(String primaryName, String fallbackName) {
@@ -39,7 +47,7 @@ public final class DatabaseConfig {
         if (isBlank(value)) {
             value = System.getenv(fallbackName);
         }
-        return value;
+        return cleanConfigValue(value);
     }
 
     private static String requiredConfig(String primaryName, String fallbackName) {
@@ -55,7 +63,7 @@ public final class DatabaseConfig {
         if (isBlank(value)) {
             return fallback;
         }
-        return value.trim();
+        return cleanConfigValue(value);
     }
 
     private static boolean isBlank(String value) {
@@ -75,7 +83,8 @@ public final class DatabaseConfig {
     }
 
     private static String normalizeJdbcUrl(String value) {
-        String jdbcUrl = value.trim().replace("\\:", ":");
+        String jdbcUrl = cleanConfigValue(value).replace("\\:", ":");
+        jdbcUrl = unwrapJdbcUrl(jdbcUrl);
         if (jdbcUrl.startsWith("postgres://") || jdbcUrl.startsWith("postgresql://")) {
             jdbcUrl = postgresUriToJdbcUrl(jdbcUrl);
         }
@@ -91,6 +100,8 @@ public final class DatabaseConfig {
         } else if (jdbcUrl.startsWith("postgresql://")) {
             jdbcUrl = "jdbc:postgresql://" + jdbcUrl.substring("postgresql://".length());
         }
+
+        jdbcUrl = cleanConfigValue(jdbcUrl);
 
         if (jdbcUrl.startsWith("jdbc:postgresql://")
                 && jdbcUrl.contains("supabase.")
@@ -145,7 +156,7 @@ public final class DatabaseConfig {
 
     private static String userInfoFromUrl(String value) {
         try {
-            String normalized = value.trim().replace("\\:", ":");
+            String normalized = unwrapJdbcUrl(cleanConfigValue(value).replace("\\:", ":"));
             if (normalized.startsWith("jdbc:postgresql://")) {
                 normalized = "postgresql://" + normalized.substring("jdbc:postgresql://".length());
             }
@@ -166,7 +177,26 @@ public final class DatabaseConfig {
         }
     }
 
+    private static String cleanConfigValue(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        String cleaned = value.trim();
+        while (cleaned.length() >= 2) {
+            char first = cleaned.charAt(0);
+            char last = cleaned.charAt(cleaned.length() - 1);
+            if ((first == '"' && last == '"') || (first == '\'' && last == '\'')) {
+                cleaned = cleaned.substring(1, cleaned.length() - 1).trim();
+            } else {
+                break;
+            }
+        }
+        return cleaned;
+    }
+
     private static String driverFor(String jdbcUrl) {
+        jdbcUrl = unwrapJdbcUrl(cleanConfigValue(jdbcUrl));
         if (jdbcUrl.startsWith("jdbc:postgresql://")) {
             return "org.postgresql.Driver";
         }
@@ -174,5 +204,37 @@ public final class DatabaseConfig {
             return "org.mariadb.jdbc.Driver";
         }
         throw new IllegalStateException("Unsupported JDBC URL. Expected PostgreSQL or MariaDB.");
+    }
+
+    private static String unwrapJdbcUrl(String value) {
+        String cleaned = cleanConfigValue(value);
+        if (cleaned == null) {
+            return null;
+        }
+
+        cleaned = cleaned.replace("\\\"", "\"").replace("\\'", "'");
+        cleaned = cleanConfigValue(cleaned);
+
+        String[] prefixes = {
+            "jdbc:postgresql://",
+            "jdbc:mariadb://",
+            "postgresql://",
+            "postgres://"
+        };
+        for (String prefix : prefixes) {
+            int index = cleaned.indexOf(prefix);
+            if (index == 0) {
+                break;
+            }
+            if (index > 0) {
+                cleaned = cleaned.substring(index);
+                break;
+            }
+        }
+
+        while (cleaned.endsWith("\"") || cleaned.endsWith("'")) {
+            cleaned = cleaned.substring(0, cleaned.length() - 1).trim();
+        }
+        return cleaned;
     }
 }
