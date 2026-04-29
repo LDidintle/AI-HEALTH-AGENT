@@ -73,6 +73,10 @@
         <url-pattern>/SavePasswordServlet.do</url-pattern>
     </servlet-mapping>
     <servlet-mapping>
+        <servlet-name>TestServlet</servlet-name>
+        <url-pattern>/TestServlet.do</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
         <servlet-name>SaveDataServlet</servlet-name>
         <url-pattern>/SaveDataServlet.do</url-pattern>
     </servlet-mapping>
