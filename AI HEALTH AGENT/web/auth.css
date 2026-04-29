@@ -3,6 +3,7 @@
 body {
     align-items: center;
     padding-top: 28px;
+    padding-bottom: 28px;
 }
 
 .form-container {
@@ -13,7 +14,7 @@ body {
     display: block;
     margin-top: 14px;
     text-align: center;
-    color: var(--ink);
+    color: var(--muted);
     font-weight: 700;
     text-decoration: none;
 }

@@ -156,7 +156,7 @@ private fun LoginContent(
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = "Sync Galaxy Watch data through your phone and view wellness suggestions.",
-            color = Color(0xFFD8E2FF),
+            color = Color(0xFFCFEBDD),
             style = MaterialTheme.typography.bodyLarge
         )
         Spacer(modifier = Modifier.height(24.dp))
@@ -237,7 +237,7 @@ private fun SignupContent(
         )
         Text(
             text = "Use the same account on the website and this mobile app.",
-            color = Color(0xFFD8E2FF),
+            color = Color(0xFFCFEBDD),
             style = MaterialTheme.typography.bodyLarge
         )
 
@@ -334,7 +334,7 @@ private fun HowItWorksContent(
         )
         Text(
             text = "The phone app connects approved Galaxy Watch 5 readings to your SmartHealth account.",
-            color = Color(0xFFD8E2FF),
+            color = Color(0xFFCFEBDD),
             style = MaterialTheme.typography.bodyLarge
         )
 
@@ -412,7 +412,7 @@ private fun DashboardContent(
         )
         Text(
             text = uiState.userProfile?.let { "${it.firstName} ${it.surname}" } ?: "Logged in",
-            color = Color(0xFFD8E2FF),
+            color = Color(0xFFCFEBDD),
             style = MaterialTheme.typography.bodyLarge
         )
 

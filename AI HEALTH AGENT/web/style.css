@@ -1,13 +1,15 @@
 :root {
-    --ink: #162132;
-    --muted: #5f6b7a;
-    --panel: rgba(255, 255, 255, 0.96);
+    --ink: #f8fbff;
+    --muted: #c7d2e5;
+    --panel: rgba(4, 15, 29, 0.82);
     --primary: #00ff99;
     --primary-dark: #00cc77;
     --accent: #ffdd59;
     --accent-warm: #ff8a5c;
-    --line: #d7deea;
-    --danger: #b42318;
+    --line: rgba(255, 255, 255, 0.18);
+    --danger: #ff8a5c;
+    --field-bg: rgba(255, 255, 255, 0.94);
+    --field-ink: #162132;
 }
 
 * {
@@ -18,7 +20,7 @@ body {
     margin: 0;
     font-family: 'Poppins', sans-serif;
     color: var(--ink);
-    background: linear-gradient(rgba(3, 12, 24, 0.32), rgba(3, 12, 24, 0.32)), url("images/background.png") no-repeat center center/cover;
+    background: linear-gradient(rgba(3, 12, 24, 0.74), rgba(3, 12, 24, 0.74)), url("images/background.png") no-repeat center center/cover;
     min-height: 100vh;
     display: flex;
     justify-content: center;
@@ -31,17 +33,17 @@ body {
     background: var(--panel);
     padding: 35px;
     width: min(420px, 100%);
-    border: 1px solid rgba(255, 255, 255, 0.72);
+    border: 1px solid var(--line);
     border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.25);
-    backdrop-filter: blur(10px);
+    box-shadow: 0 24px 70px rgba(0,0,0,0.38);
+    backdrop-filter: blur(14px);
 }
 
 /* ================= TITLE ================= */
 h2 {
     text-align: center;
     margin-bottom: 25px;
-    color: var(--ink);
+    color: var(--accent);
 }
 
 /* ================= LABELS ================= */
@@ -59,8 +61,15 @@ input, select, textarea {
     margin-top: 5px;
     border-radius: 8px;
     border: 1px solid var(--line);
+    background: var(--field-bg);
+    color: var(--field-ink);
     font-size: 14px;
     transition: 0.3s;
+}
+
+input::placeholder,
+textarea::placeholder {
+    color: #647084;
 }
 
 /* Focus effect */
@@ -155,7 +164,7 @@ button:hover {
     display: block;
     margin-top: 12px;
     text-align: center;
-    color: var(--ink);
+    color: var(--muted);
     text-decoration: none;
     font-weight: 600;
 }

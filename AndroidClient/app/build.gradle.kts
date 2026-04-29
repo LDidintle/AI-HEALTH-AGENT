@@ -17,7 +17,7 @@ android {
         buildConfigField(
             "String",
             "BASE_URL",
-            "\"https://unsurrendered-relevantly-dayana.ngrok-free.dev/SWP_MergedProject2/\""
+            "\"https://ai-health-agent-884o.onrender.com/\""
         )
     }
 
