@@ -1,28 +1,29 @@
+.git
+.gitignore
 .DS_Store
 __MACOSX/
 
-# Local secrets and environment files
+# Secrets and local config
 .env
 .env.*
-!.env.example
 *.local
 *.local.*
 database/*credentials*.txt
 database/*.local.txt
 
-# Java / NetBeans build output
+# Build output
 AI HEALTH AGENT/build/
 AI HEALTH AGENT/dist/
 AI HEALTH AGENT/nbproject/private/
 *.class
 *.war
 
-# Android / Gradle build output
+# Android local/build output
 AndroidClient/.gradle/
 AndroidClient/build/
 AndroidClient/app/build/
 AndroidClient/local.properties
 AndroidClient/.idea/
 
-# Logs
+# Logs and large local artifacts
 *.log

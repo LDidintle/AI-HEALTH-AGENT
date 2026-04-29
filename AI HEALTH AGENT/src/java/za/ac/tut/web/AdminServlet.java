@@ -20,17 +20,16 @@ import javax.servlet.http.HttpSession;
  */
 //@WebServlet("/AdminServlet.do")
 public class AdminServlet extends HttpServlet {
-    private static final String STAFF_USER = trimToNull(System.getenv("SMARTHEALTH_STAFF_USER"));
-    private static final String STAFF_PASS = trimToNull(System.getenv("SMARTHEALTH_STAFF_PASSWORD"));
-
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         String username = valueOrDefault(request.getParameter("username"), "");
         String password = valueOrDefault(request.getParameter("password"), "");
+        String staffUser = config("SMARTHEALTH_STAFF_USER");
+        String staffPass = config("SMARTHEALTH_STAFF_PASSWORD");
 
-        if (STAFF_USER != null && STAFF_PASS != null
-                && STAFF_USER.equals(username) && STAFF_PASS.equals(password)) {
+        if (staffUser != null && staffPass != null
+                && staffUser.equals(username) && staffPass.equals(password)) {
             HttpSession session = request.getSession();
             session.setAttribute("admin", "true");
 
@@ -51,6 +50,11 @@ public class AdminServlet extends HttpServlet {
     private static String trimToNull(String value) {
         String trimmed = valueOrDefault(value, "");
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private static String config(String name) {
+        String property = trimToNull(System.getProperty(name));
+        return property != null ? property : trimToNull(System.getenv(name));
     }
 
 }

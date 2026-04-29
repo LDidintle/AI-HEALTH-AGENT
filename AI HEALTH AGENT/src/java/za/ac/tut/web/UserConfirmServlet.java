@@ -18,8 +18,14 @@ public class UserConfirmServlet extends HttpServlet {
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
-        String email = request.getParameter("username");
-        String password = request.getParameter("password");
+        String email = trimToNull(request.getParameter("username"));
+        String password = trimToNull(request.getParameter("password"));
+
+        if (email == null || password == null) {
+            request.setAttribute("usernameError", "Email and password are required.");
+            request.getRequestDispatcher("error_user.jsp").forward(request, response);
+            return;
+        }
 
         String hashedEnteredPassword = PasswordUtils.hashPassword(password);
 
@@ -61,5 +67,14 @@ public class UserConfirmServlet extends HttpServlet {
             request.setAttribute("error", "Database error: " + e.getMessage());
             request.getRequestDispatcher("error.jsp").forward(request, response);
         }
+    }
+
+    private static String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

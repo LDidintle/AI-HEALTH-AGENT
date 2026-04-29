@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: smarthealth-agent
+    runtime: docker
+    plan: free
+    healthCheckPath: /healthApp.html
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: SMARTHEALTH_LLM_MODEL
+        value: gpt-5.4-mini
+      - key: SMARTHEALTH_AGENT_WEB_SEARCH
+        value: false
+      - key: SMARTHEALTH_DB_URL
+        sync: false
+      - key: SMARTHEALTH_DB_USER
+        sync: false
+      - key: SMARTHEALTH_DB_PASSWORD
+        sync: false
+      - key: SMARTHEALTH_STAFF_USER
+        sync: false
+      - key: SMARTHEALTH_STAFF_PASSWORD
+        sync: false

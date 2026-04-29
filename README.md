@@ -50,6 +50,36 @@ Build interface for DML operations:
 - Patient login: `http://localhost:8080/SWP_MergedProject2/user_sign.html`
 - Patient directory: `http://localhost:8080/SWP_MergedProject2/ViewUsersServlet.do`
 
+## Local Deploy Command
+
+Use this instead of starting GlassFish manually from NetBeans when you need the AI, database, and staff-login environment variables loaded:
+
+```sh
+./scripts/deploy_local_glassfish.sh .env
+```
+
+Online deployment notes are in `docs/ONLINE_DEPLOYMENT.md`.
+
+## Docker
+
+Build the production image locally:
+
+```sh
+docker build -t smarthealth-agent .
+```
+
+Run it with environment variables from `.env`:
+
+```sh
+docker run --rm --env-file .env -p 8081:8080 smarthealth-agent
+```
+
+Then open:
+
+```text
+http://localhost:8081/healthApp.html
+```
+
 ## Current Test Account
 
 - Patient email: `john@gmail.com`

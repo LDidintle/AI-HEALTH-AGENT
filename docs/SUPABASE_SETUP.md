@@ -10,6 +10,14 @@ Open your Supabase project, go to the SQL Editor, and run:
 database/supabase_schema.sql
 ```
 
+For local setup from this repository, you can also run:
+
+```bash
+./scripts/setup_supabase_database.sh .env
+```
+
+That script applies the schema and creates a demo patient account for testing.
+
 ## 2. Configure the app server
 
 Set these environment variables before starting the Java server:
@@ -33,6 +41,6 @@ After deployment, test a simple page or servlet that reads users. If the server 
 ## Notes
 
 - Do not commit `.env` files or copied Supabase passwords.
-- The bundled PostgreSQL JDBC driver is `web/WEB-INF/lib/postgresql-42.2.27.jar`, which is compatible with this Java 8/GlassFish setup.
+- The bundled PostgreSQL JDBC driver is `web/WEB-INF/lib/postgresql-42.7.11.jar`, which is compatible with this Java 8/GlassFish setup.
 - Existing MariaDB support is still available if `SMARTHEALTH_DB_URL` starts with `jdbc:mariadb://`, but new Supabase deployments should use PostgreSQL.
-- This local GlassFish 5.1 domain uses legacy `java.endorsed.dirs` options that break TLS with Supabase on the installed Java 8 runtime. The local `.env.local` uses the Supabase pooler with `sslmode=disable` only as a development workaround. For production, run on a newer server/runtime that supports Supabase TLS and use `sslmode=require`.
+- This local GlassFish 5.1 domain uses legacy `java.endorsed.dirs` options that break TLS with Supabase on the installed Java 8 runtime. The local `.env` uses the Supabase pooler with `sslmode=disable` only as a development workaround. For production, run on a newer server/runtime that supports Supabase TLS and use `sslmode=require`.
