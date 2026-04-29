@@ -5,6 +5,7 @@ import com.google.gson.JsonSyntaxException
 import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.io.IOException
 import java.util.Locale
 import za.ac.tut.healthmonitor.mobile.BuildConfig
 import za.ac.tut.healthmonitor.mobile.data.model.HealthSyncPayload
@@ -93,10 +94,10 @@ class BackendApiClient(
             .get()
             .build()
 
-        client.newCall(request).execute().use { response ->
+        execute(request).use { response ->
             val body = response.body?.string().orEmpty()
             if (!response.isSuccessful) {
-                throw IllegalStateException(extractMessage(body))
+                throw IllegalStateException(extractMessage(body, response.code))
             }
             return parse(body, responseClass)
         }
@@ -108,12 +109,22 @@ class BackendApiClient(
             .post(body)
             .build()
 
-        client.newCall(request).execute().use { response ->
+        execute(request).use { response ->
             val responseBody = response.body?.string().orEmpty()
             if (!response.isSuccessful) {
-                throw IllegalStateException(extractMessage(responseBody))
+                throw IllegalStateException(extractMessage(responseBody, response.code))
             }
             return parse(responseBody, responseClass)
+        }
+    }
+
+    private fun execute(request: Request): okhttp3.Response {
+        try {
+            return client.newCall(request).execute()
+        } catch (e: IOException) {
+            throw IllegalStateException(
+                "Cannot reach the online SmartHealth service. Check your internet connection and make sure this is the latest app version."
+            )
         }
     }
 
@@ -125,16 +136,16 @@ class BackendApiClient(
         }
     }
 
-    private fun extractMessage(body: String): String {
+    private fun extractMessage(body: String, statusCode: Int): String {
         if (body.isBlank()) {
-            return "The server returned an empty response."
+            return "The server returned HTTP $statusCode with no message."
         }
 
         return try {
             val parsed = gson.fromJson(body, SyncResponse::class.java)
-            parsed.message ?: "The request could not be completed."
+            parsed.message ?: "The server returned HTTP $statusCode."
         } catch (_: Exception) {
-            "The request could not be completed."
+            "The server returned HTTP $statusCode. Please update the app and try again."
         }
     }
 }

@@ -149,7 +149,7 @@ private fun LoginContent(
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "Health Monitor Mobile",
+            text = "SmartHealth Mobile",
             style = MaterialTheme.typography.headlineLarge,
             color = Color.White
         )
