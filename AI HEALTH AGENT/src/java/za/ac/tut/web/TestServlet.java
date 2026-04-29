@@ -3,6 +3,7 @@ package za.ac.tut.web;
 import java.io.IOException;
 import java.sql.*;
 import java.text.SimpleDateFormat;
+import java.text.ParseException;
 import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletException;
 import javax.servlet.http.*;
@@ -35,12 +36,17 @@ public class TestServlet extends HttpServlet {
             String address = (String) session.getAttribute("address");
 
          
-            SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
-            java.util.Date utilDate = sdf.parse(dobStr);
+            java.util.Date utilDate = parseDateOfBirth(dobStr);
             java.sql.Date sqlDate = new java.sql.Date(utilDate.getTime());
 
          
             String pass = request.getParameter("confirmPassword");
+            if (!isStrongPassword(pass)) {
+                request.setAttribute("error", "Password must be 8+ characters with 2 numbers, 1 uppercase letter, and 1 special character.");
+                request.getRequestDispatcher("password.jsp").forward(request, response);
+                return;
+            }
+
             PasswordUtils pu = new PasswordUtils();
             String hashedPass = pu.hashPassword(pass);
 
@@ -89,7 +95,8 @@ public class TestServlet extends HttpServlet {
             
                 conn.commit();
 
-                RequestDispatcher disp = request.getRequestDispatcher("index.html");
+                session.invalidate();
+                RequestDispatcher disp = request.getRequestDispatcher("account_created.jsp");
                 disp.forward(request, response);
                 
             }
@@ -99,5 +106,34 @@ public class TestServlet extends HttpServlet {
             response.getWriter().println("<h2>Error occurred!</h2>");
             response.getWriter().println("<pre>" + e.getMessage() + "</pre>");
         }
+    }
+
+    private java.util.Date parseDateOfBirth(String value) throws ParseException {
+        String pattern = value != null && value.contains("/") ? "dd/MM/yyyy" : "yyyy-MM-dd";
+        SimpleDateFormat sdf = new SimpleDateFormat(pattern);
+        sdf.setLenient(false);
+        return sdf.parse(value);
+    }
+
+    private boolean isStrongPassword(String password) {
+        if (password == null || password.length() < 8) {
+            return false;
+        }
+
+        int digits = 0;
+        boolean hasUppercase = false;
+        boolean hasSpecial = false;
+
+        for (char character : password.toCharArray()) {
+            if (Character.isDigit(character)) {
+                digits++;
+            } else if (Character.isUpperCase(character)) {
+                hasUppercase = true;
+            } else if (!Character.isLetterOrDigit(character)) {
+                hasSpecial = true;
+            }
+        }
+
+        return digits >= 2 && hasUppercase && hasSpecial;
     }
 }

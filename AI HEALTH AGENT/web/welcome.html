@@ -26,9 +26,8 @@
 <label>Surname:</label>
 <input type="text" placeholder="Surname" name="surname" required>
 
-<label>Date Of Birth</label>
-<input type="text" id="dob" name="dob" placeholder="DD/MM/YYYY" required 
-pattern="\d{2}/\d{2}/\d{4}" title="Enter date in DD/MM/YYYY format">
+<label for="dob">Date Of Birth</label>
+<input type="date" id="dob" name="dob" required>
 
 <label>Gender:</label>
 <div class="radio-group">
@@ -55,8 +54,17 @@ pattern="^[a-zA-Z0-9._%+-]+@gmail\.com$">
 <label>Cell Number:</label>
 <input type="tel" placeholder="Cell Number" name="cell_number" required>
 
-<label>Address:</label>
-<textarea placeholder="Address" name="address"></textarea>
+<label for="address">Address / Location:</label>
+<p class="field-help">Use your device location or enter your address manually.</p>
+<button class="secondary-action" type="button" id="useLocationBtn">Use device location</button>
+<label class="checkbox-option">
+    <input type="checkbox" id="manualAddress" name="manual_address" value="true">
+    Enter address manually instead
+</label>
+<textarea id="address" placeholder="Address or device coordinates" name="address" required></textarea>
+<input type="hidden" id="location_latitude" name="location_latitude">
+<input type="hidden" id="location_longitude" name="location_longitude">
+<div id="locationStatus" class="form-note"></div>
         <button type="submit">Submit</button>
         <a class="back-link" href="index.html">Back to home</a>
         <a class="back-link" href="user_sign.html">Already have an account? Sign in</a>

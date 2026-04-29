@@ -15,15 +15,16 @@
             <input type="password" id="password" name="password" required>
 
             <ul class="requirements">
-                <li>At least 7 characters</li>
+                <li>At least 8 characters</li>
                 <li>At least 2 numbers</li>
                 <li>At least 1 uppercase letter</li>
+                <li>At least 1 special character</li>
             </ul>
 
             <label for="confirmPassword">Confirm Password:</label>
             <input type="password" id="confirmPassword" name="confirmPassword" required>
 
-            <div id="errorMsg" class="error"></div>
+            <div id="errorMsg" class="error"><%= request.getAttribute("error") != null ? request.getAttribute("error") : "" %></div>
             <button type="submit">Submit</button>
         </form>
     </main>

@@ -6,7 +6,6 @@
 package za.ac.tut.web;
 
 import java.io.IOException;
-import java.io.PrintWriter;
 import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -35,6 +34,14 @@ public class SaveDataServlet extends HttpServlet {
         String email = request.getParameter("email");
         String cell_no = request.getParameter("cell_number");
         String address = request.getParameter("address");
+        String latitude = request.getParameter("location_latitude");
+        String longitude = request.getParameter("location_longitude");
+
+        if (address != null && latitude != null && longitude != null
+                && !latitude.trim().isEmpty() && !longitude.trim().isEmpty()
+                && !address.contains("Device location:")) {
+            address = address + " (Device location: " + latitude.trim() + ", " + longitude.trim() + ")";
+        }
         
         session.setAttribute("title", title);
         session.setAttribute("name", name);
