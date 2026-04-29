@@ -17,6 +17,11 @@ data class SyncResponse(
     val message: String? = null
 )
 
+data class AiChatResponse(
+    val reply: String? = null,
+    val source: String? = null
+)
+
 data class LatestReadingsResponse(
     val success: Boolean,
     val email: String? = null,

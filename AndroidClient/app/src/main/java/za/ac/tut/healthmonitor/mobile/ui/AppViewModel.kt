@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import za.ac.tut.healthmonitor.mobile.data.model.HealthSyncPayload
+import za.ac.tut.healthmonitor.mobile.data.model.LatestReadingsResponse
 import za.ac.tut.healthmonitor.mobile.data.repository.AppRepository
 import za.ac.tut.healthmonitor.mobile.health.HealthConnectManager
 
@@ -235,6 +236,159 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun clearMessages() {
         _uiState.update { it.copy(infoMessage = null, errorMessage = null) }
+    }
+
+    fun selectLanguage(language: String) {
+        _uiState.update { it.copy(selectedLanguage = language) }
+    }
+
+    fun openProfile() {
+        val profile = _uiState.value.userProfile ?: return
+        _uiState.update {
+            it.copy(
+                isProfileOpen = true,
+                editTitle = profile.title.orEmpty(),
+                editFirstName = profile.firstName,
+                editSurname = profile.surname,
+                editGender = profile.gender.orEmpty(),
+                editCellNumber = profile.cellNumber.orEmpty(),
+                errorMessage = null,
+                infoMessage = null
+            )
+        }
+    }
+
+    fun closeProfile() {
+        _uiState.update { it.copy(isProfileOpen = false) }
+    }
+
+    fun updateEditTitle(value: String) {
+        _uiState.update { it.copy(editTitle = value) }
+    }
+
+    fun updateEditFirstName(value: String) {
+        _uiState.update { it.copy(editFirstName = value) }
+    }
+
+    fun updateEditSurname(value: String) {
+        _uiState.update { it.copy(editSurname = value) }
+    }
+
+    fun updateEditGender(value: String) {
+        _uiState.update { it.copy(editGender = value) }
+    }
+
+    fun updateEditCellNumber(value: String) {
+        _uiState.update { it.copy(editCellNumber = value) }
+    }
+
+    fun saveProfile() {
+        val state = _uiState.value
+        if (state.editFirstName.isBlank() || state.editSurname.isBlank()) {
+            _uiState.update { it.copy(errorMessage = "First name and surname are required.") }
+            return
+        }
+
+        launchLoadingTask {
+            repository.updateProfile(
+                title = state.editTitle.ifBlank { "Patient" },
+                firstName = state.editFirstName.trim(),
+                surname = state.editSurname.trim(),
+                gender = state.editGender.ifBlank { "Not specified" },
+                cellNumber = state.editCellNumber.trim()
+            )
+            val profile = repository.getProfile().user
+            _uiState.update {
+                it.copy(
+                    userProfile = profile,
+                    isProfileOpen = false,
+                    errorMessage = null,
+                    infoMessage = "Profile updated."
+                )
+            }
+        }
+    }
+
+    fun openChat() {
+        _uiState.update { it.copy(isChatOpen = true, errorMessage = null, infoMessage = null) }
+    }
+
+    fun closeChat() {
+        _uiState.update { it.copy(isChatOpen = false) }
+    }
+
+    fun updateChatInput(value: String) {
+        _uiState.update { it.copy(chatInput = value) }
+    }
+
+    fun sendChatMessage() {
+        val state = _uiState.value
+        val message = state.chatInput.trim()
+        if (message.isEmpty()) {
+            return
+        }
+
+        val userMessage = ChatMessage(true, message)
+        val thinkingMessage = ChatMessage(false, "Thinking...")
+        _uiState.update {
+            it.copy(
+                chatInput = "",
+                chatMessages = it.chatMessages + userMessage + thinkingMessage,
+                errorMessage = null,
+                infoMessage = null
+            )
+        }
+
+        viewModelScope.launch {
+            try {
+                val reply = withContext(Dispatchers.IO) {
+                    repository.chatWithAi(
+                        message = message,
+                        vitals = vitalsJson(_uiState.value.latestReadings),
+                        history = chatHistory(_uiState.value.chatMessages)
+                    )
+                }
+
+                _uiState.update {
+                    it.copy(chatMessages = it.chatMessages.dropLast(1) + ChatMessage(false, reply))
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        chatMessages = it.chatMessages.dropLast(1) + ChatMessage(
+                            false,
+                            "I could not reach the AI assistant right now. Keep monitoring your readings and contact doctor/staff if symptoms feel worrying."
+                        )
+                    )
+                }
+            }
+        }
+    }
+
+    fun sendParamedicAlert() {
+        _uiState.update {
+            it.copy(
+                alertSent = true,
+                infoMessage = "Emergency alert shown. If this is serious, call emergency services now.",
+                errorMessage = null
+            )
+        }
+    }
+
+    private fun chatHistory(messages: List<ChatMessage>): String {
+        return messages.takeLast(8).joinToString("\n") {
+            (if (it.fromUser) "User: " else "Assistant: ") + it.text
+        }
+    }
+
+    private fun vitalsJson(readings: LatestReadingsResponse?): String {
+        val heartRate = readings?.heartRate?.value?.toString() ?: "null"
+        val temperature = readings?.temperature?.value?.toString() ?: "null"
+        val bloodPressure = readings?.bloodPressure?.let {
+            "\"${it.systolic}/${it.diastolic}\""
+        } ?: "null"
+
+        return "{\"heartRate\":$heartRate,\"temperature\":$temperature,\"bloodPressure\":$bloodPressure}"
     }
 
     private fun launchLoadingTask(block: suspend () -> Unit) {

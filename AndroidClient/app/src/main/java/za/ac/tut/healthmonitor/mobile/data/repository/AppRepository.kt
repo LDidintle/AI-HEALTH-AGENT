@@ -57,6 +57,27 @@ class AppRepository(
         return backendApiClient.logout()
     }
 
+    fun updateProfile(
+        title: String,
+        firstName: String,
+        surname: String,
+        gender: String,
+        cellNumber: String
+    ): SyncResponse {
+        return backendApiClient.updateProfile(
+            title = title,
+            firstName = firstName,
+            surname = surname,
+            gender = gender,
+            cellNumber = cellNumber
+        )
+    }
+
+    fun chatWithAi(message: String, vitals: String, history: String): String {
+        return backendApiClient.chatWithAi(message, vitals, history).reply
+            ?: "I could not generate a reply right now."
+    }
+
     fun clearSession() {
         backendApiClient.clearSession()
     }

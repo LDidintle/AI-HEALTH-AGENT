@@ -89,7 +89,21 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                     onSyncSample = appViewModel::syncManualSample,
-                    onLogout = appViewModel::logout
+                    onLogout = appViewModel::logout,
+                    onSelectLanguage = appViewModel::selectLanguage,
+                    onOpenProfile = appViewModel::openProfile,
+                    onCloseProfile = appViewModel::closeProfile,
+                    onEditTitleChanged = appViewModel::updateEditTitle,
+                    onEditFirstNameChanged = appViewModel::updateEditFirstName,
+                    onEditSurnameChanged = appViewModel::updateEditSurname,
+                    onEditGenderChanged = appViewModel::updateEditGender,
+                    onEditCellNumberChanged = appViewModel::updateEditCellNumber,
+                    onSaveProfile = appViewModel::saveProfile,
+                    onOpenChat = appViewModel::openChat,
+                    onCloseChat = appViewModel::closeChat,
+                    onChatInputChanged = appViewModel::updateChatInput,
+                    onSendChatMessage = appViewModel::sendChatMessage,
+                    onSendParamedicAlert = appViewModel::sendParamedicAlert
                 )
             }
         }

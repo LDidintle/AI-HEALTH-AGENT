@@ -9,6 +9,11 @@ enum class AuthScreen {
     HowItWorks
 }
 
+data class ChatMessage(
+    val fromUser: Boolean,
+    val text: String
+)
+
 data class AppUiState(
     val email: String = "",
     val password: String = "",
@@ -28,6 +33,19 @@ data class AppUiState(
     val isLoggedIn: Boolean = false,
     val userProfile: BackendProfile? = null,
     val latestReadings: LatestReadingsResponse? = null,
+    val selectedLanguage: String = "en",
+    val isProfileOpen: Boolean = false,
+    val editTitle: String = "",
+    val editFirstName: String = "",
+    val editSurname: String = "",
+    val editGender: String = "",
+    val editCellNumber: String = "",
+    val isChatOpen: Boolean = false,
+    val chatInput: String = "",
+    val chatMessages: List<ChatMessage> = listOf(
+        ChatMessage(false, "Hello! How can I assist you with your health today?")
+    ),
+    val alertSent: Boolean = false,
     val errorMessage: String? = null,
     val infoMessage: String? = null
 )

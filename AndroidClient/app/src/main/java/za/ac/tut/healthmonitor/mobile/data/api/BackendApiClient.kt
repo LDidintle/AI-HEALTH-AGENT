@@ -8,6 +8,7 @@ import okhttp3.Request
 import java.io.IOException
 import java.util.Locale
 import za.ac.tut.healthmonitor.mobile.BuildConfig
+import za.ac.tut.healthmonitor.mobile.data.model.AiChatResponse
 import za.ac.tut.healthmonitor.mobile.data.model.HealthSyncPayload
 import za.ac.tut.healthmonitor.mobile.data.model.LatestReadingsResponse
 import za.ac.tut.healthmonitor.mobile.data.model.LoginResponse
@@ -82,6 +83,34 @@ class BackendApiClient(
 
     fun logout(): SyncResponse {
         return post("api/mobile/logout", FormBody.Builder().build(), SyncResponse::class.java)
+    }
+
+    fun updateProfile(
+        title: String,
+        firstName: String,
+        surname: String,
+        gender: String,
+        cellNumber: String
+    ): SyncResponse {
+        val body = FormBody.Builder()
+            .add("title", title)
+            .add("firstName", firstName)
+            .add("surname", surname)
+            .add("gender", gender)
+            .add("cellNumber", cellNumber)
+            .build()
+
+        return post("api/mobile/me", body, SyncResponse::class.java)
+    }
+
+    fun chatWithAi(message: String, vitals: String, history: String): AiChatResponse {
+        val body = FormBody.Builder()
+            .add("message", message)
+            .add("vitals", vitals)
+            .add("history", history)
+            .build()
+
+        return post("AIChatServlet.do", body, AiChatResponse::class.java)
     }
 
     fun clearSession() {

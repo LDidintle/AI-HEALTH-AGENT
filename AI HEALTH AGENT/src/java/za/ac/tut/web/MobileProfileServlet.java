@@ -68,6 +68,65 @@ public class MobileProfileServlet extends HttpServlet {
         }
     }
 
+    @Override
+    protected void doPost(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        response.setContentType("application/json;charset=UTF-8");
+
+        HttpSession session = request.getSession(false);
+        if (session == null || session.getAttribute("userId") == null) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            writeJson(response, "{\"success\":false,\"message\":\"No active user session.\"}");
+            return;
+        }
+
+        String title = valueOrDefault(trimToNull(request.getParameter("title")), "Patient");
+        String firstName = trimToNull(request.getParameter("firstName"));
+        String surname = trimToNull(request.getParameter("surname"));
+        String gender = valueOrDefault(trimToNull(request.getParameter("gender")), "Not specified");
+        String cellNumber = valueOrDefault(trimToNull(request.getParameter("cellNumber")), "");
+
+        if (firstName == null || surname == null) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            writeJson(response, "{\"success\":false,\"message\":\"firstName and surname are required.\"}");
+            return;
+        }
+
+        try {
+            try (Connection conn = Database.getConnection()) {
+                String sql = "UPDATE users SET title = ?, first_name = ?, surname = ?, gender = ?, cell_number = ? WHERE id = ?";
+
+                try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                    ps.setString(1, title);
+                    ps.setString(2, firstName);
+                    ps.setString(3, surname);
+                    ps.setString(4, gender);
+                    ps.setString(5, cellNumber);
+                    ps.setInt(6, Integer.parseInt(String.valueOf(session.getAttribute("userId"))));
+                    ps.executeUpdate();
+                }
+
+                writeJson(response, "{\"success\":true,\"message\":\"Profile updated.\"}");
+            }
+        } catch (Exception e) {
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            writeJson(response, "{\"success\":false,\"message\":\"Unable to update profile.\"}");
+        }
+    }
+
+    private String valueOrDefault(String value, String fallback) {
+        return value == null ? fallback : value;
+    }
+
+    private String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
     private void writeJson(HttpServletResponse response, String json) throws IOException {
         try (PrintWriter out = response.getWriter()) {
             out.write(json);
