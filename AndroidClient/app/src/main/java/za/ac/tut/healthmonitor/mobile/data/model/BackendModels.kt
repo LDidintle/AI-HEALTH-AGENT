@@ -73,7 +73,12 @@ data class HealthSyncPayload(
     val heartRate: Int? = null,
     val temperature: Double? = null,
     val systolic: Int? = null,
-    val diastolic: Int? = null
+    val diastolic: Int? = null,
+    val recordedAt: String? = null,
+    val externalRecordId: String? = null,
+    val deviceType: String? = null,
+    val deviceManufacturer: String? = null,
+    val deviceModel: String? = null
 ) {
     fun isEmpty(): Boolean {
         return heartRate == null && temperature == null && systolic == null && diastolic == null

@@ -77,6 +77,11 @@ class BackendApiClient(
         payload.temperature?.let { builder.add("temperature", String.format(Locale.US, "%.2f", it)) }
         payload.systolic?.let { builder.add("systolic", it.toString()) }
         payload.diastolic?.let { builder.add("diastolic", it.toString()) }
+        payload.recordedAt?.let { builder.add("recordedAt", it) }
+        payload.externalRecordId?.let { builder.add("externalRecordId", it) }
+        payload.deviceType?.let { builder.add("deviceType", it) }
+        payload.deviceManufacturer?.let { builder.add("deviceManufacturer", it) }
+        payload.deviceModel?.let { builder.add("deviceModel", it) }
 
         return post("api/mobile/health-sync", builder.build(), SyncResponse::class.java)
     }

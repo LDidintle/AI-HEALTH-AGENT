@@ -69,6 +69,9 @@ public class MobileHealthSyncServlet extends HttpServlet {
         String diastolicValue = trimToNull(request.getParameter("diastolic"));
         String recordedAt = trimToNull(request.getParameter("recordedAt"));
         String externalRecordId = trimToNull(request.getParameter("externalRecordId"));
+        String deviceType = trimToNull(request.getParameter("deviceType"));
+        String deviceManufacturer = trimToNull(request.getParameter("deviceManufacturer"));
+        String deviceModel = trimToNull(request.getParameter("deviceModel"));
 
         if (email == null) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
@@ -101,17 +104,19 @@ public class MobileHealthSyncServlet extends HttpServlet {
 
                 conn.setAutoCommit(false);
 
+                Integer deviceId = upsertDevice(conn, userId, source, deviceType, deviceManufacturer, deviceModel);
+
                 if (heartRate != null) {
-                    insertHeartRate(conn, userId, heartRate, recordedTimestamp, source);
+                    insertHeartRate(conn, userId, deviceId, heartRate, recordedTimestamp, source, externalRecordId);
                 }
                 if (temperature != null) {
-                    insertTemperature(conn, userId, temperature, recordedTimestamp, source);
+                    insertTemperature(conn, userId, deviceId, temperature, recordedTimestamp, source, externalRecordId);
                 }
                 if (systolic != null && diastolic != null) {
-                    insertBloodPressure(conn, userId, systolic, diastolic, recordedTimestamp, source);
+                    insertBloodPressure(conn, userId, deviceId, systolic, diastolic, recordedTimestamp, source, externalRecordId);
                 }
 
-                insertSyncLog(conn, userId, source, externalRecordId, recordedTimestamp);
+                insertSyncLog(conn, userId, deviceId, source, externalRecordId, recordedTimestamp);
                 conn.commit();
 
                 String json = "{"
@@ -148,59 +153,126 @@ public class MobileHealthSyncServlet extends HttpServlet {
         return null;
     }
 
-    private void insertHeartRate(Connection conn, int userId, int heartRate, Timestamp recordedAt, String source) throws Exception {
-        String sql = "INSERT INTO pulse_readings (user_id, bpm, status, recorded_at, source) "
-                + "VALUES (?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP), ?)";
+    private Integer upsertDevice(Connection conn, int userId, String source, String deviceType,
+            String deviceManufacturer, String deviceModel) throws Exception {
+        if (deviceType == null && deviceManufacturer == null && deviceModel == null) {
+            return null;
+        }
+
+        String normalizedSource = source == null ? "HEALTH_CONNECT" : source;
+        String normalizedType = deviceType == null ? "UNKNOWN" : deviceType;
+
+        String selectSql = "SELECT device_id FROM devices "
+                + "WHERE user_id = ? AND platform = ? AND device_type = ? "
+                + "AND COALESCE(manufacturer, '') = COALESCE(?, '') "
+                + "AND COALESCE(device_model, '') = COALESCE(?, '')";
+
+        try (PreparedStatement ps = conn.prepareStatement(selectSql)) {
+            ps.setInt(1, userId);
+            ps.setString(2, normalizedSource);
+            ps.setString(3, normalizedType);
+            ps.setString(4, deviceManufacturer);
+            ps.setString(5, deviceModel);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("device_id");
+                }
+            }
+        }
+
+        String insertSql = "INSERT INTO devices (user_id, device_type, manufacturer, device_model, platform, active) "
+                + "VALUES (?, ?, ?, ?, ?, ?)";
+
+        try (PreparedStatement ps = conn.prepareStatement(insertSql, java.sql.Statement.RETURN_GENERATED_KEYS)) {
+            ps.setInt(1, userId);
+            ps.setString(2, normalizedType);
+            ps.setString(3, deviceManufacturer);
+            ps.setString(4, deviceModel);
+            ps.setString(5, normalizedSource);
+            ps.setBoolean(6, true);
+            ps.executeUpdate();
+
+            try (ResultSet rs = ps.getGeneratedKeys()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private void insertHeartRate(Connection conn, int userId, Integer deviceId, int heartRate,
+            Timestamp recordedAt, String source, String externalRecordId) throws Exception {
+        String sql = "INSERT INTO pulse_readings "
+                + "(user_id, device_id, bpm, status, recorded_at, measured_at, synced_at, source, external_record_id) "
+                + "VALUES (?, ?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP), COALESCE(?, CURRENT_TIMESTAMP), CURRENT_TIMESTAMP, ?, ?)";
 
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, userId);
-            ps.setInt(2, heartRate);
-            ps.setString(3, classifyHeartRate(heartRate));
-            setTimestamp(ps, 4, recordedAt);
-            ps.setString(5, source == null ? "HEALTH_CONNECT" : source);
+            setInteger(ps, 2, deviceId);
+            ps.setInt(3, heartRate);
+            ps.setString(4, classifyHeartRate(heartRate));
+            setTimestamp(ps, 5, recordedAt);
+            setTimestamp(ps, 6, recordedAt);
+            ps.setString(7, source == null ? "HEALTH_CONNECT" : source);
+            ps.setString(8, externalRecordId);
             ps.executeUpdate();
         }
     }
 
-    private void insertTemperature(Connection conn, int userId, BigDecimal temperature, Timestamp recordedAt, String source) throws Exception {
-        String sql = "INSERT INTO temperature_readings (user_id, temperature, status, recorded_at, source) "
-                + "VALUES (?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP), ?)";
+    private void insertTemperature(Connection conn, int userId, Integer deviceId, BigDecimal temperature,
+            Timestamp recordedAt, String source, String externalRecordId) throws Exception {
+        String sql = "INSERT INTO temperature_readings "
+                + "(user_id, device_id, temperature, status, recorded_at, measured_at, synced_at, source, external_record_id) "
+                + "VALUES (?, ?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP), COALESCE(?, CURRENT_TIMESTAMP), CURRENT_TIMESTAMP, ?, ?)";
 
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, userId);
-            ps.setBigDecimal(2, temperature);
-            ps.setString(3, classifyTemperature(temperature));
-            setTimestamp(ps, 4, recordedAt);
-            ps.setString(5, source == null ? "HEALTH_CONNECT" : source);
+            setInteger(ps, 2, deviceId);
+            ps.setBigDecimal(3, temperature);
+            ps.setString(4, classifyTemperature(temperature));
+            setTimestamp(ps, 5, recordedAt);
+            setTimestamp(ps, 6, recordedAt);
+            ps.setString(7, source == null ? "HEALTH_CONNECT" : source);
+            ps.setString(8, externalRecordId);
             ps.executeUpdate();
         }
     }
 
-    private void insertBloodPressure(Connection conn, int userId, int systolic, int diastolic, Timestamp recordedAt, String source) throws Exception {
-        String sql = "INSERT INTO blood_pressure_readings (user_id, systolic, diastolic, status, recorded_at, source) "
+    private void insertBloodPressure(Connection conn, int userId, Integer deviceId, int systolic,
+            int diastolic, Timestamp recordedAt, String source, String externalRecordId) throws Exception {
+        String sql = "INSERT INTO blood_pressure_readings "
+                + "(user_id, device_id, systolic, diastolic, status, recorded_at, measured_at, synced_at, source, external_record_id) "
+                + "VALUES (?, ?, ?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP), COALESCE(?, CURRENT_TIMESTAMP), CURRENT_TIMESTAMP, ?, ?)";
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            setInteger(ps, 2, deviceId);
+            ps.setInt(3, systolic);
+            ps.setInt(4, diastolic);
+            ps.setString(5, classifyBloodPressure(systolic, diastolic));
+            setTimestamp(ps, 6, recordedAt);
+            setTimestamp(ps, 7, recordedAt);
+            ps.setString(8, source == null ? "HEALTH_CONNECT" : source);
+            ps.setString(9, externalRecordId);
+            ps.executeUpdate();
+        }
+    }
+
+    private void insertSyncLog(Connection conn, int userId, Integer deviceId, String source,
+            String externalRecordId, Timestamp recordedAt) throws Exception {
+        String sql = "INSERT INTO device_sync_events (user_id, device_id, source_platform, external_record_id, synced_for, sync_status) "
                 + "VALUES (?, ?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP), ?)";
 
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, userId);
-            ps.setInt(2, systolic);
-            ps.setInt(3, diastolic);
-            ps.setString(4, classifyBloodPressure(systolic, diastolic));
+            setInteger(ps, 2, deviceId);
+            ps.setString(3, source == null ? "HEALTH_CONNECT" : source);
+            ps.setString(4, externalRecordId);
             setTimestamp(ps, 5, recordedAt);
-            ps.setString(6, source == null ? "HEALTH_CONNECT" : source);
-            ps.executeUpdate();
-        }
-    }
-
-    private void insertSyncLog(Connection conn, int userId, String source, String externalRecordId, Timestamp recordedAt) throws Exception {
-        String sql = "INSERT INTO device_sync_events (user_id, source_platform, external_record_id, synced_for, sync_status) "
-                + "VALUES (?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP), ?)";
-
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, userId);
-            ps.setString(2, source == null ? "HEALTH_CONNECT" : source);
-            ps.setString(3, externalRecordId);
-            setTimestamp(ps, 4, recordedAt);
-            ps.setString(5, "SYNCED");
+            ps.setString(6, "SYNCED");
             ps.executeUpdate();
         }
     }
@@ -324,6 +396,14 @@ public class MobileHealthSyncServlet extends HttpServlet {
             ps.setNull(index, Types.TIMESTAMP);
         } else {
             ps.setTimestamp(index, timestamp);
+        }
+    }
+
+    private void setInteger(PreparedStatement ps, int index, Integer value) throws Exception {
+        if (value == null) {
+            ps.setNull(index, Types.INTEGER);
+        } else {
+            ps.setInt(index, value);
         }
     }
 

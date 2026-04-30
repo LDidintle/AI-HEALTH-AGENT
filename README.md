@@ -15,7 +15,8 @@ Database maintenance:
 
 Build database with 3 related tables using open-source DBMS:
 - DBMS: MariaDB.
-- Core related tables: `users`, `user_auth`, `pulse_readings`, `temperature_readings`, `blood_pressure_readings`, `device_sync_events`.
+- Core related tables: `users`, `user_auth`, `devices`, `pulse_readings`, `temperature_readings`, `blood_pressure_readings`, `device_sync_events`.
+- Galaxy Watch 5 readings flow through Samsung Health / Health Connect into the Android app, then into the backend API with device metadata when Health Connect provides it.
 
 Set up remote connection:
 - Backend remote testing currently works through ngrok.

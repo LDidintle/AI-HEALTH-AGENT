@@ -16,6 +16,23 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE devices (
+    device_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    device_type VARCHAR(30) NOT NULL,
+    manufacturer VARCHAR(100),
+    device_model VARCHAR(100),
+    platform VARCHAR(50) NOT NULL,
+    active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_device_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE,
+    CONSTRAINT uq_user_device
+        UNIQUE (user_id, platform, device_type, manufacturer, device_model)
+);
+
 CREATE TABLE user_auth (
     auth_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -30,10 +47,18 @@ CREATE TABLE user_auth (
 CREATE TABLE temperature_readings (
     temp_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
+    device_id INT,
     temperature DECIMAL(4,2) NOT NULL,
     status VARCHAR(20),
     source VARCHAR(50) DEFAULT 'MANUAL',
+    external_record_id VARCHAR(100),
+    measured_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_temperature_device
+        FOREIGN KEY (device_id)
+        REFERENCES devices(device_id)
+        ON DELETE SET NULL,
     CONSTRAINT fk_temperature_user
         FOREIGN KEY (user_id)
         REFERENCES users(id)
@@ -43,10 +68,18 @@ CREATE TABLE temperature_readings (
 CREATE TABLE pulse_readings (
     pulse_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
+    device_id INT,
     bpm INT NOT NULL,
     status VARCHAR(20),
     source VARCHAR(50) DEFAULT 'MANUAL',
+    external_record_id VARCHAR(100),
+    measured_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_pulse_device
+        FOREIGN KEY (device_id)
+        REFERENCES devices(device_id)
+        ON DELETE SET NULL,
     CONSTRAINT fk_pulse_user
         FOREIGN KEY (user_id)
         REFERENCES users(id)
@@ -56,11 +89,19 @@ CREATE TABLE pulse_readings (
 CREATE TABLE blood_pressure_readings (
     bp_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
+    device_id INT,
     systolic INT NOT NULL,
     diastolic INT NOT NULL,
     status VARCHAR(20),
     source VARCHAR(50) DEFAULT 'MANUAL',
+    external_record_id VARCHAR(100),
+    measured_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_blood_pressure_device
+        FOREIGN KEY (device_id)
+        REFERENCES devices(device_id)
+        ON DELETE SET NULL,
     CONSTRAINT fk_blood_pressure_user
         FOREIGN KEY (user_id)
         REFERENCES users(id)
@@ -70,10 +111,15 @@ CREATE TABLE blood_pressure_readings (
 CREATE TABLE device_sync_events (
     sync_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
+    device_id INT,
     source_platform VARCHAR(50) NOT NULL,
     external_record_id VARCHAR(100),
     synced_for TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     sync_status VARCHAR(20) DEFAULT 'SYNCED',
+    CONSTRAINT fk_sync_device
+        FOREIGN KEY (device_id)
+        REFERENCES devices(device_id)
+        ON DELETE SET NULL,
     CONSTRAINT fk_sync_user
         FOREIGN KEY (user_id)
         REFERENCES users(id)
@@ -141,22 +187,27 @@ VALUES
 (1, 'hashed_password_1'),
 (2, 'hashed_password_2');
 
-INSERT INTO temperature_readings (user_id, temperature, status, source)
+INSERT INTO devices (user_id, device_type, manufacturer, device_model, platform)
 VALUES
-(1, 38.50, 'HIGH', 'HEALTH_CONNECT'),
-(1, 36.70, 'NORMAL', 'HEALTH_CONNECT'),
-(2, 35.90, 'LOW', 'HEALTH_CONNECT');
+(1, 'WATCH', 'Samsung', 'Galaxy Watch 5', 'HEALTH_CONNECT'),
+(2, 'WATCH', 'Samsung', 'Galaxy Watch 5', 'HEALTH_CONNECT');
 
-INSERT INTO pulse_readings (user_id, bpm, status, source)
+INSERT INTO temperature_readings (user_id, device_id, temperature, status, source, external_record_id)
 VALUES
-(1, 110, 'ABNORMAL', 'HEALTH_CONNECT'),
-(1, 72, 'NORMAL', 'HEALTH_CONNECT'),
-(2, 45, 'CRITICAL', 'HEALTH_CONNECT');
+(1, 1, 38.50, 'HIGH', 'HEALTH_CONNECT', 'sample-temp-001'),
+(1, 1, 36.70, 'NORMAL', 'HEALTH_CONNECT', 'sample-temp-002'),
+(2, 2, 35.90, 'LOW', 'HEALTH_CONNECT', 'sample-temp-003');
 
-INSERT INTO blood_pressure_readings (user_id, systolic, diastolic, status, source)
+INSERT INTO pulse_readings (user_id, device_id, bpm, status, source, external_record_id)
 VALUES
-(1, 135, 85, 'NORMAL', 'HEALTH_CONNECT'),
-(2, 148, 96, 'HIGH', 'HEALTH_CONNECT');
+(1, 1, 110, 'ABNORMAL', 'HEALTH_CONNECT', 'sample-pulse-001'),
+(1, 1, 72, 'NORMAL', 'HEALTH_CONNECT', 'sample-pulse-002'),
+(2, 2, 45, 'CRITICAL', 'HEALTH_CONNECT', 'sample-pulse-003');
+
+INSERT INTO blood_pressure_readings (user_id, device_id, systolic, diastolic, status, source, external_record_id)
+VALUES
+(1, 1, 135, 85, 'NORMAL', 'HEALTH_CONNECT', 'sample-bp-001'),
+(2, 2, 148, 96, 'HIGH', 'HEALTH_CONNECT', 'sample-bp-002');
 
 INSERT INTO emergency_alerts (user_id, bpm, alert_status, countdown_seconds)
 VALUES
@@ -166,10 +217,10 @@ INSERT INTO ambulance_notifications (alert_id, response_status)
 VALUES
 (1, 'PENDING');
 
-INSERT INTO device_sync_events (user_id, source_platform, external_record_id, sync_status)
+INSERT INTO device_sync_events (user_id, device_id, source_platform, external_record_id, sync_status)
 VALUES
-(1, 'HEALTH_CONNECT', 'sample-sync-001', 'SYNCED'),
-(2, 'HEALTH_CONNECT', 'sample-sync-002', 'SYNCED');
+(1, 1, 'HEALTH_CONNECT', 'sample-sync-001', 'SYNCED'),
+(2, 2, 'HEALTH_CONNECT', 'sample-sync-002', 'SYNCED');
 
 INSERT INTO language_settings (user_id, language)
 VALUES

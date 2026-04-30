@@ -6,7 +6,7 @@ SmartHealth is implemented as a 3-tier application:
 
 1. Presentation tier: JSP/HTML website for patients and doctor/staff users, plus the native Android client.
 2. Application tier: Java Servlets deployed on GlassFish. The servlets handle login, account creation, patient CRUD, mobile API calls, and health-reading synchronization.
-3. Data tier: MariaDB, an open-source DBMS, storing users, authentication records, health readings, and sync events.
+3. Data tier: MariaDB/Supabase PostgreSQL, storing users, authentication records, registered devices, health readings, and sync events.
 
 ```mermaid
 flowchart LR
@@ -44,8 +44,9 @@ Application tier:
 Data tier:
 - Stores patient profiles in `users`.
 - Stores password hashes in `user_auth`.
+- Stores Galaxy Watch / Health Connect device metadata in `devices`.
 - Stores health readings in `pulse_readings`, `temperature_readings`, and `blood_pressure_readings`.
-- Stores device/API sync events in `device_sync_events`.
+- Stores the original Health Connect record id, measured time, sync time, and sync events in the reading tables and `device_sync_events`.
 
 ## Professional Note
 

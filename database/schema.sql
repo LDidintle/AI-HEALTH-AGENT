@@ -52,13 +52,19 @@ DROP TABLE IF EXISTS `blood_pressure_readings`;
 CREATE TABLE `blood_pressure_readings` (
   `bp_id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,
+  `device_id` int(11) DEFAULT NULL,
   `systolic` int(11) NOT NULL,
   `diastolic` int(11) NOT NULL,
   `status` varchar(20) DEFAULT NULL,
   `source` varchar(50) DEFAULT 'MANUAL',
+  `external_record_id` varchar(100) DEFAULT NULL,
+  `measured_at` timestamp NULL DEFAULT current_timestamp(),
+  `synced_at` timestamp NULL DEFAULT current_timestamp(),
   `recorded_at` timestamp NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`bp_id`),
+  KEY `fk_blood_pressure_device` (`device_id`),
   KEY `fk_blood_pressure_user` (`user_id`),
+  CONSTRAINT `fk_blood_pressure_device` FOREIGN KEY (`device_id`) REFERENCES `devices` (`device_id`) ON DELETE SET NULL,
   CONSTRAINT `fk_blood_pressure_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -73,12 +79,15 @@ DROP TABLE IF EXISTS `device_sync_events`;
 CREATE TABLE `device_sync_events` (
   `sync_id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,
+  `device_id` int(11) DEFAULT NULL,
   `source_platform` varchar(50) NOT NULL,
   `external_record_id` varchar(100) DEFAULT NULL,
   `synced_for` timestamp NULL DEFAULT current_timestamp(),
   `sync_status` varchar(20) DEFAULT 'SYNCED',
   PRIMARY KEY (`sync_id`),
+  KEY `fk_sync_device` (`device_id`),
   KEY `fk_sync_user` (`user_id`),
+  CONSTRAINT `fk_sync_device` FOREIGN KEY (`device_id`) REFERENCES `devices` (`device_id`) ON DELETE SET NULL,
   CONSTRAINT `fk_sync_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -145,12 +154,18 @@ DROP TABLE IF EXISTS `pulse_readings`;
 CREATE TABLE `pulse_readings` (
   `pulse_id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,
+  `device_id` int(11) DEFAULT NULL,
   `bpm` int(11) NOT NULL,
   `status` varchar(20) DEFAULT NULL,
   `source` varchar(50) DEFAULT 'MANUAL',
+  `external_record_id` varchar(100) DEFAULT NULL,
+  `measured_at` timestamp NULL DEFAULT current_timestamp(),
+  `synced_at` timestamp NULL DEFAULT current_timestamp(),
   `recorded_at` timestamp NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`pulse_id`),
+  KEY `fk_pulse_device` (`device_id`),
   KEY `fk_pulse_user` (`user_id`),
+  CONSTRAINT `fk_pulse_device` FOREIGN KEY (`device_id`) REFERENCES `devices` (`device_id`) ON DELETE SET NULL,
   CONSTRAINT `fk_pulse_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -165,12 +180,18 @@ DROP TABLE IF EXISTS `temperature_readings`;
 CREATE TABLE `temperature_readings` (
   `temp_id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,
+  `device_id` int(11) DEFAULT NULL,
   `temperature` decimal(4,2) NOT NULL,
   `status` varchar(20) DEFAULT NULL,
   `source` varchar(50) DEFAULT 'MANUAL',
+  `external_record_id` varchar(100) DEFAULT NULL,
+  `measured_at` timestamp NULL DEFAULT current_timestamp(),
+  `synced_at` timestamp NULL DEFAULT current_timestamp(),
   `recorded_at` timestamp NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`temp_id`),
+  KEY `fk_temperature_device` (`device_id`),
   KEY `fk_temperature_user` (`user_id`),
+  CONSTRAINT `fk_temperature_device` FOREIGN KEY (`device_id`) REFERENCES `devices` (`device_id`) ON DELETE SET NULL,
   CONSTRAINT `fk_temperature_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -197,6 +218,7 @@ CREATE TABLE `user_auth` (
 -- Table structure for table `users`
 --
 
+DROP TABLE IF EXISTS `devices`;
 DROP TABLE IF EXISTS `users`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -215,6 +237,28 @@ CREATE TABLE `users` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `email` (`email`)
 ) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `devices`
+--
+
+DROP TABLE IF EXISTS `devices`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `devices` (
+  `device_id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `device_type` varchar(30) NOT NULL,
+  `manufacturer` varchar(100) DEFAULT NULL,
+  `device_model` varchar(100) DEFAULT NULL,
+  `platform` varchar(50) NOT NULL,
+  `active` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`device_id`),
+  UNIQUE KEY `uq_user_device` (`user_id`,`platform`,`device_type`,`manufacturer`,`device_model`),
+  CONSTRAINT `fk_device_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
