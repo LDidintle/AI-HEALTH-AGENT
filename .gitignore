@@ -1,5 +1,7 @@
 .DS_Store
 __MACOSX/
+node_modules/
+target/
 
 # Local secrets and environment files
 .env
@@ -9,6 +11,7 @@ __MACOSX/
 *.local.*
 database/*credentials*.txt
 database/*.local.txt
+database/backups/
 
 # Java / NetBeans build output
 AI HEALTH AGENT/build/
@@ -16,6 +19,8 @@ AI HEALTH AGENT/dist/
 AI HEALTH AGENT/nbproject/private/
 *.class
 *.war
+dist/
+build/
 
 # Android / Gradle build output
 AndroidClient/.gradle/
@@ -23,6 +28,9 @@ AndroidClient/build/
 AndroidClient/app/build/
 AndroidClient/local.properties
 AndroidClient/.idea/
+*.sqlite3
+__pycache__/
+*.pyc
 
 # Logs
 *.log
