@@ -16,7 +16,9 @@ for key in \
   SMARTHEALTH_DB_USER \
   SMARTHEALTH_DB_PASSWORD \
   SMARTHEALTH_STAFF_USER \
-  SMARTHEALTH_STAFF_PASSWORD; do
+  SMARTHEALTH_STAFF_PASSWORD \
+  SMARTHEALTH_HOSPITAL_USER \
+  SMARTHEALTH_HOSPITAL_PASSWORD; do
   value="${!key:-}"
   while [[ ${#value} -ge 2 ]]; do
     first="${value:0:1}"
@@ -32,6 +34,9 @@ for key in \
   export "$key=$value"
 done
 
-sed -i "s/port=\"8080\"/port=\"${PORT}\"/" "$CATALINA_HOME/conf/server.xml"
+# Render may assign a PORT value that conflicts with Tomcat's shutdown port.
+# Disable the shutdown listener so external HTTP health checks always hit the web connector.
+sed -i 's/<Server port="[0-9-]*" shutdown="SHUTDOWN">/<Server port="-1" shutdown="SHUTDOWN">/' "$CATALINA_HOME/conf/server.xml"
+sed -i "s/<Connector port=\"[0-9]*\" protocol=\"HTTP\\/1.1\"/<Connector port=\"${PORT}\" protocol=\"HTTP\\/1.1\"/" "$CATALINA_HOME/conf/server.xml"
 
 exec "$@"
