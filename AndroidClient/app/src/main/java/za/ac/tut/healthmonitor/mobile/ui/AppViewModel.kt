@@ -3,13 +3,23 @@ package za.ac.tut.healthmonitor.mobile.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.Instant
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
+import kotlin.math.roundToInt
+import kotlin.math.sin
+import kotlin.random.Random
 import za.ac.tut.healthmonitor.mobile.data.model.HealthSyncPayload
 import za.ac.tut.healthmonitor.mobile.data.model.LatestReadingsResponse
 import za.ac.tut.healthmonitor.mobile.data.repository.AppRepository
@@ -20,6 +30,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = AppRepository()
     private val _uiState = MutableStateFlow(AppUiState())
     val uiState: StateFlow<AppUiState> = _uiState.asStateFlow()
+    private var liveSyncJob: Job? = null
+    private var demoSyncJob: Job? = null
+    private var demoTick = 0
 
     fun updateEmail(email: String) {
         _uiState.update { it.copy(email = email) }
@@ -197,6 +210,129 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun startLiveSync(manager: HealthConnectManager) {
+        if (liveSyncJob?.isActive == true) {
+            _uiState.update { it.copy(infoMessage = "Live watch sync is already running.", errorMessage = null) }
+            return
+        }
+
+        stopDemoSync(showMessage = false)
+        liveSyncJob = viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    isLiveSyncEnabled = true,
+                    isDemoSyncEnabled = false,
+                    errorMessage = null,
+                    infoMessage = "Live watch sync started. Keep the phone app open near the Galaxy Watch 5."
+                )
+            }
+
+            while (isActive) {
+                try {
+                    val readings = withContext(Dispatchers.IO) {
+                        if (!manager.hasAllPermissions()) {
+                            throw SecurityException("Health Connect permissions are required for live watch sync.")
+                        }
+
+                        val payload = manager.readLatestVitals()
+                        if (payload.isEmpty()) {
+                            null
+                        } else {
+                            repository.syncReadings(payload)
+                            repository.getLatestReadings()
+                        }
+                    }
+
+                    _uiState.update {
+                        it.copy(
+                            latestReadings = readings ?: it.latestReadings,
+                            lastLiveSyncAt = formattedNow(),
+                            errorMessage = null,
+                            infoMessage = if (readings == null) {
+                                "Live sync is running, but no watch readings are available yet."
+                            } else {
+                                "Live watch readings synced."
+                            }
+                        )
+                    }
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    liveSyncJob = null
+                    _uiState.update {
+                        it.copy(
+                            isLiveSyncEnabled = false,
+                            errorMessage = e.message ?: "Live watch sync stopped.",
+                            infoMessage = null
+                        )
+                    }
+                    break
+                }
+
+                delay(LIVE_SYNC_INTERVAL_MILLIS)
+            }
+        }
+    }
+
+    fun stopLiveSync() {
+        stopLiveSync(showMessage = true)
+    }
+
+    fun startDemoSync() {
+        if (demoSyncJob?.isActive == true) {
+            _uiState.update { it.copy(infoMessage = "Demo live watch feed is already running.", errorMessage = null) }
+            return
+        }
+
+        stopLiveSync(showMessage = false)
+        demoTick = 0
+        demoSyncJob = viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    isDemoSyncEnabled = true,
+                    isLiveSyncEnabled = false,
+                    errorMessage = null,
+                    infoMessage = "Demo live watch feed started. The graph and vital markers will update every 5 seconds."
+                )
+            }
+
+            while (isActive) {
+                try {
+                    val readings = withContext(Dispatchers.IO) {
+                        repository.syncReadings(buildDemoPayload())
+                        repository.getLatestReadings()
+                    }
+
+                    _uiState.update {
+                        it.copy(
+                            latestReadings = readings,
+                            lastLiveSyncAt = formattedNow(),
+                            errorMessage = null,
+                            infoMessage = "Demo watch reading synced."
+                        )
+                    }
+                    demoTick += 1
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    demoSyncJob = null
+                    _uiState.update {
+                        it.copy(
+                            isDemoSyncEnabled = false,
+                            errorMessage = e.message ?: "Demo live watch feed stopped.",
+                            infoMessage = null
+                        )
+                    }
+                    break
+                }
+
+                delay(DEMO_SYNC_INTERVAL_MILLIS)
+            }
+        }
+    }
+
+    fun stopDemoSync() {
+        stopDemoSync(showMessage = true)
+    }
+
     fun syncManualSample() {
         launchLoadingTask {
             val payload = HealthSyncPayload(
@@ -220,6 +356,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun logout() {
+        stopLiveSync(showMessage = false)
+        stopDemoSync(showMessage = false)
         launchLoadingTask {
             repository.logout()
             repository.clearSession()
@@ -391,6 +529,62 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         return "{\"heartRate\":$heartRate,\"temperature\":$temperature,\"bloodPressure\":$bloodPressure}"
     }
 
+    override fun onCleared() {
+        liveSyncJob?.cancel()
+        demoSyncJob?.cancel()
+        super.onCleared()
+    }
+
+    private fun stopLiveSync(showMessage: Boolean) {
+        liveSyncJob?.cancel()
+        liveSyncJob = null
+        _uiState.update {
+            it.copy(
+                isLiveSyncEnabled = false,
+                infoMessage = if (showMessage) "Live watch sync stopped." else it.infoMessage,
+                errorMessage = null
+            )
+        }
+    }
+
+    private fun stopDemoSync(showMessage: Boolean) {
+        demoSyncJob?.cancel()
+        demoSyncJob = null
+        _uiState.update {
+            it.copy(
+                isDemoSyncEnabled = false,
+                infoMessage = if (showMessage) "Demo live watch feed stopped." else it.infoMessage,
+                errorMessage = null
+            )
+        }
+    }
+
+    private fun buildDemoPayload(): HealthSyncPayload {
+        val wave = sin(demoTick / 2.0)
+        val smallWave = sin(demoTick / 3.0)
+        val heartRate = (78 + wave * 8 + Random.nextInt(-2, 3)).roundToInt().coerceIn(58, 112)
+        val systolic = (124 + smallWave * 6 + Random.nextInt(-2, 3)).roundToInt().coerceIn(105, 145)
+        val diastolic = (78 + smallWave * 4 + Random.nextInt(-1, 2)).roundToInt().coerceIn(65, 95)
+        val temperature = 36.7 + smallWave * 0.25 + Random.nextDouble(-0.08, 0.09)
+
+        return HealthSyncPayload(
+            heartRate = heartRate,
+            temperature = temperature,
+            systolic = systolic,
+            diastolic = diastolic,
+            source = "DEMO_WATCH",
+            recordedAt = Instant.now().toString(),
+            externalRecordId = "demo-watch-${Instant.now().toEpochMilli()}",
+            deviceType = "WATCH",
+            deviceManufacturer = "Samsung",
+            deviceModel = "Galaxy Watch 5 Demo"
+        )
+    }
+
+    private fun formattedNow(): String {
+        return LocalTime.now().format(TIME_FORMATTER)
+    }
+
     private fun launchLoadingTask(block: suspend () -> Unit) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null, infoMessage = null) }
@@ -410,5 +604,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
             _uiState.update { it.copy(isLoading = false) }
         }
+    }
+
+    private companion object {
+        const val LIVE_SYNC_INTERVAL_MILLIS = 30_000L
+        const val DEMO_SYNC_INTERVAL_MILLIS = 5_000L
+        val TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     }
 }

@@ -17,7 +17,7 @@ android {
         buildConfigField(
             "String",
             "BASE_URL",
-            "\"https://ai-health-agent-884o.onrender.com/\""
+            "\"https://ai-health-helper.onrender.com/\""
         )
     }
 

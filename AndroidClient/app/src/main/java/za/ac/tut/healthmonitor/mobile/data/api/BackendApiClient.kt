@@ -71,7 +71,7 @@ class BackendApiClient(
 
     fun syncReadings(payload: HealthSyncPayload): SyncResponse {
         val builder = FormBody.Builder()
-            .add("source", "HEALTH_CONNECT")
+            .add("source", payload.source ?: "HEALTH_CONNECT")
 
         payload.heartRate?.let { builder.add("heartRate", it.toString()) }
         payload.temperature?.let { builder.add("temperature", String.format(Locale.US, "%.2f", it)) }

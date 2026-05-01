@@ -43,11 +43,19 @@ const copy = {
     }
 };
 
+const LIVE_REFRESH_INTERVAL_MS = 5000;
+const MAX_CHART_POINTS = 12;
+const chartSeries = {
+    heartRate: [98, 96, 97, 99, 95, 98, 100],
+    systolic: [135, 133, 134, 136, 132, 135, 137],
+    temperature: [37.8, 37.7, 37.9, 37.6, 37.8, 37.7, 37.9]
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     applyLanguage('en');
     initChart();
     loadLatestReadings();
-    setInterval(loadLatestReadings, 30000);
+    setInterval(loadLatestReadings, LIVE_REFRESH_INTERVAL_MS);
 });
 
 function selectTab(button) {
@@ -206,6 +214,10 @@ function readCurrentVitals() {
 }
 
 function initChart() {
+    redrawChart();
+}
+
+function redrawChart() {
     const canvas = document.getElementById('healthChart');
     const ctx = canvas.getContext('2d');
     const width = canvas.parentElement.clientWidth;
@@ -213,9 +225,9 @@ function initChart() {
     canvas.width = width;
     canvas.height = height;
     drawChart(ctx, width, height, [
-        { color: '#b42318', values: [98, 96, 97, 99, 95, 98, 100] },
-        { color: '#00995d', values: [135, 133, 134, 136, 132, 135, 137] },
-        { color: '#ff8a5c', values: [37.8, 37.7, 37.9, 37.6, 37.8, 37.7, 37.9] }
+        { color: '#b42318', values: chartSeries.heartRate },
+        { color: '#00995d', values: chartSeries.systolic },
+        { color: '#ff8a5c', values: chartSeries.temperature }
     ]);
 }
 
@@ -242,7 +254,11 @@ function drawGridLine(ctx, x1, y1, x2, y2) {
 }
 
 function drawLine(ctx, data, color, padding, chartHeight, width, height) {
+    if (data.length < 2) return;
     const step = (width - padding * 2) / (data.length - 1);
+    const min = Math.min(...data);
+    const max = Math.max(...data);
+    const range = Math.max(max - min, 1);
     ctx.strokeStyle = color;
     ctx.lineWidth = 3;
     ctx.lineJoin = 'round';
@@ -250,7 +266,7 @@ function drawLine(ctx, data, color, padding, chartHeight, width, height) {
     ctx.beginPath();
     data.forEach((value, index) => {
         const x = padding + index * step;
-        const y = height - padding - ((value - 90) / 10) * chartHeight;
+        const y = height - padding - ((value - min) / range) * chartHeight;
         if (index === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
     });
     ctx.stroke();
@@ -264,10 +280,30 @@ function loadLatestReadings() {
             if (data.heartRate !== null) setText('heartRateValue', data.heartRate);
             if (data.bloodPressure !== null) setText('bloodPressureValue', data.bloodPressure);
             if (data.temperature !== null) setText('temperatureValue', data.temperature);
+            updateChartSeries(data);
             updateAlertBanner(data);
-            updateSyncStatus('Latest readings loaded from your synced phone data.');
+            updateSyncStatus(`Live refresh on every 5s. Last checked ${new Date().toLocaleTimeString()}.`);
         })
         .catch(() => updateSyncStatus('Unable to load live readings from the server.'));
+}
+
+function updateChartSeries(data) {
+    if (data.heartRate !== null) appendChartPoint(chartSeries.heartRate, Number(data.heartRate));
+
+    const bloodPressureMatch = String(data.bloodPressure || '').match(/(\d+)\s*\/\s*(\d+)/);
+    if (bloodPressureMatch) appendChartPoint(chartSeries.systolic, Number(bloodPressureMatch[1]));
+
+    if (data.temperature !== null) appendChartPoint(chartSeries.temperature, Number(data.temperature));
+
+    redrawChart();
+}
+
+function appendChartPoint(series, value) {
+    if (!Number.isFinite(value)) return;
+    const last = series[series.length - 1];
+    if (last === value && series.length >= MAX_CHART_POINTS) return;
+    series.push(value);
+    while (series.length > MAX_CHART_POINTS) series.shift();
 }
 
 function updateAlertBanner(data) {

@@ -77,6 +77,10 @@ fun AppScreen(
     onRegister: () -> Unit,
     onRefresh: () -> Unit,
     onSyncHealthConnect: () -> Unit,
+    onStartLiveSync: () -> Unit,
+    onStopLiveSync: () -> Unit,
+    onStartDemoSync: () -> Unit,
+    onStopDemoSync: () -> Unit,
     onSyncSample: () -> Unit,
     onLogout: () -> Unit,
     onSelectLanguage: (String) -> Unit,
@@ -105,6 +109,10 @@ fun AppScreen(
                     uiState = uiState,
                     onRefresh = onRefresh,
                     onSyncHealthConnect = onSyncHealthConnect,
+                    onStartLiveSync = onStartLiveSync,
+                    onStopLiveSync = onStopLiveSync,
+                    onStartDemoSync = onStartDemoSync,
+                    onStopDemoSync = onStopDemoSync,
                     onSyncSample = onSyncSample,
                     onLogout = onLogout,
                     onSelectLanguage = onSelectLanguage,
@@ -353,6 +361,10 @@ private fun DashboardContent(
     uiState: AppUiState,
     onRefresh: () -> Unit,
     onSyncHealthConnect: () -> Unit,
+    onStartLiveSync: () -> Unit,
+    onStopLiveSync: () -> Unit,
+    onStartDemoSync: () -> Unit,
+    onStopDemoSync: () -> Unit,
     onSyncSample: () -> Unit,
     onLogout: () -> Unit,
     onSelectLanguage: (String) -> Unit,
@@ -393,7 +405,17 @@ private fun DashboardContent(
             )
         }
 
-        SyncActionsCard(onRefresh, onSyncHealthConnect, onSyncSample, onLogout)
+        SyncActionsCard(
+            uiState = uiState,
+            onRefresh = onRefresh,
+            onSyncHealthConnect = onSyncHealthConnect,
+            onStartLiveSync = onStartLiveSync,
+            onStopLiveSync = onStopLiveSync,
+            onStartDemoSync = onStartDemoSync,
+            onStopDemoSync = onStopDemoSync,
+            onSyncSample = onSyncSample,
+            onLogout = onLogout
+        )
         AiSuggestionsCard(uiState.latestReadings, copy)
         Spacer(modifier = Modifier.height(20.dp))
     }
@@ -534,14 +556,46 @@ private fun ActionButton(text: String, onClick: () -> Unit, colors: List<Color>,
 
 @Composable
 private fun SyncActionsCard(
+    uiState: AppUiState,
     onRefresh: () -> Unit,
     onSyncHealthConnect: () -> Unit,
+    onStartLiveSync: () -> Unit,
+    onStopLiveSync: () -> Unit,
+    onStartDemoSync: () -> Unit,
+    onStopDemoSync: () -> Unit,
     onSyncSample: () -> Unit,
     onLogout: () -> Unit
 ) {
     Card(colors = CardDefaults.cardColors(containerColor = Glass), shape = RoundedCornerShape(18.dp)) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Sync Actions", color = Color.White, fontWeight = FontWeight.Bold)
+            Text(
+                text = if (uiState.isDemoSyncEnabled) {
+                    "Demo feed: on every ${uiState.demoSyncIntervalSeconds}s"
+                } else if (uiState.isLiveSyncEnabled) {
+                    "Live sync: on every ${uiState.liveSyncIntervalSeconds}s"
+                } else {
+                    "Live sync: off"
+                },
+                color = Color(0xFFCFEBDD),
+                style = MaterialTheme.typography.bodyMedium
+            )
+            uiState.lastLiveSyncAt?.let {
+                Text("Last live sync: $it", color = Color(0xFFCFEBDD), style = MaterialTheme.typography.bodySmall)
+            }
+            Button(
+                onClick = if (uiState.isLiveSyncEnabled) onStopLiveSync else onStartLiveSync,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(if (uiState.isLiveSyncEnabled) "Stop Live Watch Sync" else "Start Live Watch Sync")
+            }
+            Button(
+                onClick = if (uiState.isDemoSyncEnabled) onStopDemoSync else onStartDemoSync,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = Yellow, contentColor = Ink)
+            ) {
+                Text(if (uiState.isDemoSyncEnabled) "Stop Demo Live Feed" else "Start Demo Live Feed")
+            }
             Button(onClick = onSyncHealthConnect, modifier = Modifier.fillMaxWidth()) { Text("Sync From Health Connect") }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 TextButton(onClick = onRefresh, modifier = Modifier.weight(1f)) { Text("Refresh") }

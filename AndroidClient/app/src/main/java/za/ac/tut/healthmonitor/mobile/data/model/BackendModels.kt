@@ -74,6 +74,7 @@ data class HealthSyncPayload(
     val temperature: Double? = null,
     val systolic: Int? = null,
     val diastolic: Int? = null,
+    val source: String? = null,
     val recordedAt: String? = null,
     val externalRecordId: String? = null,
     val deviceType: String? = null,

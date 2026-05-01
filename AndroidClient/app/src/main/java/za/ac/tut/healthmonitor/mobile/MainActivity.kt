@@ -9,8 +9,10 @@ import androidx.activity.compose.setContent
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
 import kotlinx.coroutines.launch
@@ -30,13 +32,21 @@ class MainActivity : ComponentActivity() {
             val uiState by appViewModel.uiState.collectAsState()
             val coroutineScope = rememberCoroutineScope()
             val healthManager = remember { HealthConnectManager(applicationContext) }
+            var afterPermissionGranted by remember { mutableStateOf<(() -> Unit)?>(null) }
 
             val permissionLauncher = rememberLauncherForActivityResult(
                 PermissionController.createRequestPermissionResultContract()
             ) { grantedPermissions ->
                 if (grantedPermissions.containsAll(healthManager.requiredPermissions)) {
-                    appViewModel.syncFromHealthConnect(healthManager)
+                    val action = afterPermissionGranted
+                    afterPermissionGranted = null
+                    if (action == null) {
+                        appViewModel.syncFromHealthConnect(healthManager)
+                    } else {
+                        action()
+                    }
                 } else {
+                    afterPermissionGranted = null
                     appViewModel.setInfoMessage("Health Connect permissions were not granted.")
                 }
             }
@@ -82,12 +92,42 @@ class MainActivity : ComponentActivity() {
                                     if (healthManager.hasAllPermissions()) {
                                         appViewModel.syncFromHealthConnect(healthManager)
                                     } else {
+                                        afterPermissionGranted = {
+                                            appViewModel.syncFromHealthConnect(healthManager)
+                                        }
                                         permissionLauncher.launch(healthManager.requiredPermissions)
                                     }
                                 }
                             }
                         }
                     },
+                    onStartLiveSync = {
+                        coroutineScope.launch {
+                            when (healthManager.availabilityStatus()) {
+                                HealthConnectClient.SDK_UNAVAILABLE -> {
+                                    appViewModel.setInfoMessage("Health Connect is not available on this phone.")
+                                }
+
+                                HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED -> {
+                                    openHealthConnectInPlayStore()
+                                }
+
+                                else -> {
+                                    if (healthManager.hasAllPermissions()) {
+                                        appViewModel.startLiveSync(healthManager)
+                                    } else {
+                                        afterPermissionGranted = {
+                                            appViewModel.startLiveSync(healthManager)
+                                        }
+                                        permissionLauncher.launch(healthManager.requiredPermissions)
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    onStopLiveSync = appViewModel::stopLiveSync,
+                    onStartDemoSync = appViewModel::startDemoSync,
+                    onStopDemoSync = appViewModel::stopDemoSync,
                     onSyncSample = appViewModel::syncManualSample,
                     onLogout = appViewModel::logout,
                     onSelectLanguage = appViewModel::selectLanguage,
