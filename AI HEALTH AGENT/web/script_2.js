@@ -45,10 +45,11 @@ const copy = {
 
 const LIVE_REFRESH_INTERVAL_MS = 5000;
 const MAX_CHART_POINTS = 12;
+const LIVE_FEED_STALE_AFTER_MS = 75000;
 const chartSeries = {
-    heartRate: [98, 96, 97, 99, 95, 98, 100],
-    systolic: [135, 133, 134, 136, 132, 135, 137],
-    temperature: [37.8, 37.7, 37.9, 37.6, 37.8, 37.7, 37.9]
+    heartRate: [],
+    systolic: [],
+    temperature: []
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -232,7 +233,7 @@ function redrawChart() {
 }
 
 function drawChart(ctx, width, height, series) {
-    const padding = 20;
+    const padding = 18;
     const chartWidth = width - padding * 2;
     const chartHeight = height - padding * 2;
     ctx.clearRect(0, 0, width, height);
@@ -243,7 +244,24 @@ function drawChart(ctx, width, height, series) {
 
     for (let i = 0; i <= 4; i++) drawGridLine(ctx, padding, padding + chartHeight * i / 4, width - padding, padding + chartHeight * i / 4);
     for (let i = 0; i <= 6; i++) drawGridLine(ctx, padding + chartWidth * i / 6, padding, padding + chartWidth * i / 6, height - padding);
-    series.forEach(item => drawLine(ctx, item.values, item.color, padding, chartHeight, width, height));
+
+    if (!series.some(item => item.values.length > 1)) {
+        drawEmptyChartMessage(ctx, width, height);
+        return;
+    }
+
+    const laneHeight = chartHeight / series.length;
+    series.forEach((item, index) => {
+        drawLine(ctx, item.values, item.color, padding, laneHeight, width, height, padding + laneHeight * index);
+    });
+}
+
+function drawEmptyChartMessage(ctx, width, height) {
+    ctx.fillStyle = '#5a6680';
+    ctx.font = '600 14px Poppins, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Waiting for live readings', width / 2, height / 2);
 }
 
 function drawGridLine(ctx, x1, y1, x2, y2) {
@@ -253,12 +271,13 @@ function drawGridLine(ctx, x1, y1, x2, y2) {
     ctx.stroke();
 }
 
-function drawLine(ctx, data, color, padding, chartHeight, width, height) {
+function drawLine(ctx, data, color, padding, laneHeight, width, height, laneTop) {
     if (data.length < 2) return;
     const step = (width - padding * 2) / (data.length - 1);
     const min = Math.min(...data);
     const max = Math.max(...data);
-    const range = Math.max(max - min, 1);
+    const range = max - min;
+    const innerLaneHeight = Math.max(laneHeight - 10, 12);
     ctx.strokeStyle = color;
     ctx.lineWidth = 3;
     ctx.lineJoin = 'round';
@@ -266,7 +285,8 @@ function drawLine(ctx, data, color, padding, chartHeight, width, height) {
     ctx.beginPath();
     data.forEach((value, index) => {
         const x = padding + index * step;
-        const y = height - padding - ((value - min) / range) * chartHeight;
+        const normalized = range <= 0.01 ? 0.5 : (value - min) / range;
+        const y = laneTop + 5 + (1 - normalized) * innerLaneHeight;
         if (index === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
     });
     ctx.stroke();
@@ -276,15 +296,32 @@ function loadLatestReadings() {
     fetch('ReadingServlet.do', { headers: { Accept: 'application/json' } })
         .then(response => response.json())
         .then(data => {
-            if (!data.success) return updateSyncStatus('No synced data available yet.');
-            if (data.heartRate !== null) setText('heartRateValue', data.heartRate);
-            if (data.bloodPressure !== null) setText('bloodPressureValue', data.bloodPressure);
-            if (data.temperature !== null) setText('temperatureValue', data.temperature);
+            if (!data.success) {
+                clearLiveReadings();
+                return updateSyncStatus('Sign in and start the phone/watch feed to see live readings.');
+            }
+            if (!isLiveFeedFresh(data)) {
+                clearLiveReadings();
+                return updateSyncStatus('No active phone/watch feed. Start demo or live sync to show readings.');
+            }
+
+            setText('heartRateValue', data.heartRate === null ? '--' : data.heartRate);
+            setText('bloodPressureValue', data.bloodPressure === null ? '--' : data.bloodPressure);
+            setText('temperatureValue', data.temperature === null ? '--' : data.temperature);
             updateChartSeries(data);
             updateAlertBanner(data);
             updateSyncStatus(`Live refresh on every 5s. Last checked ${new Date().toLocaleTimeString()}.`);
         })
-        .catch(() => updateSyncStatus('Unable to load live readings from the server.'));
+        .catch(() => {
+            clearLiveReadings();
+            updateSyncStatus('Unable to load live readings from the server.');
+        });
+}
+
+function isLiveFeedFresh(data) {
+    if (!data.latestSyncedAt) return false;
+    const syncedTime = new Date(data.latestSyncedAt).getTime();
+    return Number.isFinite(syncedTime) && Date.now() - syncedTime <= LIVE_FEED_STALE_AFTER_MS;
 }
 
 function updateChartSeries(data) {
@@ -301,9 +338,20 @@ function updateChartSeries(data) {
 function appendChartPoint(series, value) {
     if (!Number.isFinite(value)) return;
     const last = series[series.length - 1];
-    if (last === value && series.length >= MAX_CHART_POINTS) return;
+    if (last === value) return;
     series.push(value);
     while (series.length > MAX_CHART_POINTS) series.shift();
+}
+
+function clearLiveReadings() {
+    setText('heartRateValue', '--');
+    setText('bloodPressureValue', '--');
+    setText('temperatureValue', '--');
+    chartSeries.heartRate = [];
+    chartSeries.systolic = [];
+    chartSeries.temperature = [];
+    redrawChart();
+    updateAlertBanner({ heartRate: null, temperature: null });
 }
 
 function updateAlertBanner(data) {
