@@ -13,6 +13,12 @@ CREATE TABLE IF NOT EXISTS users (
   marital_status VARCHAR(20),
   email VARCHAR(255) NOT NULL UNIQUE,
   cell_number VARCHAR(20),
+  id_number VARCHAR(13),
+  emergency_contact_name VARCHAR(150),
+  emergency_contact_number VARCHAR(20),
+  blood_group VARCHAR(10),
+  known_allergies TEXT,
+  chronic_conditions TEXT,
   address TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

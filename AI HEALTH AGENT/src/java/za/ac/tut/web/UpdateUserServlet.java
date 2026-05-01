@@ -8,6 +8,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import za.ac.tut.util.Database;
+import za.ac.tut.util.PatientValidation;
 
 public class UpdateUserServlet extends HttpServlet {
 
@@ -17,8 +18,18 @@ public class UpdateUserServlet extends HttpServlet {
 
         try {
             int id = Integer.parseInt(request.getParameter("id"));
+            String cellNumber = request.getParameter("cell_number");
+            String emergencyNumber = request.getParameter("emergency_contact_number");
 
-            String sql = "UPDATE users SET title=?, first_name=?, surname=?, dob=?, gender=?, marital_status=?, email=?, cell_number=?, address=? WHERE id=?";
+            if (!PatientValidation.isValidSouthAfricanPhone(cellNumber)
+                    || !PatientValidation.isValidSouthAfricanPhone(emergencyNumber)
+                    || PatientValidation.samePhone(cellNumber, emergencyNumber)) {
+                throw new ServletException("Personal number and emergency contact number must be valid South African numbers and must not be the same.");
+            }
+
+            String sql = "UPDATE users SET title=?, first_name=?, surname=?, dob=?, gender=?, marital_status=?, "
+                    + "email=?, cell_number=?, id_number=?, emergency_contact_name=?, emergency_contact_number=?, "
+                    + "blood_group=?, known_allergies=?, chronic_conditions=?, address=? WHERE id=?";
 
             try (Connection conn = Database.getConnection();
                  PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -30,9 +41,15 @@ public class UpdateUserServlet extends HttpServlet {
                 ps.setString(5, request.getParameter("gender"));
                 ps.setString(6, request.getParameter("marital_status"));
                 ps.setString(7, request.getParameter("email"));
-                ps.setString(8, request.getParameter("cell_number"));
-                ps.setString(9, request.getParameter("address"));
-                ps.setInt(10, id);
+                ps.setString(8, PatientValidation.normalizePhone(cellNumber));
+                ps.setString(9, request.getParameter("id_number"));
+                ps.setString(10, request.getParameter("emergency_contact_name"));
+                ps.setString(11, PatientValidation.normalizePhone(emergencyNumber));
+                ps.setString(12, request.getParameter("blood_group"));
+                ps.setString(13, request.getParameter("known_allergies"));
+                ps.setString(14, request.getParameter("chronic_conditions"));
+                ps.setString(15, request.getParameter("address"));
+                ps.setInt(16, id);
 
                 ps.executeUpdate();
             }

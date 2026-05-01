@@ -37,8 +37,37 @@
             <label for="email">Email</label>
             <input type="email" id="email" name="email" value="${email}">
 
-            <label for="cell_number">Cell Number</label>
+            <label for="cell_number">Personal Cell Number</label>
             <input type="text" id="cell_number" name="cell_number" value="${cell_number}">
+
+            <label for="id_number">South African ID Number</label>
+            <input type="number" id="id_number" name="id_number" value="${id_number}" inputmode="numeric">
+
+            <label for="emergency_contact_name">Emergency Contact / Next of Kin Name</label>
+            <input type="text" id="emergency_contact_name" name="emergency_contact_name" value="${emergency_contact_name}">
+
+            <label for="emergency_contact_number">Emergency Contact Cell Number</label>
+            <input type="text" id="emergency_contact_number" name="emergency_contact_number" value="${emergency_contact_number}">
+
+            <label for="blood_group">Blood Group</label>
+            <select id="blood_group" name="blood_group">
+                <option value="${blood_group}">${blood_group}</option>
+                <option>A+</option>
+                <option>A-</option>
+                <option>B+</option>
+                <option>B-</option>
+                <option>AB+</option>
+                <option>AB-</option>
+                <option>O+</option>
+                <option>O-</option>
+                <option>Unknown</option>
+            </select>
+
+            <label for="known_allergies">Known Allergies</label>
+            <textarea id="known_allergies" name="known_allergies" rows="3">${known_allergies}</textarea>
+
+            <label for="chronic_conditions">Chronic Conditions</label>
+            <textarea id="chronic_conditions" name="chronic_conditions" rows="3">${chronic_conditions}</textarea>
 
             <label for="address">Address</label>
             <input type="text" id="address" name="address" value="${address}">

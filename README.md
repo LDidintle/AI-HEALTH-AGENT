@@ -15,6 +15,7 @@ This project is for educational and demonstration purposes only. It does not dia
 - Patient account creation and sign-in through the Java web app
 - Staff/admin sign-in using environment-configured credentials
 - Staff patient directory with create, read, update, delete, and search workflows
+- Read-only hospital portal using `SMARTHEALTH_HOSPITAL_USER` and `SMARTHEALTH_HOSPITAL_PASSWORD`
 - Database tables for users, authentication records, pulse readings, temperature readings, blood pressure readings, and device sync events
 - Mobile API endpoints for registration, login, profile access, and health reading synchronization
 - Android client built with Kotlin and Jetpack Compose

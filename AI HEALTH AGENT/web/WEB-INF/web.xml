@@ -68,6 +68,18 @@
         <servlet-name>MobileLogoutServlet</servlet-name>
         <servlet-class>za.ac.tut.web.MobileLogoutServlet</servlet-class>
     </servlet>
+    <servlet>
+        <servlet-name>HospitalLoginServlet</servlet-name>
+        <servlet-class>za.ac.tut.web.HospitalLoginServlet</servlet-class>
+    </servlet>
+    <servlet>
+        <servlet-name>HospitalPatientsServlet</servlet-name>
+        <servlet-class>za.ac.tut.web.HospitalPatientsServlet</servlet-class>
+    </servlet>
+    <servlet>
+        <servlet-name>HospitalPatientDetailsServlet</servlet-name>
+        <servlet-class>za.ac.tut.web.HospitalPatientDetailsServlet</servlet-class>
+    </servlet>
     <servlet-mapping>
         <servlet-name>SavePasswordServlet</servlet-name>
         <url-pattern>/SavePasswordServlet.do</url-pattern>
@@ -135,6 +147,18 @@
     <servlet-mapping>
         <servlet-name>MobileLogoutServlet</servlet-name>
         <url-pattern>/api/mobile/logout</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>HospitalLoginServlet</servlet-name>
+        <url-pattern>/HospitalLoginServlet.do</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>HospitalPatientsServlet</servlet-name>
+        <url-pattern>/HospitalPatientsServlet.do</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>HospitalPatientDetailsServlet</servlet-name>
+        <url-pattern>/HospitalPatientDetailsServlet.do</url-pattern>
     </servlet-mapping>
     <session-config>
         <session-timeout>

@@ -55,7 +55,7 @@ export JAVA_HOME="${JAVA_HOME:-/Library/Java/JavaVirtualMachines/temurin-8.jdk/C
 export AS_JAVA="${AS_JAVA:-$JAVA_HOME}"
 export PATH="/usr/bin:/bin:/usr/sbin:/sbin:$JAVA_HOME/bin:$GLASSFISH_HOME/bin:$PATH"
 
-for key in "${required[@]}" SMARTHEALTH_AGENT_WEB_SEARCH; do
+for key in "${required[@]}" SMARTHEALTH_AGENT_WEB_SEARCH SMARTHEALTH_HOSPITAL_USER SMARTHEALTH_HOSPITAL_PASSWORD; do
   [[ -n "${!key:-}" ]] && launchctl setenv "$key" "${!key}"
 done
 launchctl setenv JAVA_HOME "$JAVA_HOME"

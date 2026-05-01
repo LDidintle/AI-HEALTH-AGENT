@@ -12,6 +12,12 @@ CREATE TABLE users (
     marital_status VARCHAR(20),
     email VARCHAR(255) NOT NULL UNIQUE,
     cell_number VARCHAR(20),
+    id_number VARCHAR(13),
+    emergency_contact_name VARCHAR(150),
+    emergency_contact_number VARCHAR(20),
+    blood_group VARCHAR(10),
+    known_allergies TEXT,
+    chronic_conditions TEXT,
     address TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -177,10 +183,14 @@ CREATE TABLE health_advice (
     message TEXT
 );
 
-INSERT INTO users (title, first_name, surname, dob, gender, marital_status, email, cell_number, address)
+INSERT INTO users (title, first_name, surname, dob, gender, marital_status, email, cell_number,
+    id_number, emergency_contact_name, emergency_contact_number, blood_group,
+    known_allergies, chronic_conditions, address)
 VALUES
-('Mr', 'John', 'Doe', '2000-01-01', 'male', 'Single', 'john@gmail.com', '0712345678', 'Pretoria'),
-('Ms', 'Lerato', 'Mokoena', '1999-06-15', 'female', 'Single', 'lerato@gmail.com', '0723456789', 'Johannesburg');
+('Mr', 'John', 'Doe', '2000-01-01', 'male', 'Single', 'john@gmail.com', '0712345678',
+ '0001015009087', 'Jane Doe', '0823456789', 'O+', 'None', 'None', 'Pretoria'),
+('Ms', 'Lerato', 'Mokoena', '1999-06-15', 'female', 'Single', 'lerato@gmail.com', '0723456789',
+ '9906150012083', 'Thabo Mokoena', '0834567890', 'A+', 'Penicillin', 'Asthma', 'Johannesburg');
 
 INSERT INTO user_auth (user_id, password_hash)
 VALUES

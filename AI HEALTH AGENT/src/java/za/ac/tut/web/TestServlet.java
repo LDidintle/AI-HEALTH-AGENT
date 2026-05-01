@@ -9,6 +9,7 @@ import javax.servlet.ServletException;
 import javax.servlet.http.*;
 import za.ac.tut.model.PasswordUtils;
 import za.ac.tut.util.Database;
+import za.ac.tut.util.PatientValidation;
 
 public class TestServlet extends HttpServlet {
 
@@ -33,7 +34,22 @@ public class TestServlet extends HttpServlet {
             String status = (String) session.getAttribute("status");
             String email = (String) session.getAttribute("email");
             String cell_no = (String) session.getAttribute("cell_no");
+            String idNumber = (String) session.getAttribute("id_number");
+            String emergencyContactName = (String) session.getAttribute("emergency_contact_name");
+            String emergencyContactNumber = (String) session.getAttribute("emergency_contact_number");
+            String bloodGroup = (String) session.getAttribute("blood_group");
+            String knownAllergies = (String) session.getAttribute("known_allergies");
+            String chronicConditions = (String) session.getAttribute("chronic_conditions");
             String address = (String) session.getAttribute("address");
+
+            if (!PatientValidation.isValidIdNumber(idNumber)
+                    || !PatientValidation.isValidSouthAfricanPhone(cell_no)
+                    || !PatientValidation.isValidSouthAfricanPhone(emergencyContactNumber)
+                    || PatientValidation.samePhone(cell_no, emergencyContactNumber)) {
+                request.setAttribute("error", "Patient contact details are invalid. Please restart registration and check the ID and phone numbers.");
+                request.getRequestDispatcher("password.jsp").forward(request, response);
+                return;
+            }
 
          
             java.util.Date utilDate = parseDateOfBirth(dobStr);
@@ -51,8 +67,11 @@ public class TestServlet extends HttpServlet {
             String hashedPass = pu.hashPassword(pass);
 
        
-            String sqlUser = "INSERT INTO users (title, first_name, surname, dob, gender, marital_status, email, cell_number, address) "
-                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            String sqlUser = "INSERT INTO users "
+                    + "(title, first_name, surname, dob, gender, marital_status, email, cell_number, "
+                    + "id_number, emergency_contact_name, emergency_contact_number, blood_group, "
+                    + "known_allergies, chronic_conditions, address) "
+                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
             String sqlAuth = "INSERT INTO user_auth (user_id, password_hash) VALUES (?, ?)";
 
             
@@ -71,8 +90,14 @@ public class TestServlet extends HttpServlet {
                 psUser.setString(5, gender);
                 psUser.setString(6, status);
                 psUser.setString(7, email);
-                psUser.setString(8, cell_no);
-                psUser.setString(9, address);
+                psUser.setString(8, PatientValidation.normalizePhone(cell_no));
+                psUser.setString(9, idNumber.trim());
+                psUser.setString(10, emergencyContactName);
+                psUser.setString(11, PatientValidation.normalizePhone(emergencyContactNumber));
+                psUser.setString(12, bloodGroup);
+                psUser.setString(13, knownAllergies);
+                psUser.setString(14, chronicConditions);
+                psUser.setString(15, address);
 
                 int rowsInserted = psUser.executeUpdate();
                 if (rowsInserted == 0) throw new SQLException("Failed to insert user!");

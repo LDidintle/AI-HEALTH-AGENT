@@ -42,6 +42,12 @@ public class EditUserServlet extends HttpServlet {
                         request.setAttribute("marital_status", rs.getString("marital_status"));
                         request.setAttribute("email", rs.getString("email"));
                         request.setAttribute("cell_number", rs.getString("cell_number"));
+                        request.setAttribute("id_number", rs.getString("id_number"));
+                        request.setAttribute("emergency_contact_name", rs.getString("emergency_contact_name"));
+                        request.setAttribute("emergency_contact_number", rs.getString("emergency_contact_number"));
+                        request.setAttribute("blood_group", rs.getString("blood_group"));
+                        request.setAttribute("known_allergies", rs.getString("known_allergies"));
+                        request.setAttribute("chronic_conditions", rs.getString("chronic_conditions"));
                         request.setAttribute("address", rs.getString("address"));
                         request.getRequestDispatcher("edit_user.jsp").forward(request, response);
                         return;

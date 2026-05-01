@@ -43,6 +43,8 @@
                     <th>Gender</th>
                     <th>Email</th>
                     <th>Cell</th>
+                    <th>ID Number</th>
+                    <th>Emergency Contact</th>
                     <th>Address</th>
                     <th>Actions</th>
                 </tr>
@@ -60,6 +62,8 @@
                     <td><%= u.getGender() %></td>
                     <td><%= u.getEmail() %></td>
                     <td><%= u.getCellNumber() %></td>
+                    <td><%= u.getIdNumber() != null ? u.getIdNumber() : "" %></td>
+                    <td><%= u.getEmergencyContactName() != null ? u.getEmergencyContactName() : "" %><br><%= u.getEmergencyContactNumber() != null ? u.getEmergencyContactNumber() : "" %></td>
                     <td><%= u.getAddress() %></td>
                     <td>
                         <div class="actions">
@@ -76,13 +80,13 @@
                     } else {
                 %>
                 <tr>
-                    <td colspan="10" class="empty">No patients found</td>
+                    <td colspan="12" class="empty">No patients found</td>
                 </tr>
                 <%
                     }
                 %>
                 <tr id="noSearchResults" class="hidden">
-                    <td colspan="10" class="empty">No matching patients found</td>
+                    <td colspan="12" class="empty">No matching patients found</td>
                 </tr>
             </table>
         </div>

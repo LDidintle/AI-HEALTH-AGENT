@@ -16,6 +16,7 @@ import javax.servlet.http.HttpServletResponse;
 import za.ac.tut.model.PasswordUtils;
 import za.ac.tut.util.Database;
 import za.ac.tut.util.JsonUtil;
+import za.ac.tut.util.PatientValidation;
 
 public class MobileRegisterServlet extends HttpServlet {
 
@@ -32,12 +33,42 @@ public class MobileRegisterServlet extends HttpServlet {
         String maritalStatus = valueOrDefault(trimToNull(request.getParameter("maritalStatus")), "Not specified");
         String email = trimToNull(request.getParameter("email"));
         String cellNumber = valueOrDefault(trimToNull(request.getParameter("cellNumber")), "");
+        String idNumber = trimToNull(request.getParameter("idNumber"));
+        String emergencyContactName = trimToNull(request.getParameter("emergencyContactName"));
+        String emergencyContactNumber = trimToNull(request.getParameter("emergencyContactNumber"));
+        String bloodGroup = trimToNull(request.getParameter("bloodGroup"));
+        String knownAllergies = trimToNull(request.getParameter("knownAllergies"));
+        String chronicConditions = trimToNull(request.getParameter("chronicConditions"));
         String address = valueOrDefault(trimToNull(request.getParameter("address")), "");
         String password = trimToNull(request.getParameter("password"));
 
         if (firstName == null || surname == null || dobValue == null || email == null || password == null) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             writeJson(response, "{\"success\":false,\"message\":\"firstName, surname, dob, email and password are required.\"}");
+            return;
+        }
+
+        if (!cellNumber.isEmpty() && !PatientValidation.isValidSouthAfricanPhone(cellNumber)) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            writeJson(response, "{\"success\":false,\"message\":\"Personal cell number is invalid.\"}");
+            return;
+        }
+
+        if (idNumber != null && !PatientValidation.isValidIdNumber(idNumber)) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            writeJson(response, "{\"success\":false,\"message\":\"ID number must be 13 digits.\"}");
+            return;
+        }
+
+        if (emergencyContactNumber != null && !PatientValidation.isValidSouthAfricanPhone(emergencyContactNumber)) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            writeJson(response, "{\"success\":false,\"message\":\"Emergency contact number is invalid.\"}");
+            return;
+        }
+
+        if (PatientValidation.samePhone(cellNumber, emergencyContactNumber)) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            writeJson(response, "{\"success\":false,\"message\":\"Personal number and emergency contact number must not be the same.\"}");
             return;
         }
 
@@ -68,8 +99,10 @@ public class MobileRegisterServlet extends HttpServlet {
                 conn.setAutoCommit(false);
 
                 String userSql = "INSERT INTO users "
-                        + "(title, first_name, surname, dob, gender, marital_status, email, cell_number, address) "
-                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                        + "(title, first_name, surname, dob, gender, marital_status, email, cell_number, "
+                        + "id_number, emergency_contact_name, emergency_contact_number, blood_group, "
+                        + "known_allergies, chronic_conditions, address) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
                 String authSql = "INSERT INTO user_auth (user_id, password_hash) VALUES (?, ?)";
 
                 try (
@@ -83,8 +116,14 @@ public class MobileRegisterServlet extends HttpServlet {
                     userStatement.setString(5, gender);
                     userStatement.setString(6, maritalStatus);
                     userStatement.setString(7, email);
-                    userStatement.setString(8, cellNumber);
-                    userStatement.setString(9, address);
+                    userStatement.setString(8, PatientValidation.normalizePhone(cellNumber));
+                    userStatement.setString(9, idNumber);
+                    userStatement.setString(10, emergencyContactName);
+                    userStatement.setString(11, PatientValidation.normalizePhone(emergencyContactNumber));
+                    userStatement.setString(12, bloodGroup);
+                    userStatement.setString(13, knownAllergies);
+                    userStatement.setString(14, chronicConditions);
+                    userStatement.setString(15, address);
 
                     userStatement.executeUpdate();
 

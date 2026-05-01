@@ -22,6 +22,12 @@ public class User {
     private String maritalStatus;
     private String email;
     private String cellNumber;
+    private String idNumber;
+    private String emergencyContactName;
+    private String emergencyContactNumber;
+    private String bloodGroup;
+    private String knownAllergies;
+    private String chronicConditions;
     private String address;
     private String passwordHash;
 
@@ -52,6 +58,24 @@ public class User {
 
     public String getCellNumber() { return cellNumber; }
     public void setCellNumber(String cellNumber) { this.cellNumber = cellNumber; }
+
+    public String getIdNumber() { return idNumber; }
+    public void setIdNumber(String idNumber) { this.idNumber = idNumber; }
+
+    public String getEmergencyContactName() { return emergencyContactName; }
+    public void setEmergencyContactName(String emergencyContactName) { this.emergencyContactName = emergencyContactName; }
+
+    public String getEmergencyContactNumber() { return emergencyContactNumber; }
+    public void setEmergencyContactNumber(String emergencyContactNumber) { this.emergencyContactNumber = emergencyContactNumber; }
+
+    public String getBloodGroup() { return bloodGroup; }
+    public void setBloodGroup(String bloodGroup) { this.bloodGroup = bloodGroup; }
+
+    public String getKnownAllergies() { return knownAllergies; }
+    public void setKnownAllergies(String knownAllergies) { this.knownAllergies = knownAllergies; }
+
+    public String getChronicConditions() { return chronicConditions; }
+    public void setChronicConditions(String chronicConditions) { this.chronicConditions = chronicConditions; }
 
     public String getAddress() { return address; }
     public void setAddress(String address) { this.address = address; }

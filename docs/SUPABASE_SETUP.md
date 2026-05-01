@@ -24,6 +24,12 @@ If your Supabase database already existed before Galaxy Watch / Health Connect d
 database/supabase_watch_device_migration.sql
 ```
 
+If your Supabase database already existed before emergency contact and hospital-summary fields were added, run this migration once before deploying the newer registration flow:
+
+```text
+database/patient_profile_fields_migration.sql
+```
+
 ## 2. Configure the app server
 
 Set these environment variables before starting the Java server:

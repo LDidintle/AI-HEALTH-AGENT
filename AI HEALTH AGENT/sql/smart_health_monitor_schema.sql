@@ -11,6 +11,12 @@ CREATE TABLE IF NOT EXISTS users (
     marital_status VARCHAR(20),
     email VARCHAR(255) NOT NULL UNIQUE,
     cell_number VARCHAR(20),
+    id_number VARCHAR(13),
+    emergency_contact_name VARCHAR(150),
+    emergency_contact_number VARCHAR(20),
+    blood_group VARCHAR(10),
+    known_allergies TEXT,
+    chronic_conditions TEXT,
     address TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -194,8 +200,11 @@ WHERE NOT EXISTS (
     SELECT 1 FROM health_advice WHERE advice_type = 'CRITICAL_BPM'
 );
 
-INSERT INTO users (first_name, surname, email, title, dob, gender, marital_status, cell_number, address)
-SELECT 'John', 'Doe', 'john@gmail.com', 'Mr', '2000-01-01', 'male', 'Single', '0712345678', 'Test Address'
+INSERT INTO users (first_name, surname, email, title, dob, gender, marital_status, cell_number,
+    id_number, emergency_contact_name, emergency_contact_number, blood_group,
+    known_allergies, chronic_conditions, address)
+SELECT 'John', 'Doe', 'john@gmail.com', 'Mr', '2000-01-01', 'male', 'Single', '0712345678',
+    '0001015009087', 'Jane Doe', '0823456789', 'O+', 'None', 'None', 'Test Address'
 WHERE NOT EXISTS (
     SELECT 1 FROM users WHERE email = 'john@gmail.com'
 );

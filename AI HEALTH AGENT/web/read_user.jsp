@@ -11,13 +11,17 @@
     <main class="shell">
         <p class="eyebrow">Doctor / Staff workspace</p>
         <h1>Find Patient</h1>
-        <p class="lead">Enter the patient's email address to view their saved account details.</p>
+        <p class="lead">Enter the patient's numeric system ID or email address to view saved details and doctor summary.</p>
 
         <%
             String errorMessage = (String) request.getAttribute("errorMessage");
             String searchedEmail = (String) request.getAttribute("searchedEmail");
+            String searchedId = (String) request.getAttribute("searchedId");
             if (searchedEmail == null) {
                 searchedEmail = "";
+            }
+            if (searchedId == null) {
+                searchedId = "";
             }
         %>
 
@@ -26,11 +30,14 @@
         <% } %>
 
         <form action="ReadUserServlet.do" method="post">
+            <label for="patient_id">Patient System ID</label>
+            <input type="number" id="patient_id" name="patient_id" value="<%= searchedId %>" inputmode="numeric">
+
             <label for="email">Email</label>
-            <input type="email" id="email" name="email" value="<%= searchedEmail %>" required>
+            <input type="email" id="email" name="email" value="<%= searchedEmail %>">
 
             <div class="actions">
-                <button class="btn primary" type="submit">Submit Email</button>
+                <button class="btn primary" type="submit">Find Patient</button>
                 <a class="btn secondary" href="admin_dashboard.jsp">Dashboard</a>
             </div>
         </form>

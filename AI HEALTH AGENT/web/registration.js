@@ -5,6 +5,9 @@ const locationStatus = document.getElementById('locationStatus');
 const latitudeInput = document.getElementById('location_latitude');
 const longitudeInput = document.getElementById('location_longitude');
 const useLocationButton = document.getElementById('useLocationBtn');
+const idNumberInput = document.getElementById('id_number');
+const personalPhoneInput = document.getElementById('cell_number');
+const emergencyPhoneInput = document.getElementById('emergency_contact_number');
 
 if (dobInput) {
     dobInput.max = new Date().toISOString().split('T')[0];
@@ -41,6 +44,23 @@ if (useLocationButton) {
 }
 
 document.querySelector('form').addEventListener('submit', event => {
+    const idNumber = (idNumberInput?.value || '').trim();
+    if (!/^[0-9]{13}$/.test(idNumber)) {
+        return stopSubmit(event, 'Please enter a valid 13 digit South African ID number.');
+    }
+
+    const personalPhone = normalizePhone(personalPhoneInput?.value || '');
+    const emergencyPhone = normalizePhone(emergencyPhoneInput?.value || '');
+    if (!isValidPhone(personalPhone)) {
+        return stopSubmit(event, 'Please enter a valid South African personal cell number.');
+    }
+    if (!isValidPhone(emergencyPhone)) {
+        return stopSubmit(event, 'Please enter a valid South African emergency contact number.');
+    }
+    if (personalPhone === emergencyPhone) {
+        return stopSubmit(event, 'Your personal number and emergency contact number must not be the same.');
+    }
+
     const dobValue = dobInput.value;
     if (!dobValue) return stopSubmit(event, 'Please select your date of birth.');
 
@@ -64,4 +84,16 @@ function stopSubmit(event, message) {
 function showLocationMessage(message, isError) {
     locationStatus.textContent = message;
     locationStatus.className = isError ? 'form-note error' : 'form-note success';
+}
+
+function normalizePhone(value) {
+    const digits = value.replace(/\D/g, '');
+    if (digits.startsWith('27') && digits.length === 11) {
+        return `0${digits.slice(2)}`;
+    }
+    return digits;
+}
+
+function isValidPhone(value) {
+    return /^0[6-8][0-9]{8}$/.test(value);
 }

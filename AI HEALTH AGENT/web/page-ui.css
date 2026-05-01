@@ -238,6 +238,12 @@ button.btn {
     margin: 0;
 }
 
+.summary-panel {
+    margin-top: 26px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255,255,255,0.18);
+}
+
 .readonly-list div {
     display: grid;
     grid-template-columns: minmax(120px, 180px) 1fr;

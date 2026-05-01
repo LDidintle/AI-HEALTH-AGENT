@@ -15,6 +15,7 @@ import javax.servlet.http.HttpSession;
 
 import za.ac.tut.model.User;
 import za.ac.tut.util.Database;
+import za.ac.tut.util.PatientMapper;
 
 public class ViewUsersServlet extends HttpServlet {
 
@@ -30,20 +31,7 @@ public class ViewUsersServlet extends HttpServlet {
                  ResultSet rs = ps.executeQuery()) {
 
                 while (rs.next()) {
-                    User user = new User();
-
-                    user.setId(rs.getInt("id"));
-                    user.setTitle(rs.getString("title"));
-                    user.setFirstName(rs.getString("first_name"));
-                    user.setSurname(rs.getString("surname"));
-                    user.setDob(rs.getDate("dob"));
-                    user.setGender(rs.getString("gender"));
-                    user.setMaritalStatus(rs.getString("marital_status"));
-                    user.setEmail(rs.getString("email"));
-                    user.setCellNumber(rs.getString("cell_number"));
-                    user.setAddress(rs.getString("address"));
-
-                    userList.add(user);
+                    userList.add(PatientMapper.fromResultSet(rs));
                 }
             }
 
