@@ -14,6 +14,12 @@ data class ChatMessage(
     val text: String
 )
 
+data class VitalTrendPoint(
+    val heartRate: Int?,
+    val systolic: Int?,
+    val temperature: Double?
+)
+
 data class AppUiState(
     val email: String = "",
     val password: String = "",
@@ -33,6 +39,7 @@ data class AppUiState(
     val isLoggedIn: Boolean = false,
     val userProfile: BackendProfile? = null,
     val latestReadings: LatestReadingsResponse? = null,
+    val trendPoints: List<VitalTrendPoint> = emptyList(),
     val isLiveSyncEnabled: Boolean = false,
     val isDemoSyncEnabled: Boolean = false,
     val lastLiveSyncAt: String? = null,

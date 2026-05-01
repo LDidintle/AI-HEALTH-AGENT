@@ -1,6 +1,7 @@
 package za.ac.tut.healthmonitor.mobile.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,8 +34,13 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -393,7 +399,7 @@ private fun DashboardContent(
         MessageSection(uiState)
 
         VitalsPanel(uiState.latestReadings, copy)
-        ChartCard()
+        ChartCard(uiState.trendPoints)
         ActionButton(text = copy.chat, onClick = onOpenChat, colors = listOf(AccentBlue, Yellow), textColor = Ink)
         ActionButton(text = copy.alert, onClick = onSendParamedicAlert, colors = listOf(Danger, Color(0xFF8F1B13)), textColor = Color.White)
 
@@ -514,22 +520,82 @@ private fun DividerLine() {
 }
 
 @Composable
-private fun ChartCard() {
+private fun ChartCard(trendPoints: List<VitalTrendPoint>) {
     Card(colors = CardDefaults.cardColors(containerColor = SoftPanel), shape = RoundedCornerShape(18.dp)) {
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("• Heart Rate", color = Color(0xFFB42318), fontWeight = FontWeight.Bold)
-            Text("• Blood Pressure", color = AccentBlue, fontWeight = FontWeight.Bold)
-            Text("• Temperature", color = AccentCoral, fontWeight = FontWeight.Bold)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(118.dp)
-                    .background(Color(0xFFEFF6F4), RoundedCornerShape(8.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("Trends update after synced readings", color = Muted)
+            Text("Live trend graph", color = Ink, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
+            Row(horizontalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.fillMaxWidth()) {
+                Text("• Heart", color = Color(0xFFB42318), fontWeight = FontWeight.Bold)
+                Text("• BP", color = AccentBlue, fontWeight = FontWeight.Bold)
+                Text("• Temp", color = AccentCoral, fontWeight = FontWeight.Bold)
+            }
+
+            if (trendPoints.size < 2) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(140.dp)
+                        .background(Color(0xFFEFF6F4), RoundedCornerShape(8.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("Start demo/live sync to draw trends", color = Muted)
+                }
+            } else {
+                Canvas(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(160.dp)
+                        .background(Color(0xFFEFF6F4), RoundedCornerShape(8.dp))
+                        .padding(12.dp)
+                ) {
+                    val gridColor = Color(0xFFD7DEEA)
+                    repeat(5) { index ->
+                        val y = size.height * index / 4f
+                        drawLine(gridColor, Offset(0f, y), Offset(size.width, y), strokeWidth = 1.5f)
+                    }
+                    repeat(4) { index ->
+                        val x = size.width * index / 3f
+                        drawLine(gridColor, Offset(x, 0f), Offset(x, size.height), strokeWidth = 1.5f)
+                    }
+
+                    drawTrendLine(trendPoints.mapNotNull { it.heartRate?.toFloat() }, Color(0xFFB42318))
+                    drawTrendLine(trendPoints.mapNotNull { it.systolic?.toFloat() }, AccentBlue)
+                    drawTrendLine(trendPoints.mapNotNull { it.temperature?.toFloat() }, AccentCoral)
+                }
             }
         }
+    }
+}
+
+private fun DrawScope.drawTrendLine(values: List<Float>, color: Color) {
+    if (values.size < 2) return
+
+    val min = values.minOrNull() ?: return
+    val max = values.maxOrNull() ?: return
+    val range = (max - min).takeIf { it > 0.01f } ?: 1f
+    val stepX = size.width / (values.size - 1)
+    val path = Path()
+
+    values.forEachIndexed { index, value ->
+        val x = stepX * index
+        val y = size.height - ((value - min) / range) * size.height
+        if (index == 0) {
+            path.moveTo(x, y)
+        } else {
+            path.lineTo(x, y)
+        }
+    }
+
+    drawPath(
+        path = path,
+        color = color,
+        style = Stroke(width = 5f, cap = StrokeCap.Round)
+    )
+
+    values.forEachIndexed { index, value ->
+        val x = stepX * index
+        val y = size.height - ((value - min) / range) * size.height
+        drawCircle(color = color, radius = 5f, center = Offset(x, y))
     }
 }
 

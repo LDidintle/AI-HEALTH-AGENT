@@ -115,6 +115,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     isLoggedIn = true,
                     userProfile = profile,
                     latestReadings = readings,
+                    trendPoints = appendTrendPoint(it.trendPoints, readings),
                     password = "",
                     errorMessage = null,
                     infoMessage = "Signed in successfully."
@@ -182,6 +183,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     isLoggedIn = true,
                     userProfile = profile,
                     latestReadings = readings,
+                    trendPoints = appendTrendPoint(it.trendPoints, readings),
                     errorMessage = null
                 )
             }
@@ -203,6 +205,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             _uiState.update {
                 it.copy(
                     latestReadings = readings,
+                    trendPoints = appendTrendPoint(it.trendPoints, readings),
                     errorMessage = null,
                     infoMessage = "Health Connect data synced."
                 )
@@ -246,6 +249,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     _uiState.update {
                         it.copy(
                             latestReadings = readings ?: it.latestReadings,
+                            trendPoints = if (readings == null) it.trendPoints else appendTrendPoint(it.trendPoints, readings),
                             lastLiveSyncAt = formattedNow(),
                             errorMessage = null,
                             infoMessage = if (readings == null) {
@@ -305,6 +309,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     _uiState.update {
                         it.copy(
                             latestReadings = readings,
+                            trendPoints = appendTrendPoint(it.trendPoints, readings),
                             lastLiveSyncAt = formattedNow(),
                             errorMessage = null,
                             infoMessage = "Demo watch reading synced."
@@ -348,6 +353,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             _uiState.update {
                 it.copy(
                     latestReadings = readings,
+                    trendPoints = appendTrendPoint(it.trendPoints, readings),
                     errorMessage = null,
                     infoMessage = "Sample vitals synced."
                 )
@@ -581,6 +587,23 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
+    private fun appendTrendPoint(
+        currentPoints: List<VitalTrendPoint>,
+        readings: LatestReadingsResponse
+    ): List<VitalTrendPoint> {
+        val nextPoint = VitalTrendPoint(
+            heartRate = readings.heartRate?.value,
+            systolic = readings.bloodPressure?.systolic,
+            temperature = readings.temperature?.value
+        )
+
+        if (nextPoint.heartRate == null && nextPoint.systolic == null && nextPoint.temperature == null) {
+            return currentPoints
+        }
+
+        return (currentPoints + nextPoint).takeLast(MAX_TREND_POINTS)
+    }
+
     private fun formattedNow(): String {
         return LocalTime.now().format(TIME_FORMATTER)
     }
@@ -609,6 +632,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private companion object {
         const val LIVE_SYNC_INTERVAL_MILLIS = 30_000L
         const val DEMO_SYNC_INTERVAL_MILLIS = 5_000L
+        const val MAX_TREND_POINTS = 12
         val TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     }
 }
