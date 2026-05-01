@@ -2,9 +2,9 @@
 
 ## Overview
 
-SmartHealth AI Health Agent is a student-built health monitoring application with a Java web backend, patient and staff web pages, an Android client, database-backed health readings, and AI-assisted wellness guidance.
+SmartHealth AI Health Agent is a student-built health monitoring application with a Java web backend, patient, staff, and hospital web portals, an Android client, database-backed health readings, live mobile sync, and AI-assisted wellness guidance.
 
-The app is designed to collect patient information and health readings, store them in a relational database, show recent readings to users and staff, and provide non-diagnostic wellness suggestions based on simple rule checks and an optional OpenAI-powered chat assistant.
+The app is designed to collect patient information and health readings, store them in a relational database, show recent and average readings to users, staff, and hospital users, and provide non-diagnostic wellness suggestions based on rule checks and an optional OpenAI-powered chat assistant.
 
 ## Medical Disclaimer
 
@@ -16,10 +16,19 @@ This project is for educational and demonstration purposes only. It does not dia
 - Staff/admin sign-in using environment-configured credentials
 - Staff patient directory with create, read, update, delete, and search workflows
 - Read-only hospital portal using `SMARTHEALTH_HOSPITAL_USER` and `SMARTHEALTH_HOSPITAL_PASSWORD`
+- Patient profile fields for SA ID number, personal number, emergency contact, blood group, allergies, and chronic conditions
+- Validation for South African phone numbers and SA ID numbers
+- Validation that personal phone number and emergency contact number cannot be the same
 - Database tables for users, authentication records, pulse readings, temperature readings, blood pressure readings, and device sync events
 - Mobile API endpoints for registration, login, profile access, and health reading synchronization
 - Android client built with Kotlin and Jetpack Compose
 - Android Health Connect integration for reading heart rate, body temperature, and blood pressure records
+- Galaxy Watch 5 workflow through Samsung Health -> Health Connect -> Android app -> backend -> web dashboard
+- Foreground live sync mode that sends approved Health Connect readings from the phone to the backend
+- Demo live feed mode for emulator testing, with realistic changing watch-style readings every few seconds
+- Live vital markers and trend graphs in the Android app and web patient dashboard
+- Device metadata capture for synced watch/phone readings
+- Doctor summary view with average vitals and rule-based prediction text
 - Rule-based health insight engine in the Android client
 - AI chat servlet that can call the OpenAI Responses API when an API key is configured
 - Fallback wellness guidance when the AI service or API key is unavailable
@@ -52,7 +61,7 @@ The project follows a 3-tier architecture:
 - Data tier: MariaDB or PostgreSQL stores patient records, password hashes, health readings, and sync logs.
 
 ```text
-Patient Web / Staff Web / Android App
+Patient Web / Staff Web / Hospital Portal / Android App
                 |
                 v
         Java Servlet Backend
@@ -64,20 +73,33 @@ Patient Web / Staff Web / Android App
       Stored readings and user data
 
 Optional:
-Android Health Connect -> Android App -> Backend sync endpoint
+Galaxy Watch 5 -> Samsung Health -> Health Connect -> Android App -> Backend sync endpoint
+Android Demo Feed -> Backend sync endpoint
 Backend AIChatServlet -> OpenAI Responses API -> Wellness guidance
 ```
 
 ## Input -> Process -> Output Flow
 
 ```text
-Patient/staff input or Android Health Connect readings
+Patient/staff/hospital input or Android Health Connect readings
         ->
 Servlet validates request and reads/writes database records
         ->
 Health readings are classified and stored
         ->
-Web pages, mobile screens, and AI chat return user-facing results
+Web pages, mobile screens, doctor summary, and AI chat return user-facing results
+```
+
+For live watch/demo data:
+
+```text
+Galaxy Watch 5 or Android demo feed
+        ->
+Android app builds a health sync payload with vitals and device metadata
+        ->
+MobileHealthSyncServlet stores pulse, temperature, and blood pressure rows
+        ->
+Android and web dashboards refresh live vital markers and trend graphs
 ```
 
 For AI chat:
@@ -159,10 +181,31 @@ Common local pages:
 http://localhost:8080/SWP_MergedProject2/index.html
 http://localhost:8080/SWP_MergedProject2/user_sign.html
 http://localhost:8080/SWP_MergedProject2/admin_sign.html
+http://localhost:8080/SWP_MergedProject2/hospital_sign.jsp
 http://localhost:8080/SWP_MergedProject2/ViewUsersServlet.do
 ```
 
-### 5. Docker deployment test
+### 5. Android client
+
+The Android client is in:
+
+```text
+AndroidClient/
+```
+
+Build a debug APK with:
+
+```sh
+cd AndroidClient
+./gradlew :app:assembleDebug
+```
+
+The app supports two live data paths:
+
+- Real watch path: pair Galaxy Watch 5 with a real Android phone, allow Samsung Health to share data with Health Connect, sign in to the SmartHealth Android app, then start live watch sync.
+- Demo path: use the emulator and start Demo Live Feed to generate changing readings through the same backend sync endpoint.
+
+### 6. Docker deployment test
 
 ```sh
 docker build -t smarthealth-agent .
@@ -182,8 +225,10 @@ Add screenshots here before using this as a portfolio project:
 - Landing/sign-in page
 - Patient dashboard
 - Staff/admin dashboard
+- Hospital portal
 - Patient directory
-- Android Health Connect sync screen
+- Android live sync and demo feed screen
+- Live trend graph and vital markers
 - AI wellness chat
 
 ## Deployment Notes
@@ -219,5 +264,5 @@ docs/REMOTE_DATABASE.md
 - Add input validation helpers shared across servlets
 - Add clearer user-facing error states instead of generic error pages
 - Improve AI response parsing with a proper JSON parser
-- Add screenshots and a live deployment link to this README
+- Add screenshots and a stable live deployment link to this README
 - Add CI checks for build and basic security scanning
