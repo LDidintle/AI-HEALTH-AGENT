@@ -43,6 +43,7 @@ data class AppUiState(
     val isLiveSyncEnabled: Boolean = false,
     val isDemoSyncEnabled: Boolean = false,
     val lastLiveSyncAt: String? = null,
+    val lastSyncSummary: String? = null,
     val liveSyncIntervalSeconds: Int = 30,
     val demoSyncIntervalSeconds: Int = 5,
     val selectedLanguage: String = "en",

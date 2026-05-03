@@ -206,6 +206,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 it.copy(
                     latestReadings = readings,
                     trendPoints = appendTrendPoint(it.trendPoints, readings),
+                    lastSyncSummary = healthConnectSummary(payload),
                     errorMessage = null,
                     infoMessage = "Health Connect data synced."
                 )
@@ -239,21 +240,27 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
                         val payload = manager.readLatestVitals()
                         if (payload.isEmpty()) {
-                            null
+                            LiveSyncResult(payload, null)
                         } else {
                             repository.syncReadings(payload)
-                            repository.getLatestReadings()
+                            LiveSyncResult(payload, repository.getLatestReadings())
                         }
                     }
 
                     _uiState.update {
+                        val latestReadings = readings.latestReadings
                         it.copy(
-                            latestReadings = readings ?: it.latestReadings,
-                            trendPoints = if (readings == null) it.trendPoints else appendTrendPoint(it.trendPoints, readings),
+                            latestReadings = latestReadings ?: it.latestReadings,
+                            trendPoints = if (latestReadings == null) {
+                                it.trendPoints
+                            } else {
+                                appendTrendPoint(it.trendPoints, latestReadings)
+                            },
                             lastLiveSyncAt = formattedNow(),
+                            lastSyncSummary = healthConnectSummary(readings.payload),
                             errorMessage = null,
-                            infoMessage = if (readings == null) {
-                                "Live sync is running, but no watch readings are available yet."
+                            infoMessage = if (latestReadings == null) {
+                                "Live sync checked Health Connect, but no watch readings were returned."
                             } else {
                                 "Live watch readings synced."
                             }
@@ -311,6 +318,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                             latestReadings = readings,
                             trendPoints = appendTrendPoint(it.trendPoints, readings),
                             lastLiveSyncAt = formattedNow(),
+                            lastSyncSummary = readingsSummary(readings),
                             errorMessage = null,
                             infoMessage = "Demo watch reading synced."
                         )
@@ -354,6 +362,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 it.copy(
                     latestReadings = readings,
                     trendPoints = appendTrendPoint(it.trendPoints, readings),
+                    lastSyncSummary = readingsSummary(readings),
                     errorMessage = null,
                     infoMessage = "Sample vitals synced."
                 )
@@ -587,6 +596,28 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
+    private fun healthConnectSummary(payload: HealthSyncPayload): String {
+        return "Health Connect returned: " +
+                "Heart ${payload.heartRate?.let { "$it BPM" } ?: "none"}, " +
+                "BP ${formatBloodPressure(payload.systolic, payload.diastolic)}, " +
+                "Temp ${payload.temperature?.let { String.format(java.util.Locale.US, "%.2f °C", it) } ?: "none"}"
+    }
+
+    private fun readingsSummary(readings: LatestReadingsResponse): String {
+        return "Dashboard now shows: " +
+                "Heart ${readings.heartRate?.value?.let { "$it BPM" } ?: "none"}, " +
+                "BP ${readings.bloodPressure?.let { "${it.systolic}/${it.diastolic}" } ?: "none"}, " +
+                "Temp ${readings.temperature?.value?.let { String.format(java.util.Locale.US, "%.2f °C", it) } ?: "none"}"
+    }
+
+    private fun formatBloodPressure(systolic: Int?, diastolic: Int?): String {
+        return if (systolic == null || diastolic == null) {
+            "none"
+        } else {
+            "$systolic/$diastolic"
+        }
+    }
+
     private fun appendTrendPoint(
         currentPoints: List<VitalTrendPoint>,
         readings: LatestReadingsResponse
@@ -635,4 +666,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         const val MAX_TREND_POINTS = 12
         val TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     }
+
+    private data class LiveSyncResult(
+        val payload: HealthSyncPayload,
+        val latestReadings: LatestReadingsResponse?
+    )
 }

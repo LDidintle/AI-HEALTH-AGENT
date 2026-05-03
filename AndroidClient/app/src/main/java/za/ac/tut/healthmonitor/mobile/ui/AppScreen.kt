@@ -649,6 +649,9 @@ private fun SyncActionsCard(
             uiState.lastLiveSyncAt?.let {
                 Text("Last live sync: $it", color = Color(0xFFCFEBDD), style = MaterialTheme.typography.bodySmall)
             }
+            uiState.lastSyncSummary?.let {
+                Text(it, color = Color(0xFFCFEBDD), style = MaterialTheme.typography.bodySmall)
+            }
             Button(
                 onClick = if (uiState.isLiveSyncEnabled) onStopLiveSync else onStartLiveSync,
                 modifier = Modifier.fillMaxWidth()
