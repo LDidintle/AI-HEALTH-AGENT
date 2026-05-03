@@ -313,6 +313,25 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         stopLiveSync(showMessage = true)
     }
 
+    fun applyWatchLiveReading(payload: HealthSyncPayload) {
+        if (payload.isEmpty()) {
+            return
+        }
+
+        val readings = payload.toLatestReadings()
+        persistPayload(payload)
+        _uiState.update {
+            it.copy(
+                latestReadings = readings,
+                trendPoints = appendTrendPoint(it.trendPoints, readings),
+                lastLiveSyncAt = formattedNow(),
+                lastSyncSummary = "Galaxy Watch live: " + healthValuesSummary(payload),
+                errorMessage = null,
+                infoMessage = "Live Galaxy Watch reading received."
+            )
+        }
+    }
+
     fun startDemoSync() {
         if (demoSyncJob?.isActive == true) {
             _uiState.update { it.copy(infoMessage = "Demo live watch feed is already running.", errorMessage = null) }
@@ -670,8 +689,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun healthConnectSummary(payload: HealthSyncPayload): String {
-        return "Health Connect returned: " +
-                "Heart ${payload.heartRate?.let { "$it BPM" } ?: "none"}, " +
+        return "Health Connect returned: " + healthValuesSummary(payload)
+    }
+
+    private fun healthValuesSummary(payload: HealthSyncPayload): String {
+        return "Heart ${payload.heartRate?.let { "$it BPM" } ?: "none"}, " +
                 "BP ${formatBloodPressure(payload.systolic, payload.diastolic)}, " +
                 "Temp ${payload.temperature?.let { String.format(java.util.Locale.US, "%.2f °C", it) } ?: "none"}"
     }

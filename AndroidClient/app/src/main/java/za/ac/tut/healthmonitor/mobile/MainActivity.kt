@@ -20,6 +20,7 @@ import za.ac.tut.healthmonitor.mobile.health.HealthConnectManager
 import za.ac.tut.healthmonitor.mobile.ui.AppScreen
 import za.ac.tut.healthmonitor.mobile.ui.AppViewModel
 import za.ac.tut.healthmonitor.mobile.ui.theme.HealthMonitorTheme
+import za.ac.tut.healthmonitor.mobile.wear.WatchLiveVitalsStore
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 class MainActivity : ComponentActivity() {
@@ -53,6 +54,12 @@ class MainActivity : ComponentActivity() {
 
             LaunchedEffect(Unit) {
                 appViewModel.clearMessages()
+            }
+
+            LaunchedEffect(Unit) {
+                WatchLiveVitalsStore.readings.collect { payload ->
+                    appViewModel.applyWatchLiveReading(payload)
+                }
             }
 
             HealthMonitorTheme {
