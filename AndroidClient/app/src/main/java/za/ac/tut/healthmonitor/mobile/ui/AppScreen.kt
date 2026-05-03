@@ -44,8 +44,12 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
+import za.ac.tut.healthmonitor.mobile.data.model.BloodPressureValue
 import za.ac.tut.healthmonitor.mobile.data.model.LatestReadingsResponse
+import za.ac.tut.healthmonitor.mobile.data.model.ReadingValue
+import za.ac.tut.healthmonitor.mobile.data.model.TemperatureValue
 import za.ac.tut.healthmonitor.mobile.insights.HealthInsight
 import za.ac.tut.healthmonitor.mobile.insights.HealthInsightEngine
 import za.ac.tut.healthmonitor.mobile.insights.InsightSeverity
@@ -480,17 +484,32 @@ private fun LanguageTab(code: String, label: String, selected: String, onSelectL
 private fun VitalsPanel(readings: LatestReadingsResponse?, copy: DashboardCopy) {
     Card(colors = CardDefaults.cardColors(containerColor = SoftPanel), shape = RoundedCornerShape(18.dp)) {
         Column(modifier = Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-            VitalRow(copy.heart, readings?.heartRate?.value?.let { "$it BPM" } ?: "--", AccentCoral)
+            VitalRow(
+                label = copy.heart,
+                value = readings?.heartRate?.value?.let { "$it BPM" } ?: "--",
+                detail = readings?.heartRate?.detailText(),
+                tint = AccentCoral
+            )
             DividerLine()
-            VitalRow(copy.blood, readings?.bloodPressure?.let { "${it.systolic}/${it.diastolic} mmHg" } ?: "--", AccentBlue)
+            VitalRow(
+                label = copy.blood,
+                value = readings?.bloodPressure?.let { "${it.systolic}/${it.diastolic} mmHg" } ?: "--",
+                detail = readings?.bloodPressure?.detailText(),
+                tint = AccentBlue
+            )
             DividerLine()
-            VitalRow(copy.temp, readings?.temperature?.value?.let { "$it °C" } ?: "--", Color(0xFFFF8A5C))
+            VitalRow(
+                label = copy.temp,
+                value = readings?.temperature?.value?.let { "$it °C" } ?: "--",
+                detail = readings?.temperature?.detailText(),
+                tint = Color(0xFFFF8A5C)
+            )
         }
     }
 }
 
 @Composable
-private fun VitalRow(label: String, value: String, tint: Color) {
+private fun VitalRow(label: String, value: String, detail: String?, tint: Color) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(
             modifier = Modifier
@@ -505,8 +524,32 @@ private fun VitalRow(label: String, value: String, tint: Color) {
             Text(label, style = MaterialTheme.typography.titleLarge, color = Ink)
             Spacer(modifier = Modifier.height(8.dp))
             Text(value, style = MaterialTheme.typography.headlineSmall, color = tint, fontWeight = FontWeight.Bold)
+            detail?.let {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(it, color = Muted, fontSize = 12.sp)
+            }
         }
     }
+}
+
+private fun ReadingValue.detailText(): String? {
+    return readingDetail(source, recordedAt)
+}
+
+private fun TemperatureValue.detailText(): String? {
+    return readingDetail(source, recordedAt)
+}
+
+private fun BloodPressureValue.detailText(): String? {
+    return readingDetail(source, recordedAt)
+}
+
+private fun readingDetail(source: String?, recordedAt: String?): String? {
+    val parts = listOfNotNull(
+        source?.takeIf { it.isNotBlank() },
+        recordedAt?.takeIf { it.isNotBlank() }?.let { "at $it" }
+    )
+    return parts.takeIf { it.isNotEmpty() }?.joinToString(" ")
 }
 
 @Composable
