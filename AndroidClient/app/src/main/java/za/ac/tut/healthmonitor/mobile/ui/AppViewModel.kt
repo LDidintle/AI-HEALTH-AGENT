@@ -20,8 +20,11 @@ import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.random.Random
+import za.ac.tut.healthmonitor.mobile.data.model.BloodPressureValue
 import za.ac.tut.healthmonitor.mobile.data.model.HealthSyncPayload
 import za.ac.tut.healthmonitor.mobile.data.model.LatestReadingsResponse
+import za.ac.tut.healthmonitor.mobile.data.model.ReadingValue
+import za.ac.tut.healthmonitor.mobile.data.model.TemperatureValue
 import za.ac.tut.healthmonitor.mobile.data.repository.AppRepository
 import za.ac.tut.healthmonitor.mobile.health.HealthConnectManager
 
@@ -108,17 +111,18 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         launchLoadingTask {
             repository.login(currentState.email.trim(), currentState.password)
             val profile = repository.getProfile().user
-            val readings = repository.getLatestReadings()
 
             _uiState.update {
                 it.copy(
                     isLoggedIn = true,
                     userProfile = profile,
-                    latestReadings = readings,
-                    trendPoints = appendTrendPoint(it.trendPoints, readings),
+                    latestReadings = null,
+                    trendPoints = emptyList(),
+                    lastLiveSyncAt = null,
+                    lastSyncSummary = null,
                     password = "",
                     errorMessage = null,
-                    infoMessage = "Signed in successfully."
+                    infoMessage = "Signed in. Start live watch sync to show current readings."
                 )
             }
         }
@@ -176,14 +180,16 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun refreshDashboard() {
         launchLoadingTask {
             val profile = repository.getProfile().user
-            val readings = repository.getLatestReadings()
 
             _uiState.update {
                 it.copy(
                     isLoggedIn = true,
                     userProfile = profile,
-                    latestReadings = readings,
-                    trendPoints = appendTrendPoint(it.trendPoints, readings),
+                    latestReadings = null,
+                    trendPoints = emptyList(),
+                    lastLiveSyncAt = null,
+                    lastSyncSummary = null,
+                    infoMessage = "Dashboard cleared. Start live watch sync to show current readings.",
                     errorMessage = null
                 )
             }
@@ -191,32 +197,47 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun syncFromHealthConnect(manager: HealthConnectManager) {
-        launchLoadingTask {
-            val payload = manager.readLatestVitals()
-            if (payload.isEmpty()) {
-                throw IllegalStateException(
-                    "Nothing is connected yet. Pair the Galaxy Watch 5 with Samsung Health, share Samsung Health data with Health Connect, then try syncing again."
-                )
-            }
-
-            repository.syncReadings(payload)
-            val readings = repository.getLatestReadings()
-
-            _uiState.update {
-                it.copy(
-                    latestReadings = readings,
-                    trendPoints = appendTrendPoint(it.trendPoints, readings),
-                    lastSyncSummary = healthConnectSummary(payload),
-                    errorMessage = null,
-                    infoMessage = "Health Connect data synced."
-                )
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, errorMessage = null, infoMessage = null) }
+            try {
+                val payload = withContext(Dispatchers.IO) {
+                    manager.readLatestVitals()
+                }
+                if (payload.isEmpty()) {
+                    throw IllegalStateException(
+                        "Health Connect returned no readings. Check Samsung Health is sharing data into Health Connect."
+                    )
+                }
+                val readings = payload.toLatestReadings()
+                persistPayload(payload)
+                _uiState.update {
+                    it.copy(
+                        latestReadings = readings,
+                        trendPoints = appendTrendPoint(it.trendPoints, readings),
+                        lastLiveSyncAt = formattedNow(),
+                        lastSyncSummary = healthConnectSummary(payload),
+                        isLoading = false,
+                        errorMessage = null,
+                        infoMessage = "Health Connect values displayed. Saving to database in the background."
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = e.message ?: "Health Connect sync failed.",
+                        infoMessage = null
+                    )
+                }
             }
         }
     }
 
     fun startLiveSync(manager: HealthConnectManager) {
         if (liveSyncJob?.isActive == true) {
-            _uiState.update { it.copy(infoMessage = "Live watch sync is already running.", errorMessage = null) }
+            _uiState.update {
+                it.copy(infoMessage = "Live watch sync is already running.", errorMessage = null)
+            }
             return
         }
 
@@ -226,45 +247,49 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 it.copy(
                     isLiveSyncEnabled = true,
                     isDemoSyncEnabled = false,
+                    latestReadings = null,
+                    trendPoints = emptyList(),
+                    lastLiveSyncAt = null,
+                    lastSyncSummary = null,
                     errorMessage = null,
-                    infoMessage = "Live watch sync started. Keep the phone app open near the Galaxy Watch 5."
+                    infoMessage = "Live watch sync started. Reading directly from Health Connect every 5 seconds."
                 )
             }
 
             while (isActive) {
                 try {
-                    val readings = withContext(Dispatchers.IO) {
+                    val payload = withContext(Dispatchers.IO) {
                         if (!manager.hasAnyPermission()) {
                             throw SecurityException("Health Connect permissions are required for live watch sync.")
                         }
 
-                        val payload = manager.readLatestVitals()
-                        if (payload.isEmpty()) {
-                            LiveSyncResult(payload, null)
-                        } else {
-                            repository.syncReadings(payload)
-                            LiveSyncResult(payload, repository.getLatestReadings())
-                        }
+                        manager.readLatestVitals()
                     }
 
                     _uiState.update {
-                        val latestReadings = readings.latestReadings
-                        it.copy(
-                            latestReadings = latestReadings ?: it.latestReadings,
-                            trendPoints = if (latestReadings == null) {
-                                it.trendPoints
-                            } else {
-                                appendTrendPoint(it.trendPoints, latestReadings)
-                            },
-                            lastLiveSyncAt = formattedNow(),
-                            lastSyncSummary = healthConnectSummary(readings.payload),
-                            errorMessage = null,
-                            infoMessage = if (latestReadings == null) {
+                        if (payload.isEmpty()) {
+                            it.copy(
+                                latestReadings = null,
+                                trendPoints = emptyList(),
+                                lastLiveSyncAt = formattedNow(),
+                                lastSyncSummary = healthConnectSummary(payload),
+                                errorMessage = null,
+                                infoMessage =
                                 "Live sync checked Health Connect, but no watch readings were returned."
-                            } else {
+                            )
+                        } else {
+                            val latestReadings = payload.toLatestReadings()
+                            persistPayload(payload)
+                            it.copy(
+                                latestReadings = latestReadings,
+                                trendPoints = appendTrendPoint(it.trendPoints, latestReadings),
+                                lastLiveSyncAt = formattedNow(),
+                                lastSyncSummary = healthConnectSummary(payload),
+                                errorMessage = null,
+                                infoMessage =
                                 "Live watch readings synced."
-                            }
-                        )
+                            )
+                        }
                     }
                 } catch (e: Exception) {
                     if (e is CancellationException) throw e
@@ -308,10 +333,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
             while (isActive) {
                 try {
-                    val readings = withContext(Dispatchers.IO) {
-                        repository.syncReadings(buildDemoPayload())
-                        repository.getLatestReadings()
-                    }
+                    val payload = buildDemoPayload()
+                    val readings = payload.toLatestReadings()
+                    persistPayload(payload)
 
                     _uiState.update {
                         it.copy(
@@ -355,8 +379,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 diastolic = 81
             )
 
-            repository.syncReadings(payload)
-            val readings = repository.getLatestReadings()
+            val readings = payload.toLatestReadings()
+            persistPayload(payload)
 
             _uiState.update {
                 it.copy(
@@ -556,6 +580,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.update {
             it.copy(
                 isLiveSyncEnabled = false,
+                latestReadings = null,
+                trendPoints = emptyList(),
+                lastLiveSyncAt = null,
+                lastSyncSummary = null,
                 infoMessage = if (showMessage) "Live watch sync stopped." else it.infoMessage,
                 errorMessage = null
             )
@@ -593,6 +621,51 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             deviceType = "WATCH",
             deviceManufacturer = "Samsung",
             deviceModel = "Galaxy Watch 5 Demo"
+        )
+    }
+
+    private fun persistPayload(payload: HealthSyncPayload) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                repository.syncReadings(payload)
+            } catch (_: Exception) {
+                _uiState.update {
+                    it.copy(errorMessage = "Live value displayed, but saving to the database failed.")
+                }
+            }
+        }
+    }
+
+    private fun HealthSyncPayload.toLatestReadings(): LatestReadingsResponse {
+        val measuredAt = recordedAt ?: Instant.now().toString()
+        val readingSource = source ?: "HEALTH_CONNECT"
+
+        return LatestReadingsResponse(
+            success = true,
+            heartRate = heartRate?.let {
+                ReadingValue(
+                    value = it,
+                    recordedAt = measuredAt,
+                    source = readingSource
+                )
+            },
+            temperature = temperature?.let {
+                TemperatureValue(
+                    value = it,
+                    recordedAt = measuredAt,
+                    source = readingSource
+                )
+            },
+            bloodPressure = if (systolic != null && diastolic != null) {
+                BloodPressureValue(
+                    systolic = systolic,
+                    diastolic = diastolic,
+                    recordedAt = measuredAt,
+                    source = readingSource
+                )
+            } else {
+                null
+            }
         )
     }
 
@@ -661,14 +734,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private companion object {
-        const val LIVE_SYNC_INTERVAL_MILLIS = 30_000L
+        const val LIVE_SYNC_INTERVAL_MILLIS = 5_000L
         const val DEMO_SYNC_INTERVAL_MILLIS = 5_000L
         const val MAX_TREND_POINTS = 12
         val TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     }
-
-    private data class LiveSyncResult(
-        val payload: HealthSyncPayload,
-        val latestReadings: LatestReadingsResponse?
-    )
 }
