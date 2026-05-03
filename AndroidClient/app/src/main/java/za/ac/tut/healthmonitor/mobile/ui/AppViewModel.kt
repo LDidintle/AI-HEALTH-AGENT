@@ -233,7 +233,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             while (isActive) {
                 try {
                     val readings = withContext(Dispatchers.IO) {
-                        if (!manager.hasAllPermissions()) {
+                        if (!manager.hasAnyPermission()) {
                             throw SecurityException("Health Connect permissions are required for live watch sync.")
                         }
 

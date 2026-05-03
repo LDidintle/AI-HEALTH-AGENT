@@ -34,16 +34,28 @@ class HealthConnectManager(
         return grantedPermissions.containsAll(requiredPermissions)
     }
 
+    suspend fun hasAnyPermission(): Boolean {
+        val client = getClientOrNull() ?: return false
+        val grantedPermissions = client.permissionController.getGrantedPermissions()
+        return grantedPermissions.any { it in requiredPermissions }
+    }
+
     suspend fun readLatestVitals(): HealthSyncPayload {
         val client = getClientOrThrow()
+        val grantedPermissions = client.permissionController.getGrantedPermissions()
         val end = Instant.now()
         val start = end.minus(30, ChronoUnit.DAYS)
 
-        val heartRateRecords = client.readRecords(
-            ReadRecordsRequest<HeartRateRecord>(
-                timeRangeFilter = TimeRangeFilter.between(start, end)
-            )
-        ).records
+        val heartRateRecords = readIfPermitted(
+            grantedPermissions = grantedPermissions,
+            permission = HealthPermission.getReadPermission(HeartRateRecord::class)
+        ) {
+            client.readRecords(
+                ReadRecordsRequest<HeartRateRecord>(
+                    timeRangeFilter = TimeRangeFilter.between(start, end)
+                )
+            ).records
+        }.orEmpty()
 
         val latestHeartRate = heartRateRecords
             .flatMap { record ->
@@ -57,18 +69,28 @@ class HealthConnectManager(
             }
             .maxByOrNull { it.measuredAt }
 
-        val latestTemperatureRecord = client.readRecords(
-            ReadRecordsRequest<BodyTemperatureRecord>(
-                timeRangeFilter = TimeRangeFilter.between(start, end)
-            )
-        ).records
+        val latestTemperatureRecord = readIfPermitted(
+            grantedPermissions = grantedPermissions,
+            permission = HealthPermission.getReadPermission(BodyTemperatureRecord::class)
+        ) {
+            client.readRecords(
+                ReadRecordsRequest<BodyTemperatureRecord>(
+                    timeRangeFilter = TimeRangeFilter.between(start, end)
+                )
+            ).records
+        }.orEmpty()
             .maxByOrNull { it.time }
 
-        val latestBloodPressure = client.readRecords(
-            ReadRecordsRequest<BloodPressureRecord>(
-                timeRangeFilter = TimeRangeFilter.between(start, end)
-            )
-        ).records
+        val latestBloodPressure = readIfPermitted(
+            grantedPermissions = grantedPermissions,
+            permission = HealthPermission.getReadPermission(BloodPressureRecord::class)
+        ) {
+            client.readRecords(
+                ReadRecordsRequest<BloodPressureRecord>(
+                    timeRangeFilter = TimeRangeFilter.between(start, end)
+                )
+            ).records
+        }.orEmpty()
             .maxByOrNull { it.time }
 
         val latestMetadata = listOfNotNull(
@@ -100,6 +122,35 @@ class HealthConnectManager(
 
     private fun getClientOrThrow(): HealthConnectClient {
         return HealthConnectClient.getOrCreate(context)
+    }
+
+    private suspend fun <T> readIfPermitted(
+        grantedPermissions: Set<String>,
+        permission: String,
+        block: suspend () -> T
+    ): T? {
+        if (permission !in grantedPermissions) {
+            return null
+        }
+
+        return try {
+            block()
+        } catch (e: Exception) {
+            if (e.isHealthConnectPermissionFailure()) {
+                null
+            } else {
+                throw e
+            }
+        }
+    }
+
+    private fun Exception.isHealthConnectPermissionFailure(): Boolean {
+        val className = javaClass.name
+        val detail = message.orEmpty()
+        return this is SecurityException ||
+                (className == "android.health.connect.HealthConnectException" &&
+                        detail.contains("requires", ignoreCase = true)) ||
+                detail.contains("requires one of the permissions", ignoreCase = true)
     }
 
     private data class HeartRateSample(

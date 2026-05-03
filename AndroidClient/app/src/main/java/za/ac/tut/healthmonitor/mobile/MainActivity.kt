@@ -37,7 +37,7 @@ class MainActivity : ComponentActivity() {
             val permissionLauncher = rememberLauncherForActivityResult(
                 PermissionController.createRequestPermissionResultContract()
             ) { grantedPermissions ->
-                if (grantedPermissions.containsAll(healthManager.requiredPermissions)) {
+                if (grantedPermissions.any { it in healthManager.requiredPermissions }) {
                     val action = afterPermissionGranted
                     afterPermissionGranted = null
                     if (action == null) {
@@ -89,7 +89,7 @@ class MainActivity : ComponentActivity() {
                                 }
 
                                 else -> {
-                                    if (healthManager.hasAllPermissions()) {
+                                    if (healthManager.hasAnyPermission()) {
                                         appViewModel.syncFromHealthConnect(healthManager)
                                     } else {
                                         afterPermissionGranted = {
@@ -113,7 +113,7 @@ class MainActivity : ComponentActivity() {
                                 }
 
                                 else -> {
-                                    if (healthManager.hasAllPermissions()) {
+                                    if (healthManager.hasAnyPermission()) {
                                         appViewModel.startLiveSync(healthManager)
                                     } else {
                                         afterPermissionGranted = {
