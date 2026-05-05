@@ -64,7 +64,7 @@ public class UserConfirmServlet extends HttpServlet {
 
         } catch (Exception e) {
             e.printStackTrace();
-            request.setAttribute("error", "Database error: " + e.getMessage());
+            request.setAttribute("error", "Unable to sign in right now. Please try again later.");
             request.getRequestDispatcher("error.jsp").forward(request, response);
         }
     }

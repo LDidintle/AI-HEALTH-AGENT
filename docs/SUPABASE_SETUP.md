@@ -24,6 +24,12 @@ If your Supabase database already existed before Galaxy Watch / Health Connect d
 database/supabase_watch_device_migration.sql
 ```
 
+If account creation fails with `column "is_verified" of relation "users" does not exist`, your existing `users` table is older than the current registration code. Run this migration once in the Supabase SQL Editor:
+
+```text
+database/add_user_verification_migration.sql
+```
+
 If your Supabase database already existed before emergency contact and hospital-summary fields were added, run this migration once before deploying the newer registration flow:
 
 ```text

@@ -4,6 +4,11 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="${1:-$ROOT_DIR/.env}"
 SCHEMA_FILE="$ROOT_DIR/database/supabase_schema.sql"
+MIGRATION_FILES=(
+  "$ROOT_DIR/database/add_user_verification_migration.sql"
+  "$ROOT_DIR/database/patient_profile_fields_migration.sql"
+  "$ROOT_DIR/database/supabase_watch_device_migration.sql"
+)
 POSTGRES_JAR="$ROOT_DIR/AI HEALTH AGENT/web/WEB-INF/lib/postgresql-42.7.11.jar"
 JAVA_BIN="${JAVA_BIN:-/Library/Java/JavaVirtualMachines/temurin-8.jdk/Contents/Home/bin/java}"
 JAVAC_BIN="${JAVAC_BIN:-/Library/Java/JavaVirtualMachines/temurin-8.jdk/Contents/Home/bin/javac}"
@@ -17,6 +22,13 @@ if [[ ! -f "$SCHEMA_FILE" ]]; then
   echo "Missing schema file: $SCHEMA_FILE" >&2
   exit 1
 fi
+
+for migration_file in "${MIGRATION_FILES[@]}"; do
+  if [[ ! -f "$migration_file" ]]; then
+    echo "Missing migration file: $migration_file" >&2
+    exit 1
+  fi
+done
 
 if [[ ! -f "$POSTGRES_JAR" ]]; then
   echo "Missing PostgreSQL JDBC driver: $POSTGRES_JAR" >&2
@@ -60,8 +72,8 @@ import java.sql.Statement;
 
 public class SetupSupabaseDatabase {
     public static void main(String[] args) throws Exception {
-        if (args.length != 1) {
-            throw new IllegalArgumentException("Usage: SetupSupabaseDatabase <schema.sql>");
+        if (args.length < 1) {
+            throw new IllegalArgumentException("Usage: SetupSupabaseDatabase <schema.sql> [migration.sql...]");
         }
 
         Class.forName("org.postgresql.Driver");
@@ -73,11 +85,14 @@ public class SetupSupabaseDatabase {
         try (Connection conn = DriverManager.getConnection(url, user, password)) {
             conn.setAutoCommit(false);
             applySchema(conn, args[0]);
+            for (int index = 1; index < args.length; index++) {
+                applySchema(conn, args[index]);
+            }
             seedDemoPatient(conn);
             conn.commit();
         }
 
-        System.out.println("Supabase schema is ready and demo patient exists.");
+        System.out.println("Supabase schema and migrations are ready; demo patient exists.");
     }
 
     private static void applySchema(Connection conn, String schemaPath) throws IOException, SQLException {
@@ -169,4 +184,4 @@ public class SetupSupabaseDatabase {
 JAVA
 
 "$JAVAC_BIN" -cp "$POSTGRES_JAR" "$WORK_DIR/SetupSupabaseDatabase.java"
-"$JAVA_BIN" -cp "$WORK_DIR:$POSTGRES_JAR" SetupSupabaseDatabase "$SCHEMA_FILE"
+"$JAVA_BIN" -cp "$WORK_DIR:$POSTGRES_JAR" SetupSupabaseDatabase "$SCHEMA_FILE" "${MIGRATION_FILES[@]}"

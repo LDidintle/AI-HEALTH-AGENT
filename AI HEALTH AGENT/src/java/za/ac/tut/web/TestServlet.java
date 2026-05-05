@@ -57,50 +57,62 @@ public class TestServlet extends HttpServlet {
             String sqlAuth = "INSERT INTO user_auth (user_id, password_hash) VALUES (?, ?)";
 
             
-            try (
-                Connection conn = Database.getConnection();
-                PreparedStatement psUser = conn.prepareStatement(sqlUser, PreparedStatement.RETURN_GENERATED_KEYS);
-                PreparedStatement psAuth = conn.prepareStatement(sqlAuth);
-            ) {
+            try (Connection conn = Database.getConnection()) {
                 conn.setAutoCommit(false);
 
-              
-                psUser.setString(1, title);
-                psUser.setString(2, name);
-                psUser.setString(3, surname);
-                psUser.setString(4, email);
+                try (
+                    PreparedStatement psUser = conn.prepareStatement(sqlUser, PreparedStatement.RETURN_GENERATED_KEYS);
+                    PreparedStatement psAuth = conn.prepareStatement(sqlAuth)
+                ) {
+                    psUser.setString(1, title);
+                    psUser.setString(2, name);
+                    psUser.setString(3, surname);
+                    psUser.setString(4, email);
 
-                int rowsInserted = psUser.executeUpdate();
-                if (rowsInserted == 0) throw new SQLException("Failed to insert user!");
-
-               
-                int userId = 0;
-                try (ResultSet rs = psUser.getGeneratedKeys()) {
-                    if (rs.next()) {
-                        userId = rs.getInt(1);
-                    } else {
-                        throw new SQLException("Failed to get user ID!");
+                    int rowsInserted = psUser.executeUpdate();
+                    if (rowsInserted == 0) {
+                        throw new SQLException("Failed to insert user.");
                     }
+
+                    int userId;
+                    try (ResultSet rs = psUser.getGeneratedKeys()) {
+                        if (rs.next()) {
+                            userId = rs.getInt(1);
+                        } else {
+                            throw new SQLException("Failed to get user ID.");
+                        }
+                    }
+
+                    psAuth.setInt(1, userId);
+                    psAuth.setString(2, hashedPass);
+                    psAuth.executeUpdate();
+
+                    conn.commit();
+
+                    session.invalidate();
+                    RequestDispatcher disp = request.getRequestDispatcher("account_created.jsp");
+                    disp.forward(request, response);
+                } catch (Exception e) {
+                    conn.rollback();
+                    throw e;
                 }
-
-          
-                psAuth.setInt(1, userId);
-                psAuth.setString(2, hashedPass);
-                psAuth.executeUpdate();
-
-            
-                conn.commit();
-
-                session.invalidate();
-                RequestDispatcher disp = request.getRequestDispatcher("account_created.jsp");
-                disp.forward(request, response);
                 
             }
 
+        } catch (SQLException e) {
+            e.printStackTrace();
+            if ("23505".equals(e.getSQLState())) {
+                request.setAttribute("error", "An account with this email already exists.");
+            } else if ("42703".equals(e.getSQLState())) {
+                request.setAttribute("error", "The database needs the latest user verification migration before accounts can be created.");
+            } else {
+                request.setAttribute("error", "Unable to create the account right now. Please try again later.");
+            }
+            request.getRequestDispatcher("error.jsp").forward(request, response);
         } catch (Exception e) {
             e.printStackTrace();
-            response.getWriter().println("<h2>Error occurred!</h2>");
-            response.getWriter().println("<pre>" + e.getMessage() + "</pre>");
+            request.setAttribute("error", "Unable to create the account right now. Please try again later.");
+            request.getRequestDispatcher("error.jsp").forward(request, response);
         }
     }
 
