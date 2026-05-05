@@ -46,7 +46,12 @@ Data tier:
 - Stores password hashes in `user_auth`.
 - Stores Galaxy Watch / Health Connect device metadata in `devices`.
 - Stores health readings in `pulse_readings`, `temperature_readings`, and `blood_pressure_readings`.
+- Stores imported Health Connect time-window summaries in `health_sync_sections`.
 - Stores the original Health Connect record id, measured time, sync time, and sync events in the reading tables and `device_sync_events`.
+
+Health sync note:
+- The Android app uses section-based Health Connect imports, not continuous watch streaming.
+- Direct Galaxy Watch sensor streaming is parked as a future Samsung Health Sensor SDK path after section sync is stable.
 
 ## Professional Note
 

@@ -300,12 +300,12 @@ public class AIChatServlet extends HttpServlet {
             if (heartRate != null) builder.append("heart rate ").append(rounded(heartRate)).append(" BPM");
             if (systolic != null && diastolic != null) appendWithComma(builder, "blood pressure " + rounded(systolic) + "/" + rounded(diastolic) + " mmHg");
             if (temperature != null) appendWithComma(builder, "temperature " + oneDecimal(temperature) + " C");
-            if (builder.length() == 0) return "I do not have live readings yet.";
+            if (builder.length() == 0) return "I do not have synced section readings yet.";
             return "Your current displayed readings are " + builder + ".";
         }
 
         private String heartRateAdvice() {
-            if (heartRate == null) return "I do not have a heart-rate reading yet. Sync your phone/watch first, then ask again with symptoms if you feel unwell.";
+            if (heartRate == null) return "I do not have a heart-rate reading yet. Sync the latest phone health section first, then ask again with symptoms if you feel unwell.";
             if (heartRate < 50) return "Your heart rate is " + rounded(heartRate) + " BPM, which is low for many adults. If you feel dizzy, faint, weak, confused, or short of breath, contact doctor/staff urgently.";
             if (heartRate > 120) return "Your heart rate is " + rounded(heartRate) + " BPM, which is high for a resting reading. Sit down, rest, recheck it, and contact doctor/staff if it stays high or you feel chest pain, faintness, or shortness of breath.";
             return "Your heart rate is " + rounded(heartRate) + " BPM, which is not severely abnormal for many adults. Trends and symptoms still matter, so tell doctor/staff if you feel unwell.";

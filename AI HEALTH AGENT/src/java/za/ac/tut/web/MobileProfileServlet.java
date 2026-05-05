@@ -32,7 +32,7 @@ public class MobileProfileServlet extends HttpServlet {
         try {
             try (Connection conn = Database.getConnection()) {
 
-                String sql = "SELECT id, first_name, surname, title, gender, cell_number "
+                String sql = "SELECT id, first_name, surname, title, gender, cell_number, is_verified "
                         + "FROM users WHERE email = ?";
 
                 try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -54,7 +54,8 @@ public class MobileProfileServlet extends HttpServlet {
                                 + "\"firstName\":" + JsonUtil.quote(rs.getString("first_name")) + ","
                                 + "\"surname\":" + JsonUtil.quote(rs.getString("surname")) + ","
                                 + "\"gender\":" + JsonUtil.quote(rs.getString("gender")) + ","
-                                + "\"cellNumber\":" + JsonUtil.quote(rs.getString("cell_number"))
+                                + "\"cellNumber\":" + JsonUtil.quote(rs.getString("cell_number")) + ","
+                                + "\"isVerified\":" + rs.getBoolean("is_verified")
                                 + "}"
                                 + "}";
 

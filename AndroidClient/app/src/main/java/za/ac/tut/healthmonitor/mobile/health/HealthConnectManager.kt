@@ -12,6 +12,7 @@ import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import java.time.Instant
 import java.time.temporal.ChronoUnit
+import za.ac.tut.healthmonitor.mobile.data.model.HealthSectionSyncPayload
 import za.ac.tut.healthmonitor.mobile.data.model.HealthSyncPayload
 
 class HealthConnectManager(
@@ -38,6 +39,59 @@ class HealthConnectManager(
         val client = getClientOrNull() ?: return false
         val grantedPermissions = client.permissionController.getGrantedPermissions()
         return grantedPermissions.any { it in requiredPermissions }
+    }
+
+    suspend fun readLatestSection(windowMinutes: Long = DEFAULT_SECTION_WINDOW_MINUTES): HealthSection {
+        val client = getClientOrThrow()
+        val grantedPermissions = client.permissionController.getGrantedPermissions()
+        val end = Instant.now()
+        val start = end.minus(windowMinutes, ChronoUnit.MINUTES)
+
+        val heartRateSamples = readHeartRateSamples(client, grantedPermissions, start, end)
+        val temperatureRecords = readTemperatureRecords(client, grantedPermissions, start, end)
+        val bloodPressureRecords = readBloodPressureRecords(client, grantedPermissions, start, end)
+
+        val latestHeartRate = heartRateSamples.maxByOrNull { it.measuredAt }
+        val latestTemperature = temperatureRecords.maxByOrNull { it.time }
+        val latestBloodPressure = bloodPressureRecords.maxByOrNull { it.time }
+        val latestMetadata = listOfNotNull(
+            latestHeartRate?.let { RecordMetadata(it.measuredAt, it.metadata) },
+            latestTemperature?.let { RecordMetadata(it.time, it.metadata) },
+            latestBloodPressure?.let { RecordMetadata(it.time, it.metadata) }
+        ).maxByOrNull { it.measuredAt }
+
+        val heartRateValues = heartRateSamples.map { it.value }
+        val temperatureValues = temperatureRecords.map { it.temperature.inCelsius }
+        val trendPoints = buildTrendPoints(
+            heartRateSamples = heartRateSamples,
+            temperatureRecords = temperatureRecords,
+            bloodPressureRecords = bloodPressureRecords
+        )
+
+        return HealthSection(
+            payload = HealthSectionSyncPayload(
+                windowStart = start.toString(),
+                windowEnd = end.toString(),
+                source = "HEALTH_CONNECT_SECTION",
+                heartRateLatest = latestHeartRate?.value,
+                heartRateMin = heartRateValues.minOrNull(),
+                heartRateMax = heartRateValues.maxOrNull(),
+                heartRateAverage = heartRateValues.takeIf { it.isNotEmpty() }?.average(),
+                heartRateCount = heartRateValues.size,
+                temperatureLatest = latestTemperature?.temperature?.inCelsius,
+                temperatureMin = temperatureValues.minOrNull(),
+                temperatureMax = temperatureValues.maxOrNull(),
+                temperatureAverage = temperatureValues.takeIf { it.isNotEmpty() }?.average(),
+                temperatureCount = temperatureValues.size,
+                systolicLatest = latestBloodPressure?.systolic?.inMillimetersOfMercury?.toInt(),
+                diastolicLatest = latestBloodPressure?.diastolic?.inMillimetersOfMercury?.toInt(),
+                bloodPressureCount = bloodPressureRecords.size,
+                deviceType = latestMetadata?.metadata?.device?.typeName(),
+                deviceManufacturer = latestMetadata?.metadata?.device?.manufacturer,
+                deviceModel = latestMetadata?.metadata?.device?.model
+            ),
+            trendPoints = trendPoints
+        )
     }
 
     suspend fun readLatestVitals(): HealthSyncPayload {
@@ -112,6 +166,110 @@ class HealthConnectManager(
         )
     }
 
+    private suspend fun readHeartRateSamples(
+        client: HealthConnectClient,
+        grantedPermissions: Set<String>,
+        start: Instant,
+        end: Instant
+    ): List<HeartRateSample> {
+        val heartRateRecords = readIfPermitted(
+            grantedPermissions = grantedPermissions,
+            permission = HealthPermission.getReadPermission(HeartRateRecord::class)
+        ) {
+            client.readRecords(
+                ReadRecordsRequest<HeartRateRecord>(
+                    timeRangeFilter = TimeRangeFilter.between(start, end)
+                )
+            ).records
+        }.orEmpty()
+
+        return heartRateRecords.flatMap { record ->
+            record.samples.map { sample ->
+                HeartRateSample(
+                    value = sample.beatsPerMinute.toInt(),
+                    measuredAt = sample.time,
+                    metadata = record.metadata
+                )
+            }
+        }
+    }
+
+    private suspend fun readTemperatureRecords(
+        client: HealthConnectClient,
+        grantedPermissions: Set<String>,
+        start: Instant,
+        end: Instant
+    ): List<BodyTemperatureRecord> {
+        return readIfPermitted(
+            grantedPermissions = grantedPermissions,
+            permission = HealthPermission.getReadPermission(BodyTemperatureRecord::class)
+        ) {
+            client.readRecords(
+                ReadRecordsRequest<BodyTemperatureRecord>(
+                    timeRangeFilter = TimeRangeFilter.between(start, end)
+                )
+            ).records
+        }.orEmpty()
+    }
+
+    private suspend fun readBloodPressureRecords(
+        client: HealthConnectClient,
+        grantedPermissions: Set<String>,
+        start: Instant,
+        end: Instant
+    ): List<BloodPressureRecord> {
+        return readIfPermitted(
+            grantedPermissions = grantedPermissions,
+            permission = HealthPermission.getReadPermission(BloodPressureRecord::class)
+        ) {
+            client.readRecords(
+                ReadRecordsRequest<BloodPressureRecord>(
+                    timeRangeFilter = TimeRangeFilter.between(start, end)
+                )
+            ).records
+        }.orEmpty()
+    }
+
+    private fun buildTrendPoints(
+        heartRateSamples: List<HeartRateSample>,
+        temperatureRecords: List<BodyTemperatureRecord>,
+        bloodPressureRecords: List<BloodPressureRecord>
+    ): List<HealthSectionTrendPoint> {
+        val heartRatePoints = heartRateSamples
+            .sortedBy { it.measuredAt }
+            .takeLast(MAX_TREND_POINTS)
+            .map { HealthSectionTrendPoint(heartRate = it.value) }
+
+        if (heartRatePoints.isNotEmpty()) {
+            val latestTemperature = temperatureRecords.maxByOrNull { it.time }?.temperature?.inCelsius
+            val latestBloodPressure = bloodPressureRecords.maxByOrNull { it.time }
+            return heartRatePoints.mapIndexed { index, point ->
+                if (index == heartRatePoints.lastIndex) {
+                    point.copy(
+                        temperature = latestTemperature,
+                        systolic = latestBloodPressure?.systolic?.inMillimetersOfMercury?.toInt()
+                    )
+                } else {
+                    point
+                }
+            }
+        }
+
+        val temperaturePoints = temperatureRecords
+            .sortedBy { it.time }
+            .takeLast(MAX_TREND_POINTS)
+            .map { HealthSectionTrendPoint(temperature = it.temperature.inCelsius) }
+
+        if (temperaturePoints.isNotEmpty()) {
+            return temperaturePoints
+        }
+
+        return bloodPressureRecords
+            .sortedBy { it.time }
+            .takeLast(MAX_TREND_POINTS)
+            .map { HealthSectionTrendPoint(systolic = it.systolic.inMillimetersOfMercury.toInt()) }
+    }
+
     private fun getClientOrNull(): HealthConnectClient? {
         return if (availabilityStatus() == HealthConnectClient.SDK_AVAILABLE) {
             HealthConnectClient.getOrCreate(context)
@@ -176,5 +334,10 @@ class HealthConnectManager(
             Device.TYPE_SMART_DISPLAY -> "SMART_DISPLAY"
             else -> "UNKNOWN"
         }
+    }
+
+    private companion object {
+        const val DEFAULT_SECTION_WINDOW_MINUTES = 60L
+        const val MAX_TREND_POINTS = 12
     }
 }

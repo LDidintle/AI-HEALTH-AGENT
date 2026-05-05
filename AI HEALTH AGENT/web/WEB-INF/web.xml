@@ -53,6 +53,10 @@
         <servlet-class>za.ac.tut.web.MobileHealthSyncServlet</servlet-class>
     </servlet>
     <servlet>
+        <servlet-name>MobileHealthSectionSyncServlet</servlet-name>
+        <servlet-class>za.ac.tut.web.MobileHealthSectionSyncServlet</servlet-class>
+    </servlet>
+    <servlet>
         <servlet-name>MobileLoginServlet</servlet-name>
         <servlet-class>za.ac.tut.web.MobileLoginServlet</servlet-class>
     </servlet>
@@ -131,6 +135,10 @@
     <servlet-mapping>
         <servlet-name>MobileHealthSyncServlet</servlet-name>
         <url-pattern>/api/mobile/health-sync</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>MobileHealthSectionSyncServlet</servlet-name>
+        <url-pattern>/api/mobile/health-section-sync</url-pattern>
     </servlet-mapping>
     <servlet-mapping>
         <servlet-name>MobileLoginServlet</servlet-name>

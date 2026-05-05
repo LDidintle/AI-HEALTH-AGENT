@@ -19,4 +19,3 @@ dependencyResolutionManagement {
 
 rootProject.name = "HealthMonitorAndroid"
 include(":app")
-include(":wear")

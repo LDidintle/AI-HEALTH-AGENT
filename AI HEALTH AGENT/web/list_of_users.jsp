@@ -42,6 +42,7 @@
                     <th>DOB</th>
                     <th>Gender</th>
                     <th>Email</th>
+                    <th>Verified</th>
                     <th>Cell</th>
                     <th>ID Number</th>
                     <th>Emergency Contact</th>
@@ -61,6 +62,7 @@
                     <td><%= u.getDob() %></td>
                     <td><%= u.getGender() %></td>
                     <td><%= u.getEmail() %></td>
+                    <td><span class="status-pill <%= u.isVerified() ? "verified" : "pending" %>"><%= u.isVerified() ? "Verified" : "Pending" %></span></td>
                     <td><%= u.getCellNumber() %></td>
                     <td><%= u.getIdNumber() != null ? u.getIdNumber() : "" %></td>
                     <td><%= u.getEmergencyContactName() != null ? u.getEmergencyContactName() : "" %><br><%= u.getEmergencyContactNumber() != null ? u.getEmergencyContactNumber() : "" %></td>
@@ -80,13 +82,13 @@
                     } else {
                 %>
                 <tr>
-                    <td colspan="12" class="empty">No patients found</td>
+                    <td colspan="13" class="empty">No patients found</td>
                 </tr>
                 <%
                     }
                 %>
                 <tr id="noSearchResults" class="hidden">
-                    <td colspan="12" class="empty">No matching patients found</td>
+                    <td colspan="13" class="empty">No matching patients found</td>
                 </tr>
             </table>
         </div>

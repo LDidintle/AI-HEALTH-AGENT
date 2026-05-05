@@ -66,13 +66,6 @@
             </intent-filter>
         </activity>
 
-        <service
-            android:name=".wear.WatchLiveVitalsListenerService"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="com.google.android.gms.wearable.BIND_LISTENER" />
-            </intent-filter>
-        </service>
     </application>
 
 </manifest>

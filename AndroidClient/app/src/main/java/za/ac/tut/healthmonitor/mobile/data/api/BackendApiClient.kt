@@ -9,6 +9,7 @@ import java.io.IOException
 import java.util.Locale
 import za.ac.tut.healthmonitor.mobile.BuildConfig
 import za.ac.tut.healthmonitor.mobile.data.model.AiChatResponse
+import za.ac.tut.healthmonitor.mobile.data.model.HealthSectionSyncPayload
 import za.ac.tut.healthmonitor.mobile.data.model.HealthSyncPayload
 import za.ac.tut.healthmonitor.mobile.data.model.LatestReadingsResponse
 import za.ac.tut.healthmonitor.mobile.data.model.LoginResponse
@@ -34,27 +35,15 @@ class BackendApiClient(
     }
 
     fun register(
-        title: String,
         firstName: String,
         surname: String,
-        dob: String,
-        gender: String,
-        maritalStatus: String,
         email: String,
-        cellNumber: String,
-        address: String,
         password: String
     ): LoginResponse {
         val body = FormBody.Builder()
-            .add("title", title)
             .add("firstName", firstName)
             .add("surname", surname)
-            .add("dob", dob)
-            .add("gender", gender)
-            .add("maritalStatus", maritalStatus)
             .add("email", email)
-            .add("cellNumber", cellNumber)
-            .add("address", address)
             .add("password", password)
             .build()
 
@@ -84,6 +73,32 @@ class BackendApiClient(
         payload.deviceModel?.let { builder.add("deviceModel", it) }
 
         return post("api/mobile/health-sync", builder.build(), SyncResponse::class.java)
+    }
+
+    fun syncHealthSection(payload: HealthSectionSyncPayload): SyncResponse {
+        val builder = FormBody.Builder()
+            .add("windowStart", payload.windowStart)
+            .add("windowEnd", payload.windowEnd)
+            .add("source", payload.source)
+            .add("heartRateCount", payload.heartRateCount.toString())
+            .add("temperatureCount", payload.temperatureCount.toString())
+            .add("bloodPressureCount", payload.bloodPressureCount.toString())
+
+        payload.heartRateLatest?.let { builder.add("heartRateLatest", it.toString()) }
+        payload.heartRateMin?.let { builder.add("heartRateMin", it.toString()) }
+        payload.heartRateMax?.let { builder.add("heartRateMax", it.toString()) }
+        payload.heartRateAverage?.let { builder.add("heartRateAverage", String.format(Locale.US, "%.2f", it)) }
+        payload.temperatureLatest?.let { builder.add("temperatureLatest", String.format(Locale.US, "%.2f", it)) }
+        payload.temperatureMin?.let { builder.add("temperatureMin", String.format(Locale.US, "%.2f", it)) }
+        payload.temperatureMax?.let { builder.add("temperatureMax", String.format(Locale.US, "%.2f", it)) }
+        payload.temperatureAverage?.let { builder.add("temperatureAverage", String.format(Locale.US, "%.2f", it)) }
+        payload.systolicLatest?.let { builder.add("systolicLatest", it.toString()) }
+        payload.diastolicLatest?.let { builder.add("diastolicLatest", it.toString()) }
+        payload.deviceType?.let { builder.add("deviceType", it) }
+        payload.deviceManufacturer?.let { builder.add("deviceManufacturer", it) }
+        payload.deviceModel?.let { builder.add("deviceModel", it) }
+
+        return post("api/mobile/health-section-sync", builder.build(), SyncResponse::class.java)
     }
 
     fun logout(): SyncResponse {

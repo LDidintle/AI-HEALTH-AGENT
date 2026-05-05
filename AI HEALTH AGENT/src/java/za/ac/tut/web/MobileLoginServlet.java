@@ -33,7 +33,7 @@ public class MobileLoginServlet extends HttpServlet {
         try {
             try (Connection conn = Database.getConnection()) {
 
-                String sql = "SELECT u.id, u.first_name, u.surname, u.email, ua.password_hash "
+                String sql = "SELECT u.id, u.first_name, u.surname, u.email, u.is_verified, ua.password_hash "
                         + "FROM users u JOIN user_auth ua ON u.id = ua.user_id "
                         + "WHERE u.email = ?";
 
@@ -67,7 +67,8 @@ public class MobileLoginServlet extends HttpServlet {
                                 + "\"user\":{"
                                 + "\"id\":" + rs.getInt("id") + ","
                                 + "\"email\":" + JsonUtil.quote(rs.getString("email")) + ","
-                                + "\"fullName\":" + JsonUtil.quote(fullName)
+                                + "\"fullName\":" + JsonUtil.quote(fullName) + ","
+                                + "\"isVerified\":" + rs.getBoolean("is_verified")
                                 + "}"
                                 + "}";
 

@@ -1,6 +1,7 @@
 package za.ac.tut.healthmonitor.mobile.data.repository
 
 import za.ac.tut.healthmonitor.mobile.data.api.BackendApiClient
+import za.ac.tut.healthmonitor.mobile.data.model.HealthSectionSyncPayload
 import za.ac.tut.healthmonitor.mobile.data.model.HealthSyncPayload
 import za.ac.tut.healthmonitor.mobile.data.model.LatestReadingsResponse
 import za.ac.tut.healthmonitor.mobile.data.model.LoginResponse
@@ -16,27 +17,15 @@ class AppRepository(
     }
 
     fun register(
-        title: String,
         firstName: String,
         surname: String,
-        dob: String,
-        gender: String,
-        maritalStatus: String,
         email: String,
-        cellNumber: String,
-        address: String,
         password: String
     ): LoginResponse {
         return backendApiClient.register(
-            title = title,
             firstName = firstName,
             surname = surname,
-            dob = dob,
-            gender = gender,
-            maritalStatus = maritalStatus,
             email = email,
-            cellNumber = cellNumber,
-            address = address,
             password = password
         )
     }
@@ -51,6 +40,10 @@ class AppRepository(
 
     fun syncReadings(payload: HealthSyncPayload): SyncResponse {
         return backendApiClient.syncReadings(payload)
+    }
+
+    fun syncHealthSection(payload: HealthSectionSyncPayload): SyncResponse {
+        return backendApiClient.syncHealthSection(payload)
     }
 
     fun logout(): SyncResponse {

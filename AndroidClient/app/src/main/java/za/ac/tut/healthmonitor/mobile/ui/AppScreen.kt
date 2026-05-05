@@ -72,26 +72,16 @@ fun AppScreen(
     onShowLogin: () -> Unit,
     onShowSignup: () -> Unit,
     onShowHowItWorks: () -> Unit,
-    onSignupTitleChanged: (String) -> Unit,
     onSignupFirstNameChanged: (String) -> Unit,
     onSignupSurnameChanged: (String) -> Unit,
-    onSignupDobChanged: (String) -> Unit,
-    onSignupGenderChanged: (String) -> Unit,
-    onSignupMaritalStatusChanged: (String) -> Unit,
     onSignupEmailChanged: (String) -> Unit,
-    onSignupCellNumberChanged: (String) -> Unit,
-    onSignupAddressChanged: (String) -> Unit,
     onSignupPasswordChanged: (String) -> Unit,
     onSignupConfirmPasswordChanged: (String) -> Unit,
     onLogin: () -> Unit,
     onRegister: () -> Unit,
     onRefresh: () -> Unit,
-    onSyncHealthConnect: () -> Unit,
-    onStartLiveSync: () -> Unit,
-    onStopLiveSync: () -> Unit,
+    onSyncLatestSection: () -> Unit,
     onStartDemoSync: () -> Unit,
-    onStopDemoSync: () -> Unit,
-    onSyncSample: () -> Unit,
     onLogout: () -> Unit,
     onSelectLanguage: (String) -> Unit,
     onOpenProfile: () -> Unit,
@@ -118,12 +108,8 @@ fun AppScreen(
                 DashboardContent(
                     uiState = uiState,
                     onRefresh = onRefresh,
-                    onSyncHealthConnect = onSyncHealthConnect,
-                    onStartLiveSync = onStartLiveSync,
-                    onStopLiveSync = onStopLiveSync,
+                    onSyncLatestSection = onSyncLatestSection,
                     onStartDemoSync = onStartDemoSync,
-                    onStopDemoSync = onStopDemoSync,
-                    onSyncSample = onSyncSample,
                     onLogout = onLogout,
                     onSelectLanguage = onSelectLanguage,
                     onOpenProfile = onOpenProfile,
@@ -143,15 +129,9 @@ fun AppScreen(
 
                     AuthScreen.Signup -> SignupContent(
                         uiState = uiState,
-                        onTitleChanged = onSignupTitleChanged,
                         onFirstNameChanged = onSignupFirstNameChanged,
                         onSurnameChanged = onSignupSurnameChanged,
-                        onDobChanged = onSignupDobChanged,
-                        onGenderChanged = onSignupGenderChanged,
-                        onMaritalStatusChanged = onSignupMaritalStatusChanged,
                         onEmailChanged = onSignupEmailChanged,
-                        onCellNumberChanged = onSignupCellNumberChanged,
-                        onAddressChanged = onSignupAddressChanged,
                         onPasswordChanged = onSignupPasswordChanged,
                         onConfirmPasswordChanged = onSignupConfirmPasswordChanged,
                         onRegister = onRegister,
@@ -252,15 +232,9 @@ private fun LoginContent(
 @Composable
 private fun SignupContent(
     uiState: AppUiState,
-    onTitleChanged: (String) -> Unit,
     onFirstNameChanged: (String) -> Unit,
     onSurnameChanged: (String) -> Unit,
-    onDobChanged: (String) -> Unit,
-    onGenderChanged: (String) -> Unit,
-    onMaritalStatusChanged: (String) -> Unit,
     onEmailChanged: (String) -> Unit,
-    onCellNumberChanged: (String) -> Unit,
-    onAddressChanged: (String) -> Unit,
     onPasswordChanged: (String) -> Unit,
     onConfirmPasswordChanged: (String) -> Unit,
     onRegister: () -> Unit,
@@ -276,19 +250,13 @@ private fun SignupContent(
     ) {
         Spacer(modifier = Modifier.height(20.dp))
         Text("Create Patient Account", style = MaterialTheme.typography.headlineMedium, color = Yellow, fontWeight = FontWeight.Bold)
-        Text("Use the same account on the website and this mobile app.", color = Color(0xFFCFEBDD), style = MaterialTheme.typography.bodyLarge)
+        Text("Create your login first. Medical and emergency details can be completed after sign in.", color = Color(0xFFCFEBDD), style = MaterialTheme.typography.bodyLarge)
 
         Card(colors = CardDefaults.cardColors(containerColor = SoftPanel), shape = RoundedCornerShape(24.dp)) {
             Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                AccountField("Title", uiState.signupTitle, onTitleChanged)
                 AccountField("First Name *", uiState.signupFirstName, onFirstNameChanged)
                 AccountField("Surname *", uiState.signupSurname, onSurnameChanged)
-                AccountField("Date of Birth *", uiState.signupDob, onDobChanged, "YYYY-MM-DD")
-                AccountField("Gender", uiState.signupGender, onGenderChanged)
-                AccountField("Marital Status", uiState.signupMaritalStatus, onMaritalStatusChanged)
                 AccountField("Email *", uiState.signupEmail, onEmailChanged, keyboardType = KeyboardType.Email)
-                AccountField("Cell Number", uiState.signupCellNumber, onCellNumberChanged, keyboardType = KeyboardType.Phone)
-                AccountField("Address", uiState.signupAddress, onAddressChanged)
                 AccountField("Password *", uiState.signupPassword, onPasswordChanged, keyboardType = KeyboardType.Password, isPassword = true)
                 AccountField("Confirm Password *", uiState.signupConfirmPassword, onConfirmPasswordChanged, keyboardType = KeyboardType.Password, isPassword = true)
                 Button(onClick = onRegister, modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(vertical = 14.dp)) { Text("Create Account") }
@@ -370,12 +338,8 @@ private fun ExplainerStep(number: String, text: String) {
 private fun DashboardContent(
     uiState: AppUiState,
     onRefresh: () -> Unit,
-    onSyncHealthConnect: () -> Unit,
-    onStartLiveSync: () -> Unit,
-    onStopLiveSync: () -> Unit,
+    onSyncLatestSection: () -> Unit,
     onStartDemoSync: () -> Unit,
-    onStopDemoSync: () -> Unit,
-    onSyncSample: () -> Unit,
     onLogout: () -> Unit,
     onSelectLanguage: (String) -> Unit,
     onOpenProfile: () -> Unit,
@@ -418,12 +382,8 @@ private fun DashboardContent(
         SyncActionsCard(
             uiState = uiState,
             onRefresh = onRefresh,
-            onSyncHealthConnect = onSyncHealthConnect,
-            onStartLiveSync = onStartLiveSync,
-            onStopLiveSync = onStopLiveSync,
+            onSyncLatestSection = onSyncLatestSection,
             onStartDemoSync = onStartDemoSync,
-            onStopDemoSync = onStopDemoSync,
-            onSyncSample = onSyncSample,
             onLogout = onLogout
         )
         AiSuggestionsCard(uiState.latestReadings, copy)
@@ -566,7 +526,7 @@ private fun DividerLine() {
 private fun ChartCard(trendPoints: List<VitalTrendPoint>) {
     Card(colors = CardDefaults.cardColors(containerColor = SoftPanel), shape = RoundedCornerShape(18.dp)) {
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("Live trend graph", color = Ink, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
+            Text("Section trend graph", color = Ink, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
             Row(horizontalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.fillMaxWidth()) {
                 Text("• Heart", color = Color(0xFFB42318), fontWeight = FontWeight.Bold)
                 Text("• BP", color = AccentBlue, fontWeight = FontWeight.Bold)
@@ -581,7 +541,7 @@ private fun ChartCard(trendPoints: List<VitalTrendPoint>) {
                         .background(Color(0xFFEFF6F4), RoundedCornerShape(8.dp)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("Start demo/live sync to draw trends", color = Muted)
+                    Text("Sync latest section to draw trends", color = Muted)
                 }
             } else {
                 Canvas(
@@ -667,51 +627,39 @@ private fun ActionButton(text: String, onClick: () -> Unit, colors: List<Color>,
 private fun SyncActionsCard(
     uiState: AppUiState,
     onRefresh: () -> Unit,
-    onSyncHealthConnect: () -> Unit,
-    onStartLiveSync: () -> Unit,
-    onStopLiveSync: () -> Unit,
+    onSyncLatestSection: () -> Unit,
     onStartDemoSync: () -> Unit,
-    onStopDemoSync: () -> Unit,
-    onSyncSample: () -> Unit,
     onLogout: () -> Unit
 ) {
     Card(colors = CardDefaults.cardColors(containerColor = Glass), shape = RoundedCornerShape(18.dp)) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Sync Actions", color = Color.White, fontWeight = FontWeight.Bold)
             Text(
-                text = if (uiState.isDemoSyncEnabled) {
-                    "Demo feed: on every ${uiState.demoSyncIntervalSeconds}s"
-                } else if (uiState.isLiveSyncEnabled) {
-                    "Live sync: on every ${uiState.liveSyncIntervalSeconds}s"
-                } else {
-                    "Live sync: off"
-                },
+                text = "Section sync: imports the last 60 minutes from Health Connect",
                 color = Color(0xFFCFEBDD),
                 style = MaterialTheme.typography.bodyMedium
             )
-            uiState.lastLiveSyncAt?.let {
-                Text("Last live sync: $it", color = Color(0xFFCFEBDD), style = MaterialTheme.typography.bodySmall)
+            uiState.lastSectionSyncAt?.let {
+                Text("Last section sync: $it", color = Color(0xFFCFEBDD), style = MaterialTheme.typography.bodySmall)
             }
             uiState.lastSyncSummary?.let {
                 Text(it, color = Color(0xFFCFEBDD), style = MaterialTheme.typography.bodySmall)
             }
             Button(
-                onClick = if (uiState.isLiveSyncEnabled) onStopLiveSync else onStartLiveSync,
+                onClick = onSyncLatestSection,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(if (uiState.isLiveSyncEnabled) "Stop Live Watch Sync" else "Start Live Watch Sync")
+                Text("Sync Latest Section")
             }
             Button(
-                onClick = if (uiState.isDemoSyncEnabled) onStopDemoSync else onStartDemoSync,
+                onClick = onStartDemoSync,
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = Yellow, contentColor = Ink)
             ) {
-                Text(if (uiState.isDemoSyncEnabled) "Stop Demo Live Feed" else "Start Demo Live Feed")
+                Text("Load Demo Section")
             }
-            Button(onClick = onSyncHealthConnect, modifier = Modifier.fillMaxWidth()) { Text("Sync From Health Connect") }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                TextButton(onClick = onRefresh, modifier = Modifier.weight(1f)) { Text("Refresh") }
-                TextButton(onClick = onSyncSample, modifier = Modifier.weight(1f)) { Text("Sample") }
+                TextButton(onClick = onRefresh, modifier = Modifier.weight(1f)) { Text("Clear") }
                 TextButton(onClick = onLogout, modifier = Modifier.weight(1f)) { Text("Logout") }
             }
         }

@@ -3,15 +3,11 @@ package za.ac.tut.healthmonitor.mobile.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.Instant
@@ -21,11 +17,13 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.random.Random
 import za.ac.tut.healthmonitor.mobile.data.model.BloodPressureValue
-import za.ac.tut.healthmonitor.mobile.data.model.HealthSyncPayload
+import za.ac.tut.healthmonitor.mobile.data.model.HealthSectionSyncPayload
 import za.ac.tut.healthmonitor.mobile.data.model.LatestReadingsResponse
 import za.ac.tut.healthmonitor.mobile.data.model.ReadingValue
 import za.ac.tut.healthmonitor.mobile.data.model.TemperatureValue
 import za.ac.tut.healthmonitor.mobile.data.repository.AppRepository
+import za.ac.tut.healthmonitor.mobile.health.HealthSection
+import za.ac.tut.healthmonitor.mobile.health.HealthSectionTrendPoint
 import za.ac.tut.healthmonitor.mobile.health.HealthConnectManager
 
 class AppViewModel(application: Application) : AndroidViewModel(application) {
@@ -33,8 +31,6 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = AppRepository()
     private val _uiState = MutableStateFlow(AppUiState())
     val uiState: StateFlow<AppUiState> = _uiState.asStateFlow()
-    private var liveSyncJob: Job? = null
-    private var demoSyncJob: Job? = null
     private var demoTick = 0
 
     fun updateEmail(email: String) {
@@ -57,10 +53,6 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.update { it.copy(authScreen = AuthScreen.HowItWorks, errorMessage = null, infoMessage = null) }
     }
 
-    fun updateSignupTitle(value: String) {
-        _uiState.update { it.copy(signupTitle = value) }
-    }
-
     fun updateSignupFirstName(value: String) {
         _uiState.update { it.copy(signupFirstName = value) }
     }
@@ -69,28 +61,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.update { it.copy(signupSurname = value) }
     }
 
-    fun updateSignupDob(value: String) {
-        _uiState.update { it.copy(signupDob = value) }
-    }
-
-    fun updateSignupGender(value: String) {
-        _uiState.update { it.copy(signupGender = value) }
-    }
-
-    fun updateSignupMaritalStatus(value: String) {
-        _uiState.update { it.copy(signupMaritalStatus = value) }
-    }
-
     fun updateSignupEmail(value: String) {
         _uiState.update { it.copy(signupEmail = value) }
-    }
-
-    fun updateSignupCellNumber(value: String) {
-        _uiState.update { it.copy(signupCellNumber = value) }
-    }
-
-    fun updateSignupAddress(value: String) {
-        _uiState.update { it.copy(signupAddress = value) }
     }
 
     fun updateSignupPassword(value: String) {
@@ -111,6 +83,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         launchLoadingTask {
             repository.login(currentState.email.trim(), currentState.password)
             val profile = repository.getProfile().user
+            val verificationMessage = if (profile?.isVerified == true) {
+                "Signed in. Sync latest section to view readings."
+            } else {
+                "Signed in. Your account is pending staff verification."
+            }
 
             _uiState.update {
                 it.copy(
@@ -118,11 +95,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     userProfile = profile,
                     latestReadings = null,
                     trendPoints = emptyList(),
-                    lastLiveSyncAt = null,
+                    lastSectionSyncAt = null,
                     lastSyncSummary = null,
                     password = "",
                     errorMessage = null,
-                    infoMessage = "Signed in. Start live watch sync to show current readings."
+                    infoMessage = verificationMessage
                 )
             }
         }
@@ -133,7 +110,6 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         val requiredFields = listOf(
             currentState.signupFirstName,
             currentState.signupSurname,
-            currentState.signupDob,
             currentState.signupEmail,
             currentState.signupPassword,
             currentState.signupConfirmPassword
@@ -151,15 +127,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
         launchLoadingTask {
             repository.register(
-                title = currentState.signupTitle.ifBlank { "Patient" },
                 firstName = currentState.signupFirstName.trim(),
                 surname = currentState.signupSurname.trim(),
-                dob = currentState.signupDob.trim(),
-                gender = currentState.signupGender.ifBlank { "Not specified" },
-                maritalStatus = currentState.signupMaritalStatus.ifBlank { "Not specified" },
                 email = currentState.signupEmail.trim(),
-                cellNumber = currentState.signupCellNumber.trim(),
-                address = currentState.signupAddress.trim(),
                 password = currentState.signupPassword
             )
 
@@ -171,7 +141,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     signupPassword = "",
                     signupConfirmPassword = "",
                     errorMessage = null,
-                    infoMessage = "Account created. You can now sign in."
+                    infoMessage = "Account created. Staff can verify it from the patient directory."
                 )
             }
         }
@@ -187,235 +157,40 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     userProfile = profile,
                     latestReadings = null,
                     trendPoints = emptyList(),
-                    lastLiveSyncAt = null,
+                    lastSectionSyncAt = null,
                     lastSyncSummary = null,
-                    infoMessage = "Dashboard cleared. Start live watch sync to show current readings.",
+                    infoMessage = "Dashboard cleared. Sync latest section to view readings.",
                     errorMessage = null
                 )
             }
         }
     }
 
-    fun syncFromHealthConnect(manager: HealthConnectManager) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null, infoMessage = null) }
-            try {
-                val payload = withContext(Dispatchers.IO) {
-                    manager.readLatestVitals()
-                }
-                if (payload.isEmpty()) {
-                    throw IllegalStateException(
-                        "Health Connect returned no readings. Check Samsung Health is sharing data into Health Connect."
-                    )
-                }
-                val readings = payload.toLatestReadings()
-                persistPayload(payload)
-                _uiState.update {
-                    it.copy(
-                        latestReadings = readings,
-                        trendPoints = appendTrendPoint(it.trendPoints, readings),
-                        lastLiveSyncAt = formattedNow(),
-                        lastSyncSummary = healthConnectSummary(payload),
-                        isLoading = false,
-                        errorMessage = null,
-                        infoMessage = "Health Connect values displayed. Saving to database in the background."
-                    )
-                }
-            } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        errorMessage = e.message ?: "Health Connect sync failed.",
-                        infoMessage = null
-                    )
-                }
-            }
-        }
-    }
-
-    fun startLiveSync(manager: HealthConnectManager) {
-        if (liveSyncJob?.isActive == true) {
-            _uiState.update {
-                it.copy(infoMessage = "Live watch sync is already running.", errorMessage = null)
-            }
-            return
-        }
-
-        stopDemoSync(showMessage = false)
-        liveSyncJob = viewModelScope.launch {
-            _uiState.update {
-                it.copy(
-                    isLiveSyncEnabled = true,
-                    isDemoSyncEnabled = false,
-                    latestReadings = null,
-                    trendPoints = emptyList(),
-                    lastLiveSyncAt = null,
-                    lastSyncSummary = null,
-                    errorMessage = null,
-                    infoMessage = "Live watch sync started. Reading directly from Health Connect every 5 seconds."
-                )
-            }
-
-            while (isActive) {
-                try {
-                    val payload = withContext(Dispatchers.IO) {
-                        if (!manager.hasAnyPermission()) {
-                            throw SecurityException("Health Connect permissions are required for live watch sync.")
-                        }
-
-                        manager.readLatestVitals()
-                    }
-
-                    _uiState.update {
-                        if (payload.isEmpty()) {
-                            it.copy(
-                                latestReadings = null,
-                                trendPoints = emptyList(),
-                                lastLiveSyncAt = formattedNow(),
-                                lastSyncSummary = healthConnectSummary(payload),
-                                errorMessage = null,
-                                infoMessage =
-                                "Live sync checked Health Connect, but no watch readings were returned."
-                            )
-                        } else {
-                            val latestReadings = payload.toLatestReadings()
-                            persistPayload(payload)
-                            it.copy(
-                                latestReadings = latestReadings,
-                                trendPoints = appendTrendPoint(it.trendPoints, latestReadings),
-                                lastLiveSyncAt = formattedNow(),
-                                lastSyncSummary = healthConnectSummary(payload),
-                                errorMessage = null,
-                                infoMessage =
-                                "Live watch readings synced."
-                            )
-                        }
-                    }
-                } catch (e: Exception) {
-                    if (e is CancellationException) throw e
-                    liveSyncJob = null
-                    _uiState.update {
-                        it.copy(
-                            isLiveSyncEnabled = false,
-                            errorMessage = e.message ?: "Live watch sync stopped.",
-                            infoMessage = null
-                        )
-                    }
-                    break
-                }
-
-                delay(LIVE_SYNC_INTERVAL_MILLIS)
-            }
-        }
-    }
-
-    fun stopLiveSync() {
-        stopLiveSync(showMessage = true)
-    }
-
-    fun applyWatchLiveReading(payload: HealthSyncPayload) {
-        if (payload.isEmpty()) {
-            return
-        }
-
-        val readings = payload.toLatestReadings()
-        persistPayload(payload)
-        _uiState.update {
-            it.copy(
-                latestReadings = readings,
-                trendPoints = appendTrendPoint(it.trendPoints, readings),
-                lastLiveSyncAt = formattedNow(),
-                lastSyncSummary = "Galaxy Watch live: " + healthValuesSummary(payload),
-                errorMessage = null,
-                infoMessage = "Live Galaxy Watch reading received."
-            )
-        }
+    fun syncLatestSection(manager: HealthConnectManager) {
+        executeLatestSectionSync(manager)
     }
 
     fun startDemoSync() {
-        if (demoSyncJob?.isActive == true) {
-            _uiState.update { it.copy(infoMessage = "Demo live watch feed is already running.", errorMessage = null) }
-            return
-        }
-
-        stopLiveSync(showMessage = false)
-        demoTick = 0
-        demoSyncJob = viewModelScope.launch {
-            _uiState.update {
-                it.copy(
-                    isDemoSyncEnabled = true,
-                    isLiveSyncEnabled = false,
-                    errorMessage = null,
-                    infoMessage = "Demo live watch feed started. The graph and vital markers will update every 5 seconds."
-                )
-            }
-
-            while (isActive) {
-                try {
-                    val payload = buildDemoPayload()
-                    val readings = payload.toLatestReadings()
-                    persistPayload(payload)
-
-                    _uiState.update {
-                        it.copy(
-                            latestReadings = readings,
-                            trendPoints = appendTrendPoint(it.trendPoints, readings),
-                            lastLiveSyncAt = formattedNow(),
-                            lastSyncSummary = readingsSummary(readings),
-                            errorMessage = null,
-                            infoMessage = "Demo watch reading synced."
-                        )
-                    }
-                    demoTick += 1
-                } catch (e: Exception) {
-                    if (e is CancellationException) throw e
-                    demoSyncJob = null
-                    _uiState.update {
-                        it.copy(
-                            isDemoSyncEnabled = false,
-                            errorMessage = e.message ?: "Demo live watch feed stopped.",
-                            infoMessage = null
-                        )
-                    }
-                    break
-                }
-
-                delay(DEMO_SYNC_INTERVAL_MILLIS)
-            }
-        }
-    }
-
-    fun stopDemoSync() {
-        stopDemoSync(showMessage = true)
-    }
-
-    fun syncManualSample() {
-        launchLoadingTask {
-            val payload = HealthSyncPayload(
-                heartRate = 82,
-                temperature = 36.8,
-                systolic = 126,
-                diastolic = 81
-            )
-
-            val readings = payload.toLatestReadings()
-            persistPayload(payload)
-
+        viewModelScope.launch {
+            val section = buildDemoSection()
+            val readings = section.payload.toLatestReadings()
+            persistSection(section.payload)
             _uiState.update {
                 it.copy(
                     latestReadings = readings,
-                    trendPoints = appendTrendPoint(it.trendPoints, readings),
-                    lastSyncSummary = readingsSummary(readings),
+                    trendPoints = section.trendPoints.toUiTrendPoints(),
+                    lastSectionSyncAt = formattedNow(),
+                    lastSyncSummary = sectionSummary(section.payload),
                     errorMessage = null,
-                    infoMessage = "Sample vitals synced."
+                    infoMessage = "Demo section loaded."
                 )
             }
+            demoTick += 1
         }
     }
 
     fun logout() {
-        stopLiveSync(showMessage = false)
-        stopDemoSync(showMessage = false)
+        clearSectionState(showMessage = false)
         launchLoadingTask {
             repository.logout()
             repository.clearSession()
@@ -588,99 +363,155 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     override fun onCleared() {
-        liveSyncJob?.cancel()
-        demoSyncJob?.cancel()
         super.onCleared()
     }
 
-    private fun stopLiveSync(showMessage: Boolean) {
-        liveSyncJob?.cancel()
-        liveSyncJob = null
+    private fun clearSectionState(showMessage: Boolean) {
         _uiState.update {
             it.copy(
-                isLiveSyncEnabled = false,
                 latestReadings = null,
                 trendPoints = emptyList(),
-                lastLiveSyncAt = null,
+                lastSectionSyncAt = null,
                 lastSyncSummary = null,
-                infoMessage = if (showMessage) "Live watch sync stopped." else it.infoMessage,
+                infoMessage = if (showMessage) "Section view cleared." else it.infoMessage,
                 errorMessage = null
             )
         }
     }
 
-    private fun stopDemoSync(showMessage: Boolean) {
-        demoSyncJob?.cancel()
-        demoSyncJob = null
-        _uiState.update {
-            it.copy(
-                isDemoSyncEnabled = false,
-                infoMessage = if (showMessage) "Demo live watch feed stopped." else it.infoMessage,
-                errorMessage = null
-            )
-        }
-    }
-
-    private fun buildDemoPayload(): HealthSyncPayload {
-        val wave = sin(demoTick / 2.0)
-        val smallWave = sin(demoTick / 3.0)
-        val heartRate = (78 + wave * 8 + Random.nextInt(-2, 3)).roundToInt().coerceIn(58, 112)
-        val systolic = (124 + smallWave * 6 + Random.nextInt(-2, 3)).roundToInt().coerceIn(105, 145)
-        val diastolic = (78 + smallWave * 4 + Random.nextInt(-1, 2)).roundToInt().coerceIn(65, 95)
-        val temperature = 36.7 + smallWave * 0.25 + Random.nextDouble(-0.08, 0.09)
-
-        return HealthSyncPayload(
-            heartRate = heartRate,
-            temperature = temperature,
-            systolic = systolic,
-            diastolic = diastolic,
-            source = "DEMO_WATCH",
-            recordedAt = Instant.now().toString(),
-            externalRecordId = "demo-watch-${Instant.now().toEpochMilli()}",
-            deviceType = "WATCH",
-            deviceManufacturer = "Samsung",
-            deviceModel = "Galaxy Watch 5 Demo"
-        )
-    }
-
-    private fun persistPayload(payload: HealthSyncPayload) {
-        viewModelScope.launch(Dispatchers.IO) {
+    private fun executeLatestSectionSync(manager: HealthConnectManager) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, errorMessage = null, infoMessage = null) }
             try {
-                repository.syncReadings(payload)
-            } catch (_: Exception) {
+                val section = withContext(Dispatchers.IO) {
+                    if (!manager.hasAnyPermission()) {
+                        throw SecurityException("Health Connect permissions are required to sync a section.")
+                    }
+                    manager.readLatestSection(DEFAULT_SECTION_WINDOW_MINUTES)
+                }
+
+                if (section.isEmpty()) {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            latestReadings = null,
+                            trendPoints = emptyList(),
+                            lastSectionSyncAt = formattedNow(),
+                            lastSyncSummary = null,
+                            errorMessage = null,
+                            infoMessage = "No Health Connect records found in the last 60 minutes."
+                        )
+                    }
+                    return@launch
+                }
+
+                val readings = section.payload.toLatestReadings()
+                persistSection(section.payload)
                 _uiState.update {
-                    it.copy(errorMessage = "Live value displayed, but saving to the database failed.")
+                    it.copy(
+                        isLoading = false,
+                        latestReadings = readings,
+                        trendPoints = section.trendPoints.toUiTrendPoints(),
+                        lastSectionSyncAt = formattedNow(),
+                        lastSyncSummary = sectionSummary(section.payload),
+                        errorMessage = null,
+                        infoMessage = "Latest 60-minute section synced."
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        latestReadings = null,
+                        trendPoints = emptyList(),
+                        lastSyncSummary = null,
+                        errorMessage = e.message ?: "Health section sync failed.",
+                        infoMessage = null
+                    )
                 }
             }
         }
     }
 
-    private fun HealthSyncPayload.toLatestReadings(): LatestReadingsResponse {
-        val measuredAt = recordedAt ?: Instant.now().toString()
-        val readingSource = source ?: "HEALTH_CONNECT"
+    private fun buildDemoSection(): HealthSection {
+        val end = Instant.now()
+        val start = end.minusSeconds(60 * DEFAULT_SECTION_WINDOW_MINUTES)
+        val trendPoints = (0 until MAX_TREND_POINTS).map { index ->
+            val wave = sin((demoTick + index) / 2.0)
+            val smallWave = sin((demoTick + index) / 3.0)
+            HealthSectionTrendPoint(
+                heartRate = (78 + wave * 8 + Random.nextInt(-2, 3)).roundToInt().coerceIn(58, 112),
+                systolic = (124 + smallWave * 6 + Random.nextInt(-2, 3)).roundToInt().coerceIn(105, 145),
+                temperature = 36.7 + smallWave * 0.25 + Random.nextDouble(-0.08, 0.09)
+            )
+        }
 
+        val heartRates = trendPoints.mapNotNull { it.heartRate }
+        val systolicLatest = trendPoints.lastOrNull()?.systolic
+        val diastolicLatest = systolicLatest?.let { (it - 46).coerceIn(65, 95) }
+        val temperatures = trendPoints.mapNotNull { it.temperature }
+
+        return HealthSection(
+            payload = HealthSectionSyncPayload(
+                windowStart = start.toString(),
+                windowEnd = end.toString(),
+                source = "DEMO_SECTION",
+                heartRateLatest = heartRates.lastOrNull(),
+                heartRateMin = heartRates.minOrNull(),
+                heartRateMax = heartRates.maxOrNull(),
+                heartRateAverage = heartRates.takeIf { it.isNotEmpty() }?.average(),
+                heartRateCount = heartRates.size,
+                temperatureLatest = temperatures.lastOrNull(),
+                temperatureMin = temperatures.minOrNull(),
+                temperatureMax = temperatures.maxOrNull(),
+                temperatureAverage = temperatures.takeIf { it.isNotEmpty() }?.average(),
+                temperatureCount = temperatures.size,
+                systolicLatest = systolicLatest,
+                diastolicLatest = diastolicLatest,
+                bloodPressureCount = if (systolicLatest != null && diastolicLatest != null) 1 else 0,
+                deviceType = "WATCH",
+                deviceManufacturer = "Samsung",
+                deviceModel = "Galaxy Watch 5 Demo"
+            ),
+            trendPoints = trendPoints
+        )
+    }
+
+    private fun persistSection(payload: HealthSectionSyncPayload) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                repository.syncHealthSection(payload)
+            } catch (_: Exception) {
+                _uiState.update {
+                    it.copy(errorMessage = "Section displayed, but saving to the database failed.")
+                }
+            }
+        }
+    }
+
+    private fun HealthSectionSyncPayload.toLatestReadings(): LatestReadingsResponse {
         return LatestReadingsResponse(
             success = true,
-            heartRate = heartRate?.let {
+            heartRate = heartRateLatest?.let {
                 ReadingValue(
                     value = it,
-                    recordedAt = measuredAt,
-                    source = readingSource
+                    recordedAt = windowEnd,
+                    source = source
                 )
             },
-            temperature = temperature?.let {
+            temperature = temperatureLatest?.let {
                 TemperatureValue(
                     value = it,
-                    recordedAt = measuredAt,
-                    source = readingSource
+                    recordedAt = windowEnd,
+                    source = source
                 )
             },
-            bloodPressure = if (systolic != null && diastolic != null) {
+            bloodPressure = if (systolicLatest != null && diastolicLatest != null) {
                 BloodPressureValue(
-                    systolic = systolic,
-                    diastolic = diastolic,
-                    recordedAt = measuredAt,
-                    source = readingSource
+                    systolic = systolicLatest,
+                    diastolic = diastolicLatest,
+                    recordedAt = windowEnd,
+                    source = source
                 )
             } else {
                 null
@@ -688,21 +519,21 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
-    private fun healthConnectSummary(payload: HealthSyncPayload): String {
-        return "Health Connect returned: " + healthValuesSummary(payload)
+    private fun sectionSummary(payload: HealthSectionSyncPayload): String {
+        return "Section: " +
+                "Heart ${payload.heartRateLatest?.let { "$it BPM" } ?: "none"} (${payload.heartRateCount}), " +
+                "BP ${formatBloodPressure(payload.systolicLatest, payload.diastolicLatest)} (${payload.bloodPressureCount}), " +
+                "Temp ${payload.temperatureLatest?.let { String.format(java.util.Locale.US, "%.2f °C", it) } ?: "none"} (${payload.temperatureCount})"
     }
 
-    private fun healthValuesSummary(payload: HealthSyncPayload): String {
-        return "Heart ${payload.heartRate?.let { "$it BPM" } ?: "none"}, " +
-                "BP ${formatBloodPressure(payload.systolic, payload.diastolic)}, " +
-                "Temp ${payload.temperature?.let { String.format(java.util.Locale.US, "%.2f °C", it) } ?: "none"}"
-    }
-
-    private fun readingsSummary(readings: LatestReadingsResponse): String {
-        return "Dashboard now shows: " +
-                "Heart ${readings.heartRate?.value?.let { "$it BPM" } ?: "none"}, " +
-                "BP ${readings.bloodPressure?.let { "${it.systolic}/${it.diastolic}" } ?: "none"}, " +
-                "Temp ${readings.temperature?.value?.let { String.format(java.util.Locale.US, "%.2f °C", it) } ?: "none"}"
+    private fun List<HealthSectionTrendPoint>.toUiTrendPoints(): List<VitalTrendPoint> {
+        return map {
+            VitalTrendPoint(
+                heartRate = it.heartRate,
+                systolic = it.systolic,
+                temperature = it.temperature
+            )
+        }
     }
 
     private fun formatBloodPressure(systolic: Int?, diastolic: Int?): String {
@@ -711,23 +542,6 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         } else {
             "$systolic/$diastolic"
         }
-    }
-
-    private fun appendTrendPoint(
-        currentPoints: List<VitalTrendPoint>,
-        readings: LatestReadingsResponse
-    ): List<VitalTrendPoint> {
-        val nextPoint = VitalTrendPoint(
-            heartRate = readings.heartRate?.value,
-            systolic = readings.bloodPressure?.systolic,
-            temperature = readings.temperature?.value
-        )
-
-        if (nextPoint.heartRate == null && nextPoint.systolic == null && nextPoint.temperature == null) {
-            return currentPoints
-        }
-
-        return (currentPoints + nextPoint).takeLast(MAX_TREND_POINTS)
     }
 
     private fun formattedNow(): String {
@@ -756,8 +570,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private companion object {
-        const val LIVE_SYNC_INTERVAL_MILLIS = 5_000L
-        const val DEMO_SYNC_INTERVAL_MILLIS = 5_000L
+        const val DEFAULT_SECTION_WINDOW_MINUTES = 60L
         const val MAX_TREND_POINTS = 12
         val TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     }

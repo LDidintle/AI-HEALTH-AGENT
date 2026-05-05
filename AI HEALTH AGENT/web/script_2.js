@@ -261,7 +261,7 @@ function drawEmptyChartMessage(ctx, width, height) {
     ctx.font = '600 14px Poppins, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('Waiting for live readings', width / 2, height / 2);
+    ctx.fillText('Waiting for synced section readings', width / 2, height / 2);
 }
 
 function drawGridLine(ctx, x1, y1, x2, y2) {
@@ -298,11 +298,11 @@ function loadLatestReadings() {
         .then(data => {
             if (!data.success) {
                 clearLiveReadings();
-                return updateSyncStatus('Sign in and start the phone/watch feed to see live readings.');
+                return updateSyncStatus('Sign in and sync a phone health section to see readings.');
             }
             if (!isLiveFeedFresh(data)) {
                 clearLiveReadings();
-                return updateSyncStatus('No active phone/watch feed. Start demo or live sync to show readings.');
+                return updateSyncStatus('No recent phone health section found. Sync the latest section from the mobile app.');
             }
 
             setText('heartRateValue', data.heartRate === null ? '--' : data.heartRate);
@@ -310,11 +310,11 @@ function loadLatestReadings() {
             setText('temperatureValue', data.temperature === null ? '--' : data.temperature);
             updateChartSeries(data);
             updateAlertBanner(data);
-            updateSyncStatus(`Live refresh on every 5s. Last checked ${new Date().toLocaleTimeString()}.`);
+            updateSyncStatus(`Latest synced section refreshed. Last checked ${new Date().toLocaleTimeString()}.`);
         })
         .catch(() => {
             clearLiveReadings();
-            updateSyncStatus('Unable to load live readings from the server.');
+            updateSyncStatus('Unable to load synced section readings from the server.');
         });
 }
 

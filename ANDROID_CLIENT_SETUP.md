@@ -49,9 +49,9 @@ Use your computer's LAN IP address, for example:
 - Native login screen
 - Backend session-based authentication
 - Profile loading
-- Latest vital reading display
-- Health Connect sync button
-- Manual sample sync button for demos
+- Blank dashboard until a section is synced
+- Health Connect latest-section sync button
+- Demo section button for presentations
 - Health permissions rationale screen
 - Health Connect onboarding entry activity
 
@@ -63,10 +63,10 @@ Use your computer's LAN IP address, for example:
 ## Recommended next run sequence
 
 1. Start the servlet backend in NetBeans or GlassFish
-2. Apply the SQL updates so the new readings tables exist
+2. Apply the SQL updates so the readings and `health_sync_sections` tables exist
 3. Open `AndroidClient` in Android Studio
 4. Sync Gradle with JDK 17+
 5. Run the app on an emulator or Android phone
 6. Sign in with a real user from your database
 7. Grant Health Connect permissions
-8. Tap `Sync From Health Connect`
+8. Tap `Sync Latest Section`

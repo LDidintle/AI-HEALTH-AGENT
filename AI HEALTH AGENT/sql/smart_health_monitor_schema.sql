@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS users (
     known_allergies TEXT,
     chronic_conditions TEXT,
     address TEXT,
+    is_verified BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

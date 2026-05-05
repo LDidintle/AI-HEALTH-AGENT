@@ -37,6 +37,11 @@
             <label for="email">Email</label>
             <input type="email" id="email" name="email" value="${email}">
 
+            <label class="checkbox-field" for="is_verified">
+                <input type="checkbox" id="is_verified" name="is_verified" value="true" <%= Boolean.TRUE.equals(request.getAttribute("is_verified")) ? "checked" : "" %>>
+                Verified patient account
+            </label>
+
             <label for="cell_number">Personal Cell Number</label>
             <input type="text" id="cell_number" name="cell_number" value="${cell_number}">
 

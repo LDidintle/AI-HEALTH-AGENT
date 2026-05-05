@@ -93,6 +93,42 @@ CREATE TABLE `device_sync_events` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `health_sync_sections`
+--
+
+DROP TABLE IF EXISTS `health_sync_sections`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `health_sync_sections` (
+  `section_id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `device_id` int(11) DEFAULT NULL,
+  `source` varchar(50) NOT NULL,
+  `window_start` timestamp NOT NULL,
+  `window_end` timestamp NOT NULL,
+  `heart_rate_latest` int(11) DEFAULT NULL,
+  `heart_rate_min` int(11) DEFAULT NULL,
+  `heart_rate_max` int(11) DEFAULT NULL,
+  `heart_rate_average` decimal(6,2) DEFAULT NULL,
+  `heart_rate_count` int(11) DEFAULT 0,
+  `temperature_latest` decimal(4,2) DEFAULT NULL,
+  `temperature_min` decimal(4,2) DEFAULT NULL,
+  `temperature_max` decimal(4,2) DEFAULT NULL,
+  `temperature_average` decimal(4,2) DEFAULT NULL,
+  `temperature_count` int(11) DEFAULT 0,
+  `systolic_latest` int(11) DEFAULT NULL,
+  `diastolic_latest` int(11) DEFAULT NULL,
+  `blood_pressure_count` int(11) DEFAULT 0,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`section_id`),
+  KEY `idx_health_sync_sections_user_window` (`user_id`,`window_end`,`section_id`),
+  KEY `fk_health_section_device` (`device_id`),
+  CONSTRAINT `fk_health_section_device` FOREIGN KEY (`device_id`) REFERENCES `devices` (`device_id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_health_section_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `emergency_alerts`
 --
 
@@ -239,6 +275,7 @@ CREATE TABLE `users` (
   `known_allergies` text DEFAULT NULL,
   `chronic_conditions` text DEFAULT NULL,
   `address` text DEFAULT NULL,
+  `is_verified` tinyint(1) NOT NULL DEFAULT 0,
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   UNIQUE KEY `email` (`email`)

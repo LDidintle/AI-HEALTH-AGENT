@@ -3,12 +3,9 @@ package za.ac.tut.web;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
-import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLIntegrityConstraintViolationException;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -16,7 +13,6 @@ import javax.servlet.http.HttpServletResponse;
 import za.ac.tut.model.PasswordUtils;
 import za.ac.tut.util.Database;
 import za.ac.tut.util.JsonUtil;
-import za.ac.tut.util.PatientValidation;
 
 public class MobileRegisterServlet extends HttpServlet {
 
@@ -25,65 +21,20 @@ public class MobileRegisterServlet extends HttpServlet {
             throws ServletException, IOException {
         response.setContentType("application/json;charset=UTF-8");
 
-        String title = valueOrDefault(trimToNull(request.getParameter("title")), "Patient");
         String firstName = trimToNull(request.getParameter("firstName"));
         String surname = trimToNull(request.getParameter("surname"));
-        String dobValue = trimToNull(request.getParameter("dob"));
-        String gender = valueOrDefault(trimToNull(request.getParameter("gender")), "Not specified");
-        String maritalStatus = valueOrDefault(trimToNull(request.getParameter("maritalStatus")), "Not specified");
         String email = trimToNull(request.getParameter("email"));
-        String cellNumber = valueOrDefault(trimToNull(request.getParameter("cellNumber")), "");
-        String idNumber = trimToNull(request.getParameter("idNumber"));
-        String emergencyContactName = trimToNull(request.getParameter("emergencyContactName"));
-        String emergencyContactNumber = trimToNull(request.getParameter("emergencyContactNumber"));
-        String bloodGroup = trimToNull(request.getParameter("bloodGroup"));
-        String knownAllergies = trimToNull(request.getParameter("knownAllergies"));
-        String chronicConditions = trimToNull(request.getParameter("chronicConditions"));
-        String address = valueOrDefault(trimToNull(request.getParameter("address")), "");
         String password = trimToNull(request.getParameter("password"));
 
-        if (firstName == null || surname == null || dobValue == null || email == null || password == null) {
+        if (firstName == null || surname == null || email == null || password == null) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            writeJson(response, "{\"success\":false,\"message\":\"firstName, surname, dob, email and password are required.\"}");
-            return;
-        }
-
-        if (!cellNumber.isEmpty() && !PatientValidation.isValidSouthAfricanPhone(cellNumber)) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            writeJson(response, "{\"success\":false,\"message\":\"Personal cell number is invalid.\"}");
-            return;
-        }
-
-        if (idNumber != null && !PatientValidation.isValidIdNumber(idNumber)) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            writeJson(response, "{\"success\":false,\"message\":\"ID number must be 13 digits.\"}");
-            return;
-        }
-
-        if (emergencyContactNumber != null && !PatientValidation.isValidSouthAfricanPhone(emergencyContactNumber)) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            writeJson(response, "{\"success\":false,\"message\":\"Emergency contact number is invalid.\"}");
-            return;
-        }
-
-        if (PatientValidation.samePhone(cellNumber, emergencyContactNumber)) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            writeJson(response, "{\"success\":false,\"message\":\"Personal number and emergency contact number must not be the same.\"}");
+            writeJson(response, "{\"success\":false,\"message\":\"firstName, surname, email and password are required.\"}");
             return;
         }
 
         if (password.length() < 6) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             writeJson(response, "{\"success\":false,\"message\":\"Password must be at least 6 characters.\"}");
-            return;
-        }
-
-        Date dob;
-        try {
-            dob = parseDate(dobValue);
-        } catch (ParseException e) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            writeJson(response, "{\"success\":false,\"message\":\"Date of birth must use YYYY-MM-DD format.\"}");
             return;
         }
 
@@ -99,31 +50,17 @@ public class MobileRegisterServlet extends HttpServlet {
                 conn.setAutoCommit(false);
 
                 String userSql = "INSERT INTO users "
-                        + "(title, first_name, surname, dob, gender, marital_status, email, cell_number, "
-                        + "id_number, emergency_contact_name, emergency_contact_number, blood_group, "
-                        + "known_allergies, chronic_conditions, address) "
-                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                        + "(title, first_name, surname, email, is_verified) "
+                        + "VALUES ('Patient', ?, ?, ?, FALSE)";
                 String authSql = "INSERT INTO user_auth (user_id, password_hash) VALUES (?, ?)";
 
                 try (
                         PreparedStatement userStatement = conn.prepareStatement(userSql, PreparedStatement.RETURN_GENERATED_KEYS);
                         PreparedStatement authStatement = conn.prepareStatement(authSql)) {
 
-                    userStatement.setString(1, title);
-                    userStatement.setString(2, firstName);
-                    userStatement.setString(3, surname);
-                    userStatement.setDate(4, dob);
-                    userStatement.setString(5, gender);
-                    userStatement.setString(6, maritalStatus);
-                    userStatement.setString(7, email);
-                    userStatement.setString(8, PatientValidation.normalizePhone(cellNumber));
-                    userStatement.setString(9, idNumber);
-                    userStatement.setString(10, emergencyContactName);
-                    userStatement.setString(11, PatientValidation.normalizePhone(emergencyContactNumber));
-                    userStatement.setString(12, bloodGroup);
-                    userStatement.setString(13, knownAllergies);
-                    userStatement.setString(14, chronicConditions);
-                    userStatement.setString(15, address);
+                    userStatement.setString(1, firstName);
+                    userStatement.setString(2, surname);
+                    userStatement.setString(3, email);
 
                     userStatement.executeUpdate();
 
@@ -147,7 +84,8 @@ public class MobileRegisterServlet extends HttpServlet {
                             + "\"user\":{"
                             + "\"id\":" + userId + ","
                             + "\"email\":" + JsonUtil.quote(email) + ","
-                            + "\"fullName\":" + JsonUtil.quote(firstName + " " + surname)
+                            + "\"fullName\":" + JsonUtil.quote(firstName + " " + surname) + ","
+                            + "\"isVerified\":false"
                             + "}"
                             + "}";
                     writeJson(response, json);
@@ -175,17 +113,6 @@ public class MobileRegisterServlet extends HttpServlet {
                 return resultSet.next();
             }
         }
-    }
-
-    private Date parseDate(String value) throws ParseException {
-        String pattern = value.contains("/") ? "dd/MM/yyyy" : "yyyy-MM-dd";
-        SimpleDateFormat format = new SimpleDateFormat(pattern);
-        format.setLenient(false);
-        return new Date(format.parse(value).getTime());
-    }
-
-    private String valueOrDefault(String value, String fallback) {
-        return value == null ? fallback : value;
     }
 
     private String trimToNull(String value) {

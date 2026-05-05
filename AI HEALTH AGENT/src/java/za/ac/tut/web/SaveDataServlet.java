@@ -12,7 +12,6 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
-import za.ac.tut.util.PatientValidation;
 
 /**
  *
@@ -26,65 +25,25 @@ public class SaveDataServlet extends HttpServlet {
             throws ServletException, IOException {
         HttpSession session = request.getSession(true);
         
-        String title = request.getParameter("title");
-        String name = request.getParameter("first_name");
-        String surname = request.getParameter("surname");
-        String dob = request.getParameter("dob");
-        String gender = request.getParameter("gender");
-        String status = request.getParameter("status");
-        String email = request.getParameter("email");
-        String cell_no = request.getParameter("cell_number");
-        String idNumber = request.getParameter("id_number");
-        String emergencyContactName = request.getParameter("emergency_contact_name");
-        String emergencyContactNumber = request.getParameter("emergency_contact_number");
-        String bloodGroup = request.getParameter("blood_group");
-        String knownAllergies = request.getParameter("known_allergies");
-        String chronicConditions = request.getParameter("chronic_conditions");
-        String address = request.getParameter("address");
-        String latitude = request.getParameter("location_latitude");
-        String longitude = request.getParameter("location_longitude");
+        String title = trimToDefault(request.getParameter("title"), "Patient");
+        String name = trimToNull(request.getParameter("first_name"));
+        String surname = trimToNull(request.getParameter("surname"));
+        String email = trimToNull(request.getParameter("email"));
 
-        if (!PatientValidation.isValidIdNumber(idNumber)) {
-            reject(request, response, "Please enter a valid 13 digit South African ID number.");
+        if (isBlank(name) || isBlank(surname) || isBlank(email)) {
+            reject(request, response, "Please enter your name, surname, and email address.");
             return;
         }
 
-        if (!PatientValidation.isValidSouthAfricanPhone(cell_no)) {
-            reject(request, response, "Please enter a valid South African personal cell number.");
+        if (!email.matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")) {
+            reject(request, response, "Please enter a valid email address.");
             return;
         }
-
-        if (!PatientValidation.isValidSouthAfricanPhone(emergencyContactNumber)) {
-            reject(request, response, "Please enter a valid South African emergency contact number.");
-            return;
-        }
-
-        if (PatientValidation.samePhone(cell_no, emergencyContactNumber)) {
-            reject(request, response, "Personal number and emergency contact number must not be the same.");
-            return;
-        }
-
-        if (address != null && latitude != null && longitude != null
-                && !latitude.trim().isEmpty() && !longitude.trim().isEmpty()
-                && !address.contains("Device location:")) {
-            address = address + " (Device location: " + latitude.trim() + ", " + longitude.trim() + ")";
-        }
-        
+	        
         session.setAttribute("title", title);
         session.setAttribute("name", name);
         session.setAttribute("surname", surname);
-        session.setAttribute("dob", dob);
-        session.setAttribute("gender", gender);
-        session.setAttribute("status", status);
         session.setAttribute("email", email);
-        session.setAttribute("cell_no", PatientValidation.normalizePhone(cell_no));
-        session.setAttribute("id_number", idNumber.trim());
-        session.setAttribute("emergency_contact_name", emergencyContactName);
-        session.setAttribute("emergency_contact_number", PatientValidation.normalizePhone(emergencyContactNumber));
-        session.setAttribute("blood_group", bloodGroup);
-        session.setAttribute("known_allergies", knownAllergies);
-        session.setAttribute("chronic_conditions", chronicConditions);
-        session.setAttribute("address", address);
         
         
         RequestDispatcher disp = request.getRequestDispatcher("password.jsp");
@@ -96,6 +55,24 @@ public class SaveDataServlet extends HttpServlet {
             throws ServletException, IOException {
         request.setAttribute("error", message);
         request.getRequestDispatcher("welcome.html").forward(request, response);
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
+    }
+
+    private String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private String trimToDefault(String value, String fallback) {
+        String trimmed = trimToNull(value);
+        return trimmed == null ? fallback : trimmed;
     }
 
 }

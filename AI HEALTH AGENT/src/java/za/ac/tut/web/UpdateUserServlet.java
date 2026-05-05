@@ -20,16 +20,19 @@ public class UpdateUserServlet extends HttpServlet {
             int id = Integer.parseInt(request.getParameter("id"));
             String cellNumber = request.getParameter("cell_number");
             String emergencyNumber = request.getParameter("emergency_contact_number");
+            boolean verified = "true".equals(request.getParameter("is_verified"));
+            boolean hasCellNumber = PatientValidation.trimToNull(cellNumber) != null;
+            boolean hasEmergencyNumber = PatientValidation.trimToNull(emergencyNumber) != null;
 
-            if (!PatientValidation.isValidSouthAfricanPhone(cellNumber)
-                    || !PatientValidation.isValidSouthAfricanPhone(emergencyNumber)
+            if ((hasCellNumber && !PatientValidation.isValidSouthAfricanPhone(cellNumber))
+                    || (hasEmergencyNumber && !PatientValidation.isValidSouthAfricanPhone(emergencyNumber))
                     || PatientValidation.samePhone(cellNumber, emergencyNumber)) {
-                throw new ServletException("Personal number and emergency contact number must be valid South African numbers and must not be the same.");
+                throw new ServletException("Phone numbers must be valid South African numbers and must not be the same.");
             }
 
             String sql = "UPDATE users SET title=?, first_name=?, surname=?, dob=?, gender=?, marital_status=?, "
                     + "email=?, cell_number=?, id_number=?, emergency_contact_name=?, emergency_contact_number=?, "
-                    + "blood_group=?, known_allergies=?, chronic_conditions=?, address=? WHERE id=?";
+                    + "blood_group=?, known_allergies=?, chronic_conditions=?, address=?, is_verified=? WHERE id=?";
 
             try (Connection conn = Database.getConnection();
                  PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -49,7 +52,8 @@ public class UpdateUserServlet extends HttpServlet {
                 ps.setString(13, request.getParameter("known_allergies"));
                 ps.setString(14, request.getParameter("chronic_conditions"));
                 ps.setString(15, request.getParameter("address"));
-                ps.setInt(16, id);
+                ps.setBoolean(16, verified);
+                ps.setInt(17, id);
 
                 ps.executeUpdate();
             }

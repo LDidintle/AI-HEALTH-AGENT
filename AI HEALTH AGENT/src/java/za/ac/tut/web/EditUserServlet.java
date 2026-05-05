@@ -49,6 +49,7 @@ public class EditUserServlet extends HttpServlet {
                         request.setAttribute("known_allergies", rs.getString("known_allergies"));
                         request.setAttribute("chronic_conditions", rs.getString("chronic_conditions"));
                         request.setAttribute("address", rs.getString("address"));
+                        request.setAttribute("is_verified", rs.getBoolean("is_verified"));
                         request.getRequestDispatcher("edit_user.jsp").forward(request, response);
                         return;
                     }

@@ -27,6 +27,7 @@ public final class PatientMapper {
         user.setKnownAllergies(rs.getString("known_allergies"));
         user.setChronicConditions(rs.getString("chronic_conditions"));
         user.setAddress(rs.getString("address"));
+        user.setVerified(rs.getBoolean("is_verified"));
         return user;
     }
 }

@@ -24,8 +24,8 @@ This project is for educational and demonstration purposes only. It does not dia
 - Android client built with Kotlin and Jetpack Compose
 - Android Health Connect integration for reading heart rate, body temperature, and blood pressure records
 - Galaxy Watch 5 workflow through Samsung Health -> Health Connect -> Android app -> backend -> web dashboard
-- Foreground live sync mode that sends approved Health Connect readings from the phone to the backend
-- Demo live feed mode for emulator testing, with realistic changing watch-style readings every few seconds
+- Section sync mode that imports the latest 60 minutes of approved Health Connect records
+- Demo section mode for emulator testing, with realistic section-style watch data
 - Live vital markers and trend graphs in the Android app and web patient dashboard
 - Device metadata capture for synced watch/phone readings
 - Doctor summary view with average vitals and rule-based prediction text
@@ -90,16 +90,16 @@ Health readings are classified and stored
 Web pages, mobile screens, doctor summary, and AI chat return user-facing results
 ```
 
-For live watch/demo data:
+For Android section sync/demo data:
 
 ```text
-Galaxy Watch 5 or Android demo feed
+Health Connect latest-section sync or Android demo section
         ->
-Android app builds a health sync payload with vitals and device metadata
+Android app builds a section summary with vitals and device metadata
         ->
-MobileHealthSyncServlet stores pulse, temperature, and blood pressure rows
+MobileHealthSectionSyncServlet stores one section and representative latest rows
         ->
-Android and web dashboards refresh live vital markers and trend graphs
+Android and web dashboards show the latest synced section values and trend graph
 ```
 
 For AI chat:
@@ -200,10 +200,10 @@ cd AndroidClient
 ./gradlew :app:assembleDebug
 ```
 
-The app supports two live data paths:
+The app supports section-based health sync:
 
-- Real watch path: pair Galaxy Watch 5 with a real Android phone, allow Samsung Health to share data with Health Connect, sign in to the SmartHealth Android app, then start live watch sync.
-- Demo path: use the emulator and start Demo Live Feed to generate changing readings through the same backend sync endpoint.
+- Real watch path: pair Galaxy Watch 5 with a real Android phone, allow Samsung Health to share data with Health Connect, sign in to the SmartHealth Android app, then sync the latest 60-minute section.
+- Demo path: use the emulator and load a demo section to generate presentation data through the same section-sync workflow.
 
 ### 6. Docker deployment test
 
@@ -227,8 +227,8 @@ Add screenshots here before using this as a portfolio project:
 - Staff/admin dashboard
 - Hospital portal
 - Patient directory
-- Android live sync and demo feed screen
-- Live trend graph and vital markers
+- Android section sync and demo section screen
+- Section trend graph and vital markers
 - AI wellness chat
 
 ## Deployment Notes

@@ -29,6 +29,7 @@ public class User {
     private String knownAllergies;
     private String chronicConditions;
     private String address;
+    private boolean verified;
     private String passwordHash;
 
     // Getters and Setters
@@ -79,6 +80,9 @@ public class User {
 
     public String getAddress() { return address; }
     public void setAddress(String address) { this.address = address; }
+
+    public boolean isVerified() { return verified; }
+    public void setVerified(boolean verified) { this.verified = verified; }
 
     public String getPasswordHash() { return passwordHash; }
     public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }

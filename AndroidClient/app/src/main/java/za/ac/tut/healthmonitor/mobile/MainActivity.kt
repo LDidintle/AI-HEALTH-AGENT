@@ -20,7 +20,6 @@ import za.ac.tut.healthmonitor.mobile.health.HealthConnectManager
 import za.ac.tut.healthmonitor.mobile.ui.AppScreen
 import za.ac.tut.healthmonitor.mobile.ui.AppViewModel
 import za.ac.tut.healthmonitor.mobile.ui.theme.HealthMonitorTheme
-import za.ac.tut.healthmonitor.mobile.wear.WatchLiveVitalsStore
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 class MainActivity : ComponentActivity() {
@@ -42,7 +41,7 @@ class MainActivity : ComponentActivity() {
                     val action = afterPermissionGranted
                     afterPermissionGranted = null
                     if (action == null) {
-                        appViewModel.syncFromHealthConnect(healthManager)
+                        appViewModel.syncLatestSection(healthManager)
                     } else {
                         action()
                     }
@@ -56,12 +55,6 @@ class MainActivity : ComponentActivity() {
                 appViewModel.clearMessages()
             }
 
-            LaunchedEffect(Unit) {
-                WatchLiveVitalsStore.readings.collect { payload ->
-                    appViewModel.applyWatchLiveReading(payload)
-                }
-            }
-
             HealthMonitorTheme {
                 AppScreen(
                     uiState = uiState,
@@ -70,21 +63,15 @@ class MainActivity : ComponentActivity() {
                     onShowLogin = appViewModel::showLogin,
                     onShowSignup = appViewModel::showSignup,
                     onShowHowItWorks = appViewModel::showHowItWorks,
-                    onSignupTitleChanged = appViewModel::updateSignupTitle,
                     onSignupFirstNameChanged = appViewModel::updateSignupFirstName,
                     onSignupSurnameChanged = appViewModel::updateSignupSurname,
-                    onSignupDobChanged = appViewModel::updateSignupDob,
-                    onSignupGenderChanged = appViewModel::updateSignupGender,
-                    onSignupMaritalStatusChanged = appViewModel::updateSignupMaritalStatus,
                     onSignupEmailChanged = appViewModel::updateSignupEmail,
-                    onSignupCellNumberChanged = appViewModel::updateSignupCellNumber,
-                    onSignupAddressChanged = appViewModel::updateSignupAddress,
                     onSignupPasswordChanged = appViewModel::updateSignupPassword,
                     onSignupConfirmPasswordChanged = appViewModel::updateSignupConfirmPassword,
                     onLogin = appViewModel::login,
                     onRegister = appViewModel::register,
                     onRefresh = appViewModel::refreshDashboard,
-                    onSyncHealthConnect = {
+                    onSyncLatestSection = {
                         coroutineScope.launch {
                             when (healthManager.availabilityStatus()) {
                                 HealthConnectClient.SDK_UNAVAILABLE -> {
@@ -97,10 +84,10 @@ class MainActivity : ComponentActivity() {
 
                                 else -> {
                                     if (healthManager.hasAnyPermission()) {
-                                        appViewModel.syncFromHealthConnect(healthManager)
+                                        appViewModel.syncLatestSection(healthManager)
                                     } else {
                                         afterPermissionGranted = {
-                                            appViewModel.syncFromHealthConnect(healthManager)
+                                            appViewModel.syncLatestSection(healthManager)
                                         }
                                         permissionLauncher.launch(healthManager.requiredPermissions)
                                     }
@@ -108,34 +95,7 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     },
-                    onStartLiveSync = {
-                        coroutineScope.launch {
-                            when (healthManager.availabilityStatus()) {
-                                HealthConnectClient.SDK_UNAVAILABLE -> {
-                                    appViewModel.setInfoMessage("Health Connect is not available on this phone.")
-                                }
-
-                                HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED -> {
-                                    openHealthConnectInPlayStore()
-                                }
-
-                                else -> {
-                                    if (healthManager.hasAnyPermission()) {
-                                        appViewModel.startLiveSync(healthManager)
-                                    } else {
-                                        afterPermissionGranted = {
-                                            appViewModel.startLiveSync(healthManager)
-                                        }
-                                        permissionLauncher.launch(healthManager.requiredPermissions)
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    onStopLiveSync = appViewModel::stopLiveSync,
                     onStartDemoSync = appViewModel::startDemoSync,
-                    onStopDemoSync = appViewModel::stopDemoSync,
-                    onSyncSample = appViewModel::syncManualSample,
                     onLogout = appViewModel::logout,
                     onSelectLanguage = appViewModel::selectLanguage,
                     onOpenProfile = appViewModel::openProfile,

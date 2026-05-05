@@ -45,33 +45,35 @@ if (useLocationButton) {
 
 document.querySelector('form').addEventListener('submit', event => {
     const idNumber = (idNumberInput?.value || '').trim();
-    if (!/^[0-9]{13}$/.test(idNumber)) {
+    if (idNumberInput && !/^[0-9]{13}$/.test(idNumber)) {
         return stopSubmit(event, 'Please enter a valid 13 digit South African ID number.');
     }
 
     const personalPhone = normalizePhone(personalPhoneInput?.value || '');
     const emergencyPhone = normalizePhone(emergencyPhoneInput?.value || '');
-    if (!isValidPhone(personalPhone)) {
+    if (personalPhoneInput && !isValidPhone(personalPhone)) {
         return stopSubmit(event, 'Please enter a valid South African personal cell number.');
     }
-    if (!isValidPhone(emergencyPhone)) {
+    if (emergencyPhoneInput && !isValidPhone(emergencyPhone)) {
         return stopSubmit(event, 'Please enter a valid South African emergency contact number.');
     }
-    if (personalPhone === emergencyPhone) {
+    if (personalPhoneInput && emergencyPhoneInput && personalPhone === emergencyPhone) {
         return stopSubmit(event, 'Your personal number and emergency contact number must not be the same.');
     }
 
-    const dobValue = dobInput.value;
-    if (!dobValue) return stopSubmit(event, 'Please select your date of birth.');
+    const dobValue = dobInput?.value;
+    if (dobInput && !dobValue) return stopSubmit(event, 'Please select your date of birth.');
 
-    const dob = new Date(`${dobValue}T00:00:00`);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    if (dobInput) {
+        const dob = new Date(`${dobValue}T00:00:00`);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
 
-    if (Number.isNaN(dob.getTime())) return stopSubmit(event, 'Invalid date selected.');
-    if (dob > today) return stopSubmit(event, 'Date of Birth cannot be in the future!');
+        if (Number.isNaN(dob.getTime())) return stopSubmit(event, 'Invalid date selected.');
+        if (dob > today) return stopSubmit(event, 'Date of Birth cannot be in the future!');
+    }
 
-    if (!addressInput.value.trim()) {
+    if (addressInput && !addressInput.value.trim()) {
         return stopSubmit(event, 'Please add your device location or enter your address manually.');
     }
 });

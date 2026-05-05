@@ -9,7 +9,8 @@
 
 <div class="form-container">
 
-    <h2>Registration Form</h2>
+    <h2>Create Account</h2>
+    <p class="field-help">Start with your login details. You can complete medical and emergency information after your account is created.</p>
 
     <form action="SaveDataServlet.do" method="post">
 
@@ -26,75 +27,11 @@
 <label>Surname:</label>
 <input type="text" placeholder="Surname" name="surname" required>
 
-<label for="id_number">South African ID Number:</label>
-<input type="number" id="id_number" name="id_number" placeholder="13 digit ID number" inputmode="numeric" min="0" required>
+	<label>Email:</label>
+	<input type="email" placeholder="Email Address@gmail.com" name="email" required 
+	pattern="^[a-zA-Z0-9._%+-]+@gmail\.com$">
 
-<label for="dob">Date Of Birth</label>
-<input type="date" id="dob" name="dob" required>
-
-<label>Gender:</label>
-<div class="radio-group">
-    <label class="radio-option">
-        <input type="radio" name="gender" value="male"> Male
-    </label>
-    <label class="radio-option">
-        <input type="radio" name="gender" value="female"> Female
-    </label>
-</div>
-
-<label>Marital Status:</label>
-<select name="status">
-    <option>Select Status</option>
-    <option>Single</option>
-    <option>Married</option>
-    <option>Divorced</option>
-</select>
-
-<label>Email:</label>
-<input type="email" placeholder="Email Address@gmail.com" name="email" required 
-pattern="^[a-zA-Z0-9._%+-]+@gmail\.com$">
-
-<label for="cell_number">Personal Cell Number:</label>
-<input type="tel" id="cell_number" placeholder="e.g. 0712345678" name="cell_number" autocomplete="tel" required>
-
-<label for="emergency_contact_name">Emergency Contact / Next of Kin Name:</label>
-<input type="text" id="emergency_contact_name" placeholder="Next of kin full name" name="emergency_contact_name" required>
-
-<label for="emergency_contact_number">Emergency Contact Cell Number:</label>
-<input type="tel" id="emergency_contact_number" placeholder="e.g. 0823456789" name="emergency_contact_number" autocomplete="tel" required>
-
-<label for="blood_group">Blood Group:</label>
-<select id="blood_group" name="blood_group" required>
-    <option value="">Select Blood Group</option>
-    <option>A+</option>
-    <option>A-</option>
-    <option>B+</option>
-    <option>B-</option>
-    <option>AB+</option>
-    <option>AB-</option>
-    <option>O+</option>
-    <option>O-</option>
-    <option>Unknown</option>
-</select>
-
-<label for="known_allergies">Known Allergies:</label>
-<textarea id="known_allergies" placeholder="Enter known allergies, or write None" name="known_allergies" rows="3"></textarea>
-
-<label for="chronic_conditions">Chronic Conditions:</label>
-<textarea id="chronic_conditions" placeholder="Example: Diabetes, Hypertension, Asthma, or None" name="chronic_conditions" rows="3"></textarea>
-
-<label for="address">Address / Location:</label>
-<p class="field-help">Use your device location or enter your address manually.</p>
-<button class="secondary-action" type="button" id="useLocationBtn">Use device location</button>
-<label class="checkbox-option">
-    <input type="checkbox" id="manualAddress" name="manual_address" value="true">
-    Enter address manually instead
-</label>
-<textarea id="address" placeholder="Address or device coordinates" name="address" required></textarea>
-<input type="hidden" id="location_latitude" name="location_latitude">
-<input type="hidden" id="location_longitude" name="location_longitude">
-<div id="locationStatus" class="form-note"></div>
-        <button type="submit">Submit</button>
+	        <button type="submit">Continue</button>
         <a class="back-link" href="index.html">Back to home</a>
         <a class="back-link" href="user_sign.html">Already have an account? Sign in</a>
 
