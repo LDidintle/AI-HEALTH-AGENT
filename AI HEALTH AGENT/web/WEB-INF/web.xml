@@ -45,6 +45,10 @@
         <servlet-class>za.ac.tut.web.UserConfirmServlet</servlet-class>
     </servlet>
     <servlet>
+        <servlet-name>CompleteProfileServlet</servlet-name>
+        <servlet-class>za.ac.tut.web.CompleteProfileServlet</servlet-class>
+    </servlet>
+    <servlet>
         <servlet-name>AIChatServlet</servlet-name>
         <servlet-class>za.ac.tut.web.AIChatServlet</servlet-class>
     </servlet>
@@ -127,6 +131,10 @@
     <servlet-mapping>
         <servlet-name>UserConfirmServlet</servlet-name>
         <url-pattern>/UserConfirmServlet.do</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>CompleteProfileServlet</servlet-name>
+        <url-pattern>/CompleteProfileServlet.do</url-pattern>
     </servlet-mapping>
     <servlet-mapping>
         <servlet-name>AIChatServlet</servlet-name>

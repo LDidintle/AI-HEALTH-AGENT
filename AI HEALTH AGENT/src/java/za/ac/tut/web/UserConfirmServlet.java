@@ -32,8 +32,11 @@ public class UserConfirmServlet extends HttpServlet {
         try {
             try (Connection conn = Database.getConnection()) {
 
-                String sql = "SELECT user_id, password_hash FROM user_auth WHERE user_id = " +
-                             "(SELECT id FROM users WHERE email = ?)";
+                String sql = "SELECT u.id, u.email, u.is_verified, u.dob, u.gender, u.cell_number, "
+                        + "u.id_number, u.emergency_contact_name, u.emergency_contact_number, "
+                        + "u.blood_group, u.address, ua.password_hash "
+                        + "FROM users u JOIN user_auth ua ON u.id = ua.user_id "
+                        + "WHERE u.email = ?";
 
                 PreparedStatement ps = conn.prepareStatement(sql);
                 ps.setString(1, email);
@@ -46,7 +49,14 @@ public class UserConfirmServlet extends HttpServlet {
                     if (hashedEnteredPassword.equals(dbPasswordHash)) {
                         // Password correct
                         HttpSession session = request.getSession();
-                        session.setAttribute("user", email);
+                        session.setAttribute("user", rs.getString("email"));
+                        session.setAttribute("userId", rs.getInt("id"));
+
+                        if (rs.getBoolean("is_verified") && CompleteProfileServlet.isProfileIncomplete(rs)) {
+                            response.sendRedirect("CompleteProfileServlet.do");
+                            return;
+                        }
+
                         response.sendRedirect("healthApp.html");
                     } else {
                         // Password wrong
