@@ -26,10 +26,20 @@ class SamsungHealthDataManager(
     private val store = HealthDataService.getStore(appContext)
 
     private val heartRatePermission = Permission.of(DataTypes.HEART_RATE, AccessType.READ)
-    private val requiredPermissions = setOf(heartRatePermission)
+    private val bloodPressurePermission = Permission.of(DataTypes.BLOOD_PRESSURE, AccessType.READ)
+    private val bodyTemperaturePermission = Permission.of(DataTypes.BODY_TEMPERATURE, AccessType.READ)
+    private val skinTemperaturePermission = Permission.of(DataTypes.SKIN_TEMPERATURE, AccessType.READ)
+    private val bloodOxygenPermission = Permission.of(DataTypes.BLOOD_OXYGEN, AccessType.READ)
+    private val requiredPermissions = setOf(
+        heartRatePermission,
+        bloodPressurePermission,
+        bodyTemperaturePermission,
+        skinTemperaturePermission,
+        bloodOxygenPermission
+    )
 
     suspend fun hasHeartRatePermission(): Boolean {
-        return store.getGrantedPermissions(requiredPermissions).containsAll(requiredPermissions)
+        return store.getGrantedPermissions(requiredPermissions).any { it in requiredPermissions }
     }
 
     suspend fun requestHeartRatePermission(activity: Activity): Boolean {
@@ -40,7 +50,7 @@ class SamsungHealthDataManager(
 
         val missingPermissions = requiredPermissions - grantedPermissions
         val newlyGranted = store.requestPermissions(missingPermissions, activity)
-        return newlyGranted.containsAll(missingPermissions)
+        return (grantedPermissions + newlyGranted).any { it in requiredPermissions }
     }
 
     suspend fun readLatestHeartRateSection(
@@ -48,39 +58,146 @@ class SamsungHealthDataManager(
     ): HealthSection {
         val end = Instant.now()
         val start = end.minus(windowMinutes, ChronoUnit.MINUTES)
-        val request = DataTypes.HEART_RATE.readDataRequestBuilder
-            .setInstantTimeFilter(InstantTimeFilter.of(start, end))
-            .setOrdering(Ordering.ASC)
-            .setLimit(MAX_RECORDS)
-            .build()
-
-        val dataPoints = store.readData(request).dataList
-        val samples = dataPoints
-            .flatMap { it.toHeartRateSamples() }
+        val grantedPermissions = store.getGrantedPermissions(requiredPermissions)
+        val heartRateSamples = readIfPermitted(grantedPermissions, heartRatePermission) {
+            readSamsungDataPoints(DataTypes.HEART_RATE.readDataRequestBuilder, start, end)
+                .flatMap { it.toHeartRateSamples() }
+        }.orEmpty()
             .filter { it.measuredAt in start..end }
             .sortedBy { it.measuredAt }
 
-        val values = samples.map { it.value }
-        val latest = samples.lastOrNull()
+        val bloodPressureSamples = readIfPermitted(grantedPermissions, bloodPressurePermission) {
+            readSamsungDataPoints(DataTypes.BLOOD_PRESSURE.readDataRequestBuilder, start, end)
+                .mapNotNull { it.toBloodPressureSample() }
+        }.orEmpty()
+            .filter { it.measuredAt in start..end }
+            .sortedBy { it.measuredAt }
+
+        val bodyTemperatureSamples = readIfPermitted(grantedPermissions, bodyTemperaturePermission) {
+            readSamsungDataPoints(DataTypes.BODY_TEMPERATURE.readDataRequestBuilder, start, end)
+                .mapNotNull { it.toBodyTemperatureSample() }
+        }.orEmpty()
+            .filter { it.measuredAt in start..end }
+            .sortedBy { it.measuredAt }
+
+        val skinTemperatureSamples = readIfPermitted(grantedPermissions, skinTemperaturePermission) {
+            readSamsungDataPoints(DataTypes.SKIN_TEMPERATURE.readDataRequestBuilder, start, end)
+                .flatMap { it.toSkinTemperatureSamples() }
+        }.orEmpty()
+            .filter { it.measuredAt in start..end }
+            .sortedBy { it.measuredAt }
+
+        // Read now so unsupported/empty blood oxygen sources do not block the other vitals.
+        readIfPermitted(grantedPermissions, bloodOxygenPermission) {
+            readSamsungDataPoints(DataTypes.BLOOD_OXYGEN.readDataRequestBuilder, start, end)
+        }
+
+        val heartRateValues = heartRateSamples.map { it.value }
+        val temperatureSamples = (bodyTemperatureSamples + skinTemperatureSamples).sortedBy { it.measuredAt }
+        val temperatureValues = temperatureSamples.map { it.value }
+        val latestHeartRate = heartRateSamples.lastOrNull()
+        val latestBloodPressure = bloodPressureSamples.lastOrNull()
+        val latestTemperature = temperatureSamples.lastOrNull()
+        val latestMeasuredAt = listOfNotNull(
+            latestHeartRate?.measuredAt,
+            latestBloodPressure?.measuredAt,
+            latestTemperature?.measuredAt
+        ).maxOrNull()
 
         return HealthSection(
             payload = HealthSectionSyncPayload(
                 windowStart = start.toString(),
-                windowEnd = latest?.measuredAt?.toString() ?: end.toString(),
+                windowEnd = latestMeasuredAt?.toString() ?: end.toString(),
                 source = SAMSUNG_HEALTH_SOURCE,
-                heartRateLatest = latest?.value,
-                heartRateMin = values.minOrNull(),
-                heartRateMax = values.maxOrNull(),
-                heartRateAverage = values.takeIf { it.isNotEmpty() }?.average(),
-                heartRateCount = values.size,
+                heartRateLatest = latestHeartRate?.value,
+                heartRateMin = heartRateValues.minOrNull(),
+                heartRateMax = heartRateValues.maxOrNull(),
+                heartRateAverage = heartRateValues.takeIf { it.isNotEmpty() }?.average(),
+                heartRateCount = heartRateValues.size,
+                temperatureLatest = latestTemperature?.value,
+                temperatureMin = temperatureValues.minOrNull(),
+                temperatureMax = temperatureValues.maxOrNull(),
+                temperatureAverage = temperatureValues.takeIf { it.isNotEmpty() }?.average(),
+                temperatureCount = temperatureValues.size,
+                systolicLatest = latestBloodPressure?.systolic,
+                diastolicLatest = latestBloodPressure?.diastolic,
+                bloodPressureCount = bloodPressureSamples.size,
                 deviceType = "WATCH",
                 deviceManufacturer = "Samsung",
-                deviceModel = latest?.deviceId
+                deviceModel = latestHeartRate?.deviceId ?: latestBloodPressure?.deviceId ?: latestTemperature?.deviceId
             ),
-            trendPoints = samples
-                .takeLast(MAX_TREND_POINTS)
-                .map { HealthSectionTrendPoint(heartRate = it.value) }
+            trendPoints = buildTrendPoints(
+                heartRateSamples = heartRateSamples,
+                bloodPressureSamples = bloodPressureSamples,
+                temperatureSamples = temperatureSamples
+            )
         )
+    }
+
+    private suspend fun readSamsungDataPoints(
+        builder: com.samsung.android.sdk.health.data.request.ReadDataRequest.DualTimeBuilder<HealthDataPoint>,
+        start: Instant,
+        end: Instant
+    ): List<HealthDataPoint> {
+        val request = builder
+            .setInstantTimeFilter(InstantTimeFilter.of(start, end))
+            .setOrdering(Ordering.ASC)
+            .setLimit(MAX_RECORDS)
+            .build()
+        return store.readData(request).dataList
+    }
+
+    private suspend fun <T> readIfPermitted(
+        grantedPermissions: Set<Permission>,
+        permission: Permission,
+        block: suspend () -> T
+    ): T? {
+        if (permission !in grantedPermissions) {
+            return null
+        }
+
+        return try {
+            block()
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun buildTrendPoints(
+        heartRateSamples: List<SamsungHeartRateSample>,
+        bloodPressureSamples: List<SamsungBloodPressureSample>,
+        temperatureSamples: List<SamsungTemperatureSample>
+    ): List<HealthSectionTrendPoint> {
+        val heartRatePoints = heartRateSamples
+            .takeLast(MAX_TREND_POINTS)
+            .map { HealthSectionTrendPoint(heartRate = it.value) }
+
+        if (heartRatePoints.isNotEmpty()) {
+            val latestBloodPressure = bloodPressureSamples.lastOrNull()
+            val latestTemperature = temperatureSamples.lastOrNull()
+            return heartRatePoints.mapIndexed { index, point ->
+                if (index == heartRatePoints.lastIndex) {
+                    point.copy(
+                        systolic = latestBloodPressure?.systolic,
+                        temperature = latestTemperature?.value
+                    )
+                } else {
+                    point
+                }
+            }
+        }
+
+        val bloodPressurePoints = bloodPressureSamples
+            .takeLast(MAX_TREND_POINTS)
+            .map { HealthSectionTrendPoint(systolic = it.systolic) }
+
+        if (bloodPressurePoints.isNotEmpty()) {
+            return bloodPressurePoints
+        }
+
+        return temperatureSamples
+                .takeLast(MAX_TREND_POINTS)
+            .map { HealthSectionTrendPoint(temperature = it.value) }
     }
 
     fun resolveIfPossible(error: Exception, activity: Activity): Boolean {
@@ -129,8 +246,66 @@ class SamsungHealthDataManager(
         )
     }
 
+    private fun HealthDataPoint.toBloodPressureSample(): SamsungBloodPressureSample? {
+        val systolic = getValue(DataType.BloodPressureType.SYSTOLIC) ?: return null
+        val diastolic = getValue(DataType.BloodPressureType.DIASTOLIC) ?: return null
+        return SamsungBloodPressureSample(
+            systolic = systolic.roundToInt(),
+            diastolic = diastolic.roundToInt(),
+            measuredAt = endTime ?: startTime,
+            deviceId = dataSource?.deviceId
+        )
+    }
+
+    private fun HealthDataPoint.toBodyTemperatureSample(): SamsungTemperatureSample? {
+        val bodyTemperature = getValue(DataType.BodyTemperatureType.BODY_TEMPERATURE) ?: return null
+        return SamsungTemperatureSample(
+            value = bodyTemperature.toDouble(),
+            measuredAt = endTime ?: startTime,
+            deviceId = dataSource?.deviceId
+        )
+    }
+
+    private fun HealthDataPoint.toSkinTemperatureSamples(): List<SamsungTemperatureSample> {
+        val seriesSamples = getValue(DataType.SkinTemperatureType.SERIES_DATA)
+            .orEmpty()
+            .map {
+                SamsungTemperatureSample(
+                    value = it.skinTemperature.toDouble(),
+                    measuredAt = it.endTime,
+                    deviceId = dataSource?.deviceId
+                )
+            }
+
+        if (seriesSamples.isNotEmpty()) {
+            return seriesSamples
+        }
+
+        val skinTemperature = getValue(DataType.SkinTemperatureType.SKIN_TEMPERATURE) ?: return emptyList()
+        return listOf(
+            SamsungTemperatureSample(
+                value = skinTemperature.toDouble(),
+                measuredAt = endTime ?: startTime,
+                deviceId = dataSource?.deviceId
+            )
+        )
+    }
+
     private data class SamsungHeartRateSample(
         val value: Int,
+        val measuredAt: Instant,
+        val deviceId: String?
+    )
+
+    private data class SamsungBloodPressureSample(
+        val systolic: Int,
+        val diastolic: Int,
+        val measuredAt: Instant,
+        val deviceId: String?
+    )
+
+    private data class SamsungTemperatureSample(
+        val value: Double,
         val measuredAt: Instant,
         val deviceId: String?
     )
