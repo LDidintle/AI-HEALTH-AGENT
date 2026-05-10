@@ -44,8 +44,17 @@ data class BackendProfile(
     val title: String? = null,
     val firstName: String,
     val surname: String,
+    val dob: String? = null,
     val gender: String? = null,
+    val maritalStatus: String? = null,
     val cellNumber: String? = null,
+    val idNumber: String? = null,
+    val emergencyContactName: String? = null,
+    val emergencyContactNumber: String? = null,
+    val bloodGroup: String? = null,
+    val knownAllergies: String? = null,
+    val chronicConditions: String? = null,
+    val address: String? = null,
     val isVerified: Boolean = false
 )
 

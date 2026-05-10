@@ -17,6 +17,7 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.random.Random
 import za.ac.tut.healthmonitor.mobile.data.model.BloodPressureValue
+import za.ac.tut.healthmonitor.mobile.data.model.BackendProfile
 import za.ac.tut.healthmonitor.mobile.data.model.HealthSectionSyncPayload
 import za.ac.tut.healthmonitor.mobile.data.model.LatestReadingsResponse
 import za.ac.tut.healthmonitor.mobile.data.model.ReadingValue
@@ -94,13 +95,18 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 it.copy(
                     isLoggedIn = true,
                     userProfile = profile,
+                    isProfileOpen = profile?.isVerified == true && profile.isIncomplete(),
                     latestReadings = null,
                     trendPoints = emptyList(),
                     lastSectionSyncAt = null,
                     lastSyncSummary = null,
                     password = "",
                     errorMessage = null,
-                    infoMessage = verificationMessage
+                    infoMessage = if (profile?.isVerified == true && profile.isIncomplete()) {
+                        "Account verified. Add your monitoring details now, or fill them in later."
+                    } else {
+                        verificationMessage
+                    }
                 )
             }
         }
@@ -276,8 +282,17 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 editTitle = profile.title.orEmpty(),
                 editFirstName = profile.firstName,
                 editSurname = profile.surname,
+                editDob = profile.dob.orEmpty(),
                 editGender = profile.gender.orEmpty(),
+                editMaritalStatus = profile.maritalStatus.orEmpty(),
                 editCellNumber = profile.cellNumber.orEmpty(),
+                editIdNumber = profile.idNumber.orEmpty(),
+                editEmergencyContactName = profile.emergencyContactName.orEmpty(),
+                editEmergencyContactNumber = profile.emergencyContactNumber.orEmpty(),
+                editBloodGroup = profile.bloodGroup.orEmpty(),
+                editKnownAllergies = profile.knownAllergies.orEmpty(),
+                editChronicConditions = profile.chronicConditions.orEmpty(),
+                editAddress = profile.address.orEmpty(),
                 errorMessage = null,
                 infoMessage = null
             )
@@ -300,12 +315,48 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.update { it.copy(editSurname = value) }
     }
 
+    fun updateEditDob(value: String) {
+        _uiState.update { it.copy(editDob = value) }
+    }
+
     fun updateEditGender(value: String) {
         _uiState.update { it.copy(editGender = value) }
     }
 
+    fun updateEditMaritalStatus(value: String) {
+        _uiState.update { it.copy(editMaritalStatus = value) }
+    }
+
     fun updateEditCellNumber(value: String) {
         _uiState.update { it.copy(editCellNumber = value) }
+    }
+
+    fun updateEditIdNumber(value: String) {
+        _uiState.update { it.copy(editIdNumber = value) }
+    }
+
+    fun updateEditEmergencyContactName(value: String) {
+        _uiState.update { it.copy(editEmergencyContactName = value) }
+    }
+
+    fun updateEditEmergencyContactNumber(value: String) {
+        _uiState.update { it.copy(editEmergencyContactNumber = value) }
+    }
+
+    fun updateEditBloodGroup(value: String) {
+        _uiState.update { it.copy(editBloodGroup = value) }
+    }
+
+    fun updateEditKnownAllergies(value: String) {
+        _uiState.update { it.copy(editKnownAllergies = value) }
+    }
+
+    fun updateEditChronicConditions(value: String) {
+        _uiState.update { it.copy(editChronicConditions = value) }
+    }
+
+    fun updateEditAddress(value: String) {
+        _uiState.update { it.copy(editAddress = value) }
     }
 
     fun saveProfile() {
@@ -320,8 +371,17 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 title = state.editTitle.ifBlank { "Patient" },
                 firstName = state.editFirstName.trim(),
                 surname = state.editSurname.trim(),
+                dob = state.editDob.trim(),
                 gender = state.editGender.ifBlank { "Not specified" },
-                cellNumber = state.editCellNumber.trim()
+                maritalStatus = state.editMaritalStatus.trim(),
+                cellNumber = state.editCellNumber.trim(),
+                idNumber = state.editIdNumber.trim(),
+                emergencyContactName = state.editEmergencyContactName.trim(),
+                emergencyContactNumber = state.editEmergencyContactNumber.trim(),
+                bloodGroup = state.editBloodGroup.trim(),
+                knownAllergies = state.editKnownAllergies.trim(),
+                chronicConditions = state.editChronicConditions.trim(),
+                address = state.editAddress.trim()
             )
             val profile = repository.getProfile().user
             _uiState.update {
@@ -620,6 +680,22 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             temperature?.source,
             bloodPressure?.source
         ).none { it.contains("DEMO", ignoreCase = true) }
+    }
+
+    private fun BackendProfile.isIncomplete(): Boolean {
+        return listOf(
+            dob,
+            gender,
+            maritalStatus,
+            cellNumber,
+            idNumber,
+            emergencyContactName,
+            emergencyContactNumber,
+            bloodGroup,
+            knownAllergies,
+            chronicConditions,
+            address
+        ).any { it.isNullOrBlank() }
     }
 
     private fun LatestReadingsResponse.toUiTrendPoints(): List<VitalTrendPoint> {

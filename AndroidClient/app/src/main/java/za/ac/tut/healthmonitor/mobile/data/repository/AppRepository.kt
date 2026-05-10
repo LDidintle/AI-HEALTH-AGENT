@@ -54,15 +54,33 @@ class AppRepository(
         title: String,
         firstName: String,
         surname: String,
+        dob: String,
         gender: String,
-        cellNumber: String
+        maritalStatus: String,
+        cellNumber: String,
+        idNumber: String,
+        emergencyContactName: String,
+        emergencyContactNumber: String,
+        bloodGroup: String,
+        knownAllergies: String,
+        chronicConditions: String,
+        address: String
     ): SyncResponse {
         return backendApiClient.updateProfile(
             title = title,
             firstName = firstName,
             surname = surname,
+            dob = dob,
             gender = gender,
-            cellNumber = cellNumber
+            maritalStatus = maritalStatus,
+            cellNumber = cellNumber,
+            idNumber = idNumber,
+            emergencyContactName = emergencyContactName,
+            emergencyContactNumber = emergencyContactNumber,
+            bloodGroup = bloodGroup,
+            knownAllergies = knownAllergies,
+            chronicConditions = chronicConditions,
+            address = address
         )
     }
 

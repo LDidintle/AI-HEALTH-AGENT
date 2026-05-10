@@ -3,6 +3,7 @@ package za.ac.tut.healthmonitor.mobile
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import androidx.compose.runtime.DisposableEffect
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -15,6 +16,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import kotlinx.coroutines.launch
 import za.ac.tut.healthmonitor.mobile.health.HealthConnectManager
 import za.ac.tut.healthmonitor.mobile.health.SamsungHealthDataManager
@@ -35,6 +38,23 @@ class MainActivity : ComponentActivity() {
             val healthManager = remember { HealthConnectManager(applicationContext) }
             val samsungHealthDataManager = remember { SamsungHealthDataManager(applicationContext) }
             var afterPermissionGranted by remember { mutableStateOf<(() -> Unit)?>(null) }
+            var lastSamsungAutoSyncAt by remember { mutableStateOf(0L) }
+
+            val autoSyncSamsungHealthIfAllowed = {
+                coroutineScope.launch {
+                    val now = System.currentTimeMillis()
+                    if (uiState.isLoggedIn && now - lastSamsungAutoSyncAt > AUTO_SYNC_COOLDOWN_MILLIS) {
+                        try {
+                            if (samsungHealthDataManager.hasHeartRatePermission()) {
+                                lastSamsungAutoSyncAt = now
+                                appViewModel.syncSamsungHealthSection(samsungHealthDataManager)
+                            }
+                        } catch (_: Exception) {
+                            // Manual sync still shows actionable Samsung Health setup errors.
+                        }
+                    }
+                }
+            }
 
             val permissionLauncher = rememberLauncherForActivityResult(
                 PermissionController.createRequestPermissionResultContract()
@@ -55,6 +75,20 @@ class MainActivity : ComponentActivity() {
 
             LaunchedEffect(Unit) {
                 appViewModel.clearMessages()
+            }
+
+            LaunchedEffect(uiState.isLoggedIn) {
+                autoSyncSamsungHealthIfAllowed()
+            }
+
+            DisposableEffect(Unit) {
+                val observer = LifecycleEventObserver { _, event ->
+                    if (event == Lifecycle.Event.ON_START) {
+                        autoSyncSamsungHealthIfAllowed()
+                    }
+                }
+                lifecycle.addObserver(observer)
+                onDispose { lifecycle.removeObserver(observer) }
             }
 
             HealthMonitorTheme {
@@ -110,13 +144,13 @@ class MainActivity : ComponentActivity() {
                                     appViewModel.syncSamsungHealthSection(samsungHealthDataManager)
                                 } else {
                                     appViewModel.setInfoMessage("Samsung Health heart-rate permission was not granted.")
-                            }
-                        } catch (e: Exception) {
-                            if (!samsungHealthDataManager.resolveIfPossible(e, this@MainActivity)) {
+                                }
+                            } catch (e: Exception) {
+                                if (!samsungHealthDataManager.resolveIfPossible(e, this@MainActivity)) {
                                     appViewModel.setInfoMessage(samsungHealthDataManager.toUserMessage(e))
+                                }
                             }
                         }
-                    }
                     },
                     onStartDemoSync = appViewModel::startDemoSync,
                     onLogout = appViewModel::logout,
@@ -126,8 +160,17 @@ class MainActivity : ComponentActivity() {
                     onEditTitleChanged = appViewModel::updateEditTitle,
                     onEditFirstNameChanged = appViewModel::updateEditFirstName,
                     onEditSurnameChanged = appViewModel::updateEditSurname,
+                    onEditDobChanged = appViewModel::updateEditDob,
                     onEditGenderChanged = appViewModel::updateEditGender,
+                    onEditMaritalStatusChanged = appViewModel::updateEditMaritalStatus,
                     onEditCellNumberChanged = appViewModel::updateEditCellNumber,
+                    onEditIdNumberChanged = appViewModel::updateEditIdNumber,
+                    onEditEmergencyContactNameChanged = appViewModel::updateEditEmergencyContactName,
+                    onEditEmergencyContactNumberChanged = appViewModel::updateEditEmergencyContactNumber,
+                    onEditBloodGroupChanged = appViewModel::updateEditBloodGroup,
+                    onEditKnownAllergiesChanged = appViewModel::updateEditKnownAllergies,
+                    onEditChronicConditionsChanged = appViewModel::updateEditChronicConditions,
+                    onEditAddressChanged = appViewModel::updateEditAddress,
                     onSaveProfile = appViewModel::saveProfile,
                     onOpenChat = appViewModel::openChat,
                     onCloseChat = appViewModel::closeChat,
@@ -181,5 +224,6 @@ class MainActivity : ComponentActivity() {
         const val HEALTH_CONNECT_PACKAGE = "com.google.android.apps.healthdata"
         const val SAMSUNG_HEALTH_PACKAGE = "com.sec.android.app.shealth"
         const val HEALTH_CONNECT_SETTINGS_ACTION = "android.health.connect.action.HEALTH_CONNECT_SETTINGS"
+        const val AUTO_SYNC_COOLDOWN_MILLIS = 5L * 60L * 1000L
     }
 }

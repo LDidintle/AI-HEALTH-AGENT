@@ -109,15 +109,33 @@ class BackendApiClient(
         title: String,
         firstName: String,
         surname: String,
+        dob: String,
         gender: String,
-        cellNumber: String
+        maritalStatus: String,
+        cellNumber: String,
+        idNumber: String,
+        emergencyContactName: String,
+        emergencyContactNumber: String,
+        bloodGroup: String,
+        knownAllergies: String,
+        chronicConditions: String,
+        address: String
     ): SyncResponse {
         val body = FormBody.Builder()
             .add("title", title)
             .add("firstName", firstName)
             .add("surname", surname)
+            .add("dob", dob)
             .add("gender", gender)
+            .add("maritalStatus", maritalStatus)
             .add("cellNumber", cellNumber)
+            .add("idNumber", idNumber)
+            .add("emergencyContactName", emergencyContactName)
+            .add("emergencyContactNumber", emergencyContactNumber)
+            .add("bloodGroup", bloodGroup)
+            .add("knownAllergies", knownAllergies)
+            .add("chronicConditions", chronicConditions)
+            .add("address", address)
             .build()
 
         return post("api/mobile/me", body, SyncResponse::class.java)

@@ -92,8 +92,17 @@ fun AppScreen(
     onEditTitleChanged: (String) -> Unit,
     onEditFirstNameChanged: (String) -> Unit,
     onEditSurnameChanged: (String) -> Unit,
+    onEditDobChanged: (String) -> Unit,
     onEditGenderChanged: (String) -> Unit,
+    onEditMaritalStatusChanged: (String) -> Unit,
     onEditCellNumberChanged: (String) -> Unit,
+    onEditIdNumberChanged: (String) -> Unit,
+    onEditEmergencyContactNameChanged: (String) -> Unit,
+    onEditEmergencyContactNumberChanged: (String) -> Unit,
+    onEditBloodGroupChanged: (String) -> Unit,
+    onEditKnownAllergiesChanged: (String) -> Unit,
+    onEditChronicConditionsChanged: (String) -> Unit,
+    onEditAddressChanged: (String) -> Unit,
     onSaveProfile: () -> Unit,
     onOpenChat: () -> Unit,
     onCloseChat: () -> Unit,
@@ -159,8 +168,17 @@ fun AppScreen(
                     onTitleChanged = onEditTitleChanged,
                     onFirstNameChanged = onEditFirstNameChanged,
                     onSurnameChanged = onEditSurnameChanged,
+                    onDobChanged = onEditDobChanged,
                     onGenderChanged = onEditGenderChanged,
+                    onMaritalStatusChanged = onEditMaritalStatusChanged,
                     onCellNumberChanged = onEditCellNumberChanged,
+                    onIdNumberChanged = onEditIdNumberChanged,
+                    onEmergencyContactNameChanged = onEditEmergencyContactNameChanged,
+                    onEmergencyContactNumberChanged = onEditEmergencyContactNumberChanged,
+                    onBloodGroupChanged = onEditBloodGroupChanged,
+                    onKnownAllergiesChanged = onEditKnownAllergiesChanged,
+                    onChronicConditionsChanged = onEditChronicConditionsChanged,
+                    onAddressChanged = onEditAddressChanged,
                     onSaveProfile = onSaveProfile
                 )
             }
@@ -758,25 +776,49 @@ private fun ProfileDialog(
     onTitleChanged: (String) -> Unit,
     onFirstNameChanged: (String) -> Unit,
     onSurnameChanged: (String) -> Unit,
+    onDobChanged: (String) -> Unit,
     onGenderChanged: (String) -> Unit,
+    onMaritalStatusChanged: (String) -> Unit,
     onCellNumberChanged: (String) -> Unit,
+    onIdNumberChanged: (String) -> Unit,
+    onEmergencyContactNameChanged: (String) -> Unit,
+    onEmergencyContactNumberChanged: (String) -> Unit,
+    onBloodGroupChanged: (String) -> Unit,
+    onKnownAllergiesChanged: (String) -> Unit,
+    onChronicConditionsChanged: (String) -> Unit,
+    onAddressChanged: (String) -> Unit,
     onSaveProfile: () -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onClose,
-        title = { Text("Profile Details") },
+        title = { Text("Complete Your Information") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(uiState.userProfile?.email.orEmpty(), color = Muted)
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text(
+                    text = uiState.userProfile?.let { "${it.firstName} ${it.surname} - ${it.email}" }.orEmpty(),
+                    color = Muted
+                )
                 AccountField("Title", uiState.editTitle, onTitleChanged)
                 AccountField("First Name", uiState.editFirstName, onFirstNameChanged)
                 AccountField("Surname", uiState.editSurname, onSurnameChanged)
+                AccountField("Date of Birth", uiState.editDob, onDobChanged, placeholder = "YYYY-MM-DD")
                 AccountField("Gender", uiState.editGender, onGenderChanged)
+                AccountField("Marital Status", uiState.editMaritalStatus, onMaritalStatusChanged)
                 AccountField("Cell Number", uiState.editCellNumber, onCellNumberChanged, keyboardType = KeyboardType.Phone)
+                AccountField("South African ID Number", uiState.editIdNumber, onIdNumberChanged, keyboardType = KeyboardType.Number)
+                AccountField("Emergency Contact / Next of Kin Name", uiState.editEmergencyContactName, onEmergencyContactNameChanged)
+                AccountField("Emergency Contact Cell Number", uiState.editEmergencyContactNumber, onEmergencyContactNumberChanged, keyboardType = KeyboardType.Phone)
+                AccountField("Blood Group", uiState.editBloodGroup, onBloodGroupChanged)
+                AccountField("Known Allergies", uiState.editKnownAllergies, onKnownAllergiesChanged)
+                AccountField("Chronic Conditions", uiState.editChronicConditions, onChronicConditionsChanged)
+                AccountField("Address", uiState.editAddress, onAddressChanged)
             }
         },
-        confirmButton = { Button(onClick = onSaveProfile) { Text("Save") } },
-        dismissButton = { TextButton(onClick = onClose) { Text("Close") } }
+        confirmButton = { Button(onClick = onSaveProfile) { Text("Save and Continue") } },
+        dismissButton = { TextButton(onClick = onClose) { Text("Fill In Later") } }
     )
 }
 
