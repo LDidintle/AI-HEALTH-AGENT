@@ -18,6 +18,7 @@ import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import za.ac.tut.healthmonitor.mobile.health.HealthConnectManager
 import za.ac.tut.healthmonitor.mobile.health.SamsungHealthDataManager
@@ -79,6 +80,10 @@ class MainActivity : ComponentActivity() {
 
             LaunchedEffect(uiState.isLoggedIn) {
                 autoSyncSamsungHealthIfAllowed()
+                while (uiState.isLoggedIn) {
+                    delay(FOREGROUND_SYNC_INTERVAL_MILLIS)
+                    autoSyncSamsungHealthIfAllowed()
+                }
             }
 
             DisposableEffect(Unit) {
@@ -224,6 +229,7 @@ class MainActivity : ComponentActivity() {
         const val HEALTH_CONNECT_PACKAGE = "com.google.android.apps.healthdata"
         const val SAMSUNG_HEALTH_PACKAGE = "com.sec.android.app.shealth"
         const val HEALTH_CONNECT_SETTINGS_ACTION = "android.health.connect.action.HEALTH_CONNECT_SETTINGS"
-        const val AUTO_SYNC_COOLDOWN_MILLIS = 5L * 60L * 1000L
+        const val FOREGROUND_SYNC_INTERVAL_MILLIS = 2L * 60L * 1000L
+        const val AUTO_SYNC_COOLDOWN_MILLIS = FOREGROUND_SYNC_INTERVAL_MILLIS
     }
 }

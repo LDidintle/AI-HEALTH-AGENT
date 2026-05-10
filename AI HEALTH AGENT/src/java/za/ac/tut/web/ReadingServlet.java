@@ -44,6 +44,7 @@ public class ReadingServlet extends HttpServlet {
                 String latestTemperature = getLatestTemperature(conn, userId);
                 String latestBloodPressure = getLatestBloodPressure(conn, userId);
                 Timestamp latestSyncedAt = getLatestSyncedAt(conn, userId);
+                String activeAlertJson = getActiveAlertJson(conn, userId);
 
                 String json = "{"
                         + "\"success\":true,"
@@ -51,7 +52,8 @@ public class ReadingServlet extends HttpServlet {
                         + "\"heartRate\":" + (latestHeartRate == null ? "null" : latestHeartRate) + ","
                         + "\"temperature\":" + (latestTemperature == null ? "null" : latestTemperature) + ","
                         + "\"bloodPressure\":" + (latestBloodPressure == null ? "null" : JsonUtil.quote(latestBloodPressure)) + ","
-                        + "\"latestSyncedAt\":" + (latestSyncedAt == null ? "null" : JsonUtil.quote(latestSyncedAt.toInstant().toString()))
+                        + "\"latestSyncedAt\":" + (latestSyncedAt == null ? "null" : JsonUtil.quote(latestSyncedAt.toInstant().toString())) + ","
+                        + "\"activeAlert\":" + activeAlertJson
                         + "}";
 
                 writeJson(response, json);
@@ -147,6 +149,33 @@ public class ReadingServlet extends HttpServlet {
         }
 
         return null;
+    }
+
+    private String getActiveAlertJson(Connection conn, int userId) throws Exception {
+        String sql = "SELECT alert_id, bpm, alert_status, countdown_seconds, created_at "
+                + "FROM emergency_alerts "
+                + "WHERE user_id = ? AND created_at >= ? "
+                + "ORDER BY created_at DESC, alert_id DESC LIMIT 1";
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            ps.setTimestamp(2, new Timestamp(System.currentTimeMillis() - 60L * 60L * 1000L));
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    Timestamp createdAt = rs.getTimestamp("created_at");
+                    return "{"
+                            + "\"id\":" + rs.getInt("alert_id") + ","
+                            + "\"bpm\":" + (rs.getObject("bpm") == null ? "null" : rs.getInt("bpm")) + ","
+                            + "\"status\":" + JsonUtil.quote(rs.getString("alert_status")) + ","
+                            + "\"countdownSeconds\":" + rs.getInt("countdown_seconds") + ","
+                            + "\"createdAt\":" + JsonUtil.quote(createdAt == null ? null : createdAt.toInstant().toString())
+                            + "}";
+                }
+            }
+        }
+
+        return "null";
     }
 
     private void writeJson(HttpServletResponse response, String json) throws IOException {

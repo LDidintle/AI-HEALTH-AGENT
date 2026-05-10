@@ -15,6 +15,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import za.ac.tut.util.Database;
 import za.ac.tut.util.JsonUtil;
+import za.ac.tut.util.VitalAlertEvaluator;
 
 public class MobileHealthSyncServlet extends HttpServlet {
 
@@ -116,6 +117,7 @@ public class MobileHealthSyncServlet extends HttpServlet {
                     insertBloodPressure(conn, userId, deviceId, systolic, diastolic, recordedTimestamp, source, externalRecordId);
                 }
 
+                VitalAlertEvaluator.evaluateAndStore(conn, userId, heartRate, temperature, systolic, diastolic);
                 insertSyncLog(conn, userId, deviceId, source, externalRecordId, recordedTimestamp);
                 conn.commit();
 

@@ -11,6 +11,8 @@ const copy = {
         causes: "Wellness Suggestions",
         cause1: "Review unusual readings with doctor/staff",
         cause2: "Keep monitoring symptoms and hydration",
+        warningAlert: "WARNING PATTERN DETECTED",
+        criticalAlert: "CRITICAL ALERT SENT TO HOSPITAL STAFF",
         greeting: "Hello! How can I assist you with your health today?"
     },
     zu: {
@@ -25,6 +27,8 @@ const copy = {
         causes: "Iziphakamiso Zempilo",
         cause1: "Xoxa nodokotela/abasebenzi ngezilinganiso ezingajwayelekile",
         cause2: "Qhubeka uqapha izimpawu nokuphuza amanzi",
+        warningAlert: "KUTHOLAKELE IPHETHINI LESIXWAYISO",
+        criticalAlert: "ISIXWAYISO ESIBUCAYI SITHUNYELWE ABASEBENZI",
         greeting: "Sawubona! Ngingakusiza kanjani ngempilo yakho namuhla?"
     },
     af: {
@@ -39,6 +43,8 @@ const copy = {
         causes: "Welstandvoorstelle",
         cause1: "Bespreek ongewone lesings met dokter/personeel",
         cause2: "Hou simptome en hidrasie dop",
+        warningAlert: "WAARSKUWINGSPATROON OPGEMERK",
+        criticalAlert: "KRITIEKE WAARSKUWING NA PERSONEEL GESTUUR",
         greeting: "Hallo! Hoe kan ek jou vandag met jou gesondheid help?"
     }
 };
@@ -355,9 +361,28 @@ function clearLiveReadings() {
 }
 
 function updateAlertBanner(data) {
+    const banner = document.getElementById('alertBanner');
+    const alertText = document.getElementById('alert_p');
+    const activeLanguage = document.querySelector('.tab.active')?.dataset.lang || 'en';
+    const text = copy[activeLanguage] || copy.en;
+
+    if (data.activeAlert) {
+        alertText.innerText = data.activeAlert.status === 'CRITICAL' ? text.criticalAlert : text.warningAlert;
+        banner.style.display = 'flex';
+        return;
+    }
+
     const heartRate = data.heartRate;
     const temperature = data.temperature === null ? null : parseFloat(data.temperature);
-    document.getElementById('alertBanner').style.display = (heartRate !== null && (heartRate < 50 || heartRate > 120)) || (temperature !== null && temperature > 38) ? 'flex' : 'none';
+    const bloodPressureMatch = String(data.bloodPressure || '').match(/(\d+)\s*\/\s*(\d+)/);
+    const systolic = bloodPressureMatch ? Number(bloodPressureMatch[1]) : null;
+    const diastolic = bloodPressureMatch ? Number(bloodPressureMatch[2]) : null;
+    const shouldWarn = (heartRate !== null && (heartRate < 50 || heartRate > 120)) ||
+        (temperature !== null && temperature > 38) ||
+        (systolic !== null && diastolic !== null && (systolic >= 140 || diastolic >= 90));
+
+    alertText.innerText = text.alert;
+    banner.style.display = shouldWarn ? 'flex' : 'none';
 }
 
 function updateSyncStatus(message) {
