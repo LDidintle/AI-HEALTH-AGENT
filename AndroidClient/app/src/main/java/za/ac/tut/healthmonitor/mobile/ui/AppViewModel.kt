@@ -25,6 +25,7 @@ import za.ac.tut.healthmonitor.mobile.data.repository.AppRepository
 import za.ac.tut.healthmonitor.mobile.health.HealthSection
 import za.ac.tut.healthmonitor.mobile.health.HealthSectionTrendPoint
 import za.ac.tut.healthmonitor.mobile.health.HealthConnectManager
+import za.ac.tut.healthmonitor.mobile.health.SamsungHealthDataManager
 
 class AppViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -168,6 +169,60 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun syncLatestSection(manager: HealthConnectManager) {
         executeLatestSectionSync(manager)
+    }
+
+    fun syncSamsungHealthSection(manager: SamsungHealthDataManager) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, errorMessage = null, infoMessage = null) }
+            try {
+                val section = withContext(Dispatchers.IO) {
+                    if (!manager.hasHeartRatePermission()) {
+                        throw SecurityException("Samsung Health heart-rate permission is required.")
+                    }
+                    manager.readLatestHeartRateSection(DEFAULT_SECTION_WINDOW_MINUTES)
+                }
+
+                if (section.isEmpty()) {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            latestReadings = null,
+                            trendPoints = emptyList(),
+                            lastSectionSyncAt = null,
+                            lastSyncSummary = null,
+                            errorMessage = null,
+                            infoMessage = "Samsung Health is connected, but it did not return readable heart-rate records yet."
+                        )
+                    }
+                    return@launch
+                }
+
+                val readings = section.payload.toLatestReadings()
+                persistSection(section.payload)
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        latestReadings = readings,
+                        trendPoints = section.trendPoints.toUiTrendPoints(),
+                        lastSectionSyncAt = formattedNow(),
+                        lastSyncSummary = sectionSummary(section.payload),
+                        errorMessage = null,
+                        infoMessage = "Latest Samsung Health heart-rate data synced."
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        latestReadings = null,
+                        trendPoints = emptyList(),
+                        lastSyncSummary = null,
+                        errorMessage = e.message ?: "Samsung Health sync failed.",
+                        infoMessage = null
+                    )
+                }
+            }
+        }
     }
 
     fun startDemoSync() {
@@ -391,15 +446,34 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 }
 
                 if (section.isEmpty()) {
+                    val savedReadings = withContext(Dispatchers.IO) {
+                        repository.getLatestReadings()
+                    }
+
+                    if (savedReadings.hasAnyNonDemoReading()) {
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                latestReadings = savedReadings,
+                                trendPoints = savedReadings.toUiTrendPoints(),
+                                lastSectionSyncAt = formattedNow(),
+                                lastSyncSummary = "Loaded latest saved readings from SmartHealth.",
+                                errorMessage = null,
+                                infoMessage = "No new Health Connect records found, so the dashboard loaded the latest saved readings."
+                            )
+                        }
+                        return@launch
+                    }
+
                     _uiState.update {
                         it.copy(
                             isLoading = false,
                             latestReadings = null,
                             trendPoints = emptyList(),
-                            lastSectionSyncAt = formattedNow(),
+                            lastSectionSyncAt = null,
                             lastSyncSummary = null,
                             errorMessage = null,
-                            infoMessage = "No Health Connect records found in the last 60 minutes."
+                            infoMessage = "Samsung Health may have data, but Health Connect has not shared readable records with this app yet."
                         )
                     }
                     return@launch
@@ -415,7 +489,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                         lastSectionSyncAt = formattedNow(),
                         lastSyncSummary = sectionSummary(section.payload),
                         errorMessage = null,
-                        infoMessage = "Latest 60-minute section synced."
+                        infoMessage = "Latest available Health Connect section synced."
                     )
                 }
             } catch (e: Exception) {
@@ -536,6 +610,35 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private fun LatestReadingsResponse.hasAnyReading(): Boolean {
+        return heartRate != null || temperature != null || bloodPressure != null
+    }
+
+    private fun LatestReadingsResponse.hasAnyNonDemoReading(): Boolean {
+        return hasAnyReading() && listOfNotNull(
+            heartRate?.source,
+            temperature?.source,
+            bloodPressure?.source
+        ).none { it.contains("DEMO", ignoreCase = true) }
+    }
+
+    private fun LatestReadingsResponse.toUiTrendPoints(): List<VitalTrendPoint> {
+        val point = VitalTrendPoint(
+            heartRate = heartRate?.value,
+            systolic = bloodPressure?.systolic,
+            temperature = temperature?.value
+        )
+        return if (point.hasAnyReading()) {
+            listOf(point, point)
+        } else {
+            emptyList()
+        }
+    }
+
+    private fun VitalTrendPoint.hasAnyReading(): Boolean {
+        return heartRate != null || systolic != null || temperature != null
+    }
+
     private fun formatBloodPressure(systolic: Int?, diastolic: Int?): String {
         return if (systolic == null || diastolic == null) {
             "none"
@@ -570,7 +673,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private companion object {
-        const val DEFAULT_SECTION_WINDOW_MINUTES = 60L
+        const val DEFAULT_SECTION_WINDOW_MINUTES = 30L * 24L * 60L
         const val MAX_TREND_POINTS = 12
         val TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     }

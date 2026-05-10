@@ -17,6 +17,7 @@ import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
 import kotlinx.coroutines.launch
 import za.ac.tut.healthmonitor.mobile.health.HealthConnectManager
+import za.ac.tut.healthmonitor.mobile.health.SamsungHealthDataManager
 import za.ac.tut.healthmonitor.mobile.ui.AppScreen
 import za.ac.tut.healthmonitor.mobile.ui.AppViewModel
 import za.ac.tut.healthmonitor.mobile.ui.theme.HealthMonitorTheme
@@ -32,6 +33,7 @@ class MainActivity : ComponentActivity() {
             val uiState by appViewModel.uiState.collectAsState()
             val coroutineScope = rememberCoroutineScope()
             val healthManager = remember { HealthConnectManager(applicationContext) }
+            val samsungHealthDataManager = remember { SamsungHealthDataManager(applicationContext) }
             var afterPermissionGranted by remember { mutableStateOf<(() -> Unit)?>(null) }
 
             val permissionLauncher = rememberLauncherForActivityResult(
@@ -95,6 +97,27 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     },
+                    onOpenHealthConnect = ::openHealthConnectSettings,
+                    onOpenSamsungHealth = {
+                        if (!openInstalledApp(SAMSUNG_HEALTH_PACKAGE)) {
+                            openPlayStore(SAMSUNG_HEALTH_PACKAGE)
+                        }
+                    },
+                    onSyncSamsungHealth = {
+                        coroutineScope.launch {
+                            try {
+                                if (samsungHealthDataManager.requestHeartRatePermission(this@MainActivity)) {
+                                    appViewModel.syncSamsungHealthSection(samsungHealthDataManager)
+                                } else {
+                                    appViewModel.setInfoMessage("Samsung Health heart-rate permission was not granted.")
+                            }
+                        } catch (e: Exception) {
+                            if (!samsungHealthDataManager.resolveIfPossible(e, this@MainActivity)) {
+                                    appViewModel.setInfoMessage(samsungHealthDataManager.toUserMessage(e))
+                            }
+                        }
+                    }
+                    },
                     onStartDemoSync = appViewModel::startDemoSync,
                     onLogout = appViewModel::logout,
                     onSelectLanguage = appViewModel::selectLanguage,
@@ -117,8 +140,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun openHealthConnectInPlayStore() {
-        val uriString =
-            "market://details?id=com.google.android.apps.healthdata&url=healthconnect%3A%2F%2Fonboarding"
+        val uriString = "market://details?id=$HEALTH_CONNECT_PACKAGE&url=healthconnect%3A%2F%2Fonboarding"
         startActivity(
             Intent(Intent.ACTION_VIEW).apply {
                 setPackage("com.android.vending")
@@ -127,5 +149,37 @@ class MainActivity : ComponentActivity() {
                 putExtra("callerId", packageName)
             }
         )
+    }
+
+    private fun openHealthConnectSettings() {
+        val settingsIntent = Intent(HEALTH_CONNECT_SETTINGS_ACTION)
+        if (settingsIntent.resolveActivity(packageManager) != null) {
+            startActivity(settingsIntent)
+            return
+        }
+
+        if (!openInstalledApp(HEALTH_CONNECT_PACKAGE)) {
+            openHealthConnectInPlayStore()
+        }
+    }
+
+    private fun openInstalledApp(packageName: String): Boolean {
+        val launchIntent = packageManager.getLaunchIntentForPackage(packageName) ?: return false
+        startActivity(launchIntent)
+        return true
+    }
+
+    private fun openPlayStore(packageName: String) {
+        startActivity(
+            Intent(Intent.ACTION_VIEW).apply {
+                data = Uri.parse("market://details?id=$packageName")
+            }
+        )
+    }
+
+    private companion object {
+        const val HEALTH_CONNECT_PACKAGE = "com.google.android.apps.healthdata"
+        const val SAMSUNG_HEALTH_PACKAGE = "com.sec.android.app.shealth"
+        const val HEALTH_CONNECT_SETTINGS_ACTION = "android.health.connect.action.HEALTH_CONNECT_SETTINGS"
     }
 }

@@ -81,6 +81,9 @@ fun AppScreen(
     onRegister: () -> Unit,
     onRefresh: () -> Unit,
     onSyncLatestSection: () -> Unit,
+    onOpenHealthConnect: () -> Unit,
+    onOpenSamsungHealth: () -> Unit,
+    onSyncSamsungHealth: () -> Unit,
     onStartDemoSync: () -> Unit,
     onLogout: () -> Unit,
     onSelectLanguage: (String) -> Unit,
@@ -109,6 +112,9 @@ fun AppScreen(
                     uiState = uiState,
                     onRefresh = onRefresh,
                     onSyncLatestSection = onSyncLatestSection,
+                    onOpenHealthConnect = onOpenHealthConnect,
+                    onOpenSamsungHealth = onOpenSamsungHealth,
+                    onSyncSamsungHealth = onSyncSamsungHealth,
                     onStartDemoSync = onStartDemoSync,
                     onLogout = onLogout,
                     onSelectLanguage = onSelectLanguage,
@@ -339,6 +345,9 @@ private fun DashboardContent(
     uiState: AppUiState,
     onRefresh: () -> Unit,
     onSyncLatestSection: () -> Unit,
+    onOpenHealthConnect: () -> Unit,
+    onOpenSamsungHealth: () -> Unit,
+    onSyncSamsungHealth: () -> Unit,
     onStartDemoSync: () -> Unit,
     onLogout: () -> Unit,
     onSelectLanguage: (String) -> Unit,
@@ -383,6 +392,9 @@ private fun DashboardContent(
             uiState = uiState,
             onRefresh = onRefresh,
             onSyncLatestSection = onSyncLatestSection,
+            onOpenHealthConnect = onOpenHealthConnect,
+            onOpenSamsungHealth = onOpenSamsungHealth,
+            onSyncSamsungHealth = onSyncSamsungHealth,
             onStartDemoSync = onStartDemoSync,
             onLogout = onLogout
         )
@@ -628,6 +640,9 @@ private fun SyncActionsCard(
     uiState: AppUiState,
     onRefresh: () -> Unit,
     onSyncLatestSection: () -> Unit,
+    onOpenHealthConnect: () -> Unit,
+    onOpenSamsungHealth: () -> Unit,
+    onSyncSamsungHealth: () -> Unit,
     onStartDemoSync: () -> Unit,
     onLogout: () -> Unit
 ) {
@@ -635,10 +650,11 @@ private fun SyncActionsCard(
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Sync Actions", color = Color.White, fontWeight = FontWeight.Bold)
             Text(
-                text = "Section sync: imports the last 60 minutes from Health Connect",
+                text = "Section sync: imports Health Connect first, or Samsung Health directly for testing.",
                 color = Color(0xFFCFEBDD),
                 style = MaterialTheme.typography.bodyMedium
             )
+            HealthConnectChecklist()
             uiState.lastSectionSyncAt?.let {
                 Text("Last section sync: $it", color = Color(0xFFCFEBDD), style = MaterialTheme.typography.bodySmall)
             }
@@ -649,7 +665,21 @@ private fun SyncActionsCard(
                 onClick = onSyncLatestSection,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Sync Latest Section")
+                Text("Sync Health Connect")
+            }
+            Button(
+                onClick = onSyncSamsungHealth,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Sync Samsung Health")
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                TextButton(onClick = onOpenHealthConnect, modifier = Modifier.weight(1f)) {
+                    Text("Health Connect")
+                }
+                TextButton(onClick = onOpenSamsungHealth, modifier = Modifier.weight(1f)) {
+                    Text("Samsung Health")
+                }
             }
             Button(
                 onClick = onStartDemoSync,
@@ -663,6 +693,22 @@ private fun SyncActionsCard(
                 TextButton(onClick = onLogout, modifier = Modifier.weight(1f)) { Text("Logout") }
             }
         }
+    }
+}
+
+@Composable
+private fun HealthConnectChecklist() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0x1AFFFFFF), RoundedCornerShape(12.dp))
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Text("For real watch data:", color = Color.White, fontWeight = FontWeight.Bold)
+        Text("1. Samsung Health must write heart rate into Health Connect.", color = Color(0xFFCFEBDD), style = MaterialTheme.typography.bodySmall)
+        Text("2. Health Connect > Data and access > Heart rate must show an entry.", color = Color(0xFFCFEBDD), style = MaterialTheme.typography.bodySmall)
+        Text("3. Take a fresh heart-rate reading after permissions are enabled.", color = Color(0xFFCFEBDD), style = MaterialTheme.typography.bodySmall)
     }
 }
 

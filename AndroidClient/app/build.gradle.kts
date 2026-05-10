@@ -1,6 +1,7 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("kotlin-parcelize")
 }
 
 android {
@@ -9,7 +10,7 @@ android {
 
     defaultConfig {
         applicationId = "za.ac.tut.healthmonitor.mobile"
-        minSdk = 28
+        minSdk = 29
         targetSdk = 36
         versionCode = 3
         versionName = "1.2"
@@ -74,6 +75,7 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 
     implementation("androidx.health.connect:connect-client:1.1.0")
+    implementation(files("libs/samsung-health-data-api-1.1.0.aar"))
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.google.code.gson:gson:2.11.0")
 }

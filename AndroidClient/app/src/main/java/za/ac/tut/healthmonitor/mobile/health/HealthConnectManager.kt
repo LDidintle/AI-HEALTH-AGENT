@@ -337,7 +337,7 @@ class HealthConnectManager(
     }
 
     private companion object {
-        const val DEFAULT_SECTION_WINDOW_MINUTES = 60L
+        const val DEFAULT_SECTION_WINDOW_MINUTES = 30L * 24L * 60L
         const val MAX_TREND_POINTS = 12
     }
 }
