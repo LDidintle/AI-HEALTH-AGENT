@@ -56,6 +56,7 @@ const chartSeries = {
     systolic: [],
     temperature: []
 };
+let isSignedOut = false;
 
 document.addEventListener('DOMContentLoaded', () => {
     applyLanguage('en');
@@ -65,6 +66,11 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function refreshLatestReadings() {
+    if (isSignedOut) {
+        window.location.href = 'user_sign.html';
+        return;
+    }
+
     loadLatestReadings({ manual: true });
 }
 
@@ -311,11 +317,17 @@ function drawLine(ctx, data, color, padding, laneHeight, width, height, laneTop)
 function loadLatestReadings(options = {}) {
     setRefreshLoading(Boolean(options.manual));
     fetch('ReadingServlet.do', { headers: { Accept: 'application/json' } })
-        .then(response => response.json())
-        .then(data => {
+        .then(response => response.json().then(data => ({ status: response.status, data })))
+        .then(({ status, data }) => {
+            if (status === 401) {
+                showSignedOutState();
+                return;
+            }
+
+            isSignedOut = false;
             if (!data.success) {
                 clearLiveReadings();
-                updateSyncMeta(null);
+                updateSyncMeta(null, { signedOut: false });
                 return updateSyncStatus('Sign in and sync a phone health section to see readings.');
             }
             if (!hasAnyReading(data)) {
@@ -432,12 +444,17 @@ function updateSyncStatus(message) {
     setText('syncStatus', message);
 }
 
-function updateSyncMeta(section) {
+function updateSyncMeta(section, options = {}) {
     const element = document.getElementById('syncMeta');
     if (!element) return;
 
+    if (options.signedOut) {
+        element.innerHTML = '<span>You are not signed in on this browser. Sign in with the same account used by the Android app.</span>';
+        return;
+    }
+
     if (!section) {
-        element.innerHTML = '<span>No saved mobile section found yet. Sync from the Android app first.</span>';
+        element.innerHTML = '<span>No saved mobile section found for this account yet. Sync from the Android app first.</span>';
         return;
     }
 
@@ -463,8 +480,18 @@ function setRefreshLoading(isLoading) {
     const button = document.getElementById('refreshReadingsBtn');
     if (!button) return;
 
-    button.disabled = isLoading;
-    button.querySelector('span').textContent = isLoading ? 'Checking App Data...' : 'Refresh App Data';
+    button.disabled = isLoading && !isSignedOut;
+    button.querySelector('span').textContent = isSignedOut
+        ? 'Sign In to View App Data'
+        : (isLoading ? 'Checking App Data...' : 'Refresh App Data');
+}
+
+function showSignedOutState() {
+    isSignedOut = true;
+    clearLiveReadings();
+    updateSyncMeta(null, { signedOut: true });
+    updateSyncStatus('Sign in first. The dashboard can only load synced app data for the active patient account.');
+    setRefreshLoading(false);
 }
 
 function formatDateTime(value) {

@@ -298,6 +298,11 @@ body {
     text-align: center;
 }
 
+.sync-meta a {
+    color: var(--accent);
+    font-weight: 800;
+}
+
 .chat-btn {
     width: 100%;
     min-height: 48px;
