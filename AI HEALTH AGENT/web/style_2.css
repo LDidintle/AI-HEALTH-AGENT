@@ -260,6 +260,44 @@ body {
     height: 120px !important;
 }
 
+.sync-panel {
+    margin-bottom: 16px;
+}
+
+.sync-btn {
+    width: 100%;
+    min-height: 44px;
+    border: 0;
+    border-radius: 10px;
+    padding: 11px 14px;
+    color: #06130e;
+    background: linear-gradient(45deg, var(--primary), var(--accent));
+    font: inherit;
+    font-weight: 800;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.sync-btn:disabled {
+    cursor: wait;
+    opacity: 0.72;
+}
+
+.sync-meta {
+    margin-top: 8px;
+    padding: 10px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 10px;
+    color: #eef7ff;
+    background: rgba(255, 255, 255, 0.08);
+    font-size: 0.75rem;
+    line-height: 1.45;
+    text-align: center;
+}
+
 .chat-btn {
     width: 100%;
     min-height: 48px;

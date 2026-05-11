@@ -92,6 +92,16 @@
                 <canvas id="healthChart"></canvas>
             </div>
 
+            <div class="sync-panel">
+                <button class="sync-btn" type="button" id="refreshReadingsBtn" onclick="refreshLatestReadings()">
+                    <i class="fas fa-rotate"></i>
+                    <span>Refresh App Data</span>
+                </button>
+                <div class="sync-meta" id="syncMeta">
+                    <span>No app sync details loaded yet.</span>
+                </div>
+            </div>
+
             <button class="chat-btn top-chat" onclick="openChat()">
                 <i class="fas fa-microphone"></i>
                 <span id="chat_ai">Chat with AI</span>
@@ -158,6 +168,6 @@
         </div>
     </div>
 
-    <script src="script_2.js?v=show-latest-sync-20260511"></script>
+    <script src="script_2.js?v=show-latest-sync-20260511b"></script>
 </body>
 </html>

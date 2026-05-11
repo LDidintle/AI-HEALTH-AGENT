@@ -2,6 +2,7 @@ package za.ac.tut.web;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -53,6 +54,8 @@ public class ReadingServlet extends HttpServlet {
                         + "\"temperature\":" + (latestTemperature == null ? "null" : latestTemperature) + ","
                         + "\"bloodPressure\":" + (latestBloodPressure == null ? "null" : JsonUtil.quote(latestBloodPressure)) + ","
                         + "\"latestSyncedAt\":" + (latestSyncedAt == null ? "null" : JsonUtil.quote(latestSyncedAt.toInstant().toString())) + ","
+                        + "\"latestSection\":" + getLatestSectionJson(conn, userId) + ","
+                        + "\"trendPoints\":" + getTrendPointsJson(conn, userId) + ","
                         + "\"activeAlert\":" + activeAlertJson
                         + "}";
 
@@ -129,6 +132,74 @@ public class ReadingServlet extends HttpServlet {
         return null;
     }
 
+    private String getLatestSectionJson(Connection conn, int userId) throws Exception {
+        String sql = "SELECT h.source, h.window_start, h.window_end, h.heart_rate_count, "
+                + "h.temperature_count, h.blood_pressure_count, h.created_at, "
+                + "d.device_type, d.manufacturer, d.device_model "
+                + "FROM health_sync_sections h "
+                + "LEFT JOIN devices d ON h.device_id = d.device_id "
+                + "WHERE h.user_id = ? "
+                + "ORDER BY h.window_end DESC, h.section_id DESC LIMIT 1";
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return "{"
+                            + "\"source\":" + JsonUtil.quote(rs.getString("source")) + ","
+                            + "\"windowStart\":" + quoteTimestamp(rs.getTimestamp("window_start")) + ","
+                            + "\"windowEnd\":" + quoteTimestamp(rs.getTimestamp("window_end")) + ","
+                            + "\"heartRateCount\":" + rs.getInt("heart_rate_count") + ","
+                            + "\"temperatureCount\":" + rs.getInt("temperature_count") + ","
+                            + "\"bloodPressureCount\":" + rs.getInt("blood_pressure_count") + ","
+                            + "\"createdAt\":" + quoteTimestamp(rs.getTimestamp("created_at")) + ","
+                            + "\"deviceType\":" + JsonUtil.quote(rs.getString("device_type")) + ","
+                            + "\"manufacturer\":" + JsonUtil.quote(rs.getString("manufacturer")) + ","
+                            + "\"deviceModel\":" + JsonUtil.quote(rs.getString("device_model"))
+                            + "}";
+                }
+            }
+        }
+
+        return "null";
+    }
+
+    private String getTrendPointsJson(Connection conn, int userId) throws Exception {
+        String sql = "SELECT heart_rate_latest, systolic_latest, diastolic_latest, "
+                + "temperature_latest, window_end "
+                + "FROM ("
+                + "SELECT heart_rate_latest, systolic_latest, diastolic_latest, temperature_latest, window_end, section_id "
+                + "FROM health_sync_sections WHERE user_id = ? "
+                + "ORDER BY window_end DESC, section_id DESC LIMIT 12"
+                + ") latest_sections ORDER BY window_end ASC";
+
+        StringBuilder json = new StringBuilder("[");
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                boolean first = true;
+                while (rs.next()) {
+                    if (!first) {
+                        json.append(",");
+                    }
+                    first = false;
+
+                    json.append("{")
+                            .append("\"heartRate\":").append(nullableInteger(rs, "heart_rate_latest")).append(",")
+                            .append("\"systolic\":").append(nullableInteger(rs, "systolic_latest")).append(",")
+                            .append("\"diastolic\":").append(nullableInteger(rs, "diastolic_latest")).append(",")
+                            .append("\"temperature\":").append(nullableDecimal(rs, "temperature_latest")).append(",")
+                            .append("\"recordedAt\":").append(quoteTimestamp(rs.getTimestamp("window_end")))
+                            .append("}");
+                }
+            }
+        }
+        json.append("]");
+        return json.toString();
+    }
+
     private Timestamp getLatestSyncedAt(Connection conn, int userId) throws Exception {
         String sql = "SELECT MAX(synced_at) AS latest_synced_at FROM ("
                 + "SELECT synced_at FROM pulse_readings WHERE user_id = ? "
@@ -176,6 +247,20 @@ public class ReadingServlet extends HttpServlet {
         }
 
         return "null";
+    }
+
+    private String nullableInteger(ResultSet rs, String column) throws Exception {
+        Object value = rs.getObject(column);
+        return value == null ? "null" : String.valueOf(rs.getInt(column));
+    }
+
+    private String nullableDecimal(ResultSet rs, String column) throws Exception {
+        BigDecimal value = rs.getBigDecimal(column);
+        return value == null ? "null" : value.toPlainString();
+    }
+
+    private String quoteTimestamp(Timestamp timestamp) {
+        return timestamp == null ? "null" : JsonUtil.quote(timestamp.toInstant().toString());
     }
 
     private void writeJson(HttpServletResponse response, String json) throws IOException {

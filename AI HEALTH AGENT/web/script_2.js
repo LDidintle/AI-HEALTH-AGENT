@@ -60,9 +60,13 @@ const chartSeries = {
 document.addEventListener('DOMContentLoaded', () => {
     applyLanguage('en');
     initChart();
-    loadLatestReadings();
+    loadLatestReadings({ manual: false });
     setInterval(loadLatestReadings, LIVE_REFRESH_INTERVAL_MS);
 });
+
+function refreshLatestReadings() {
+    loadLatestReadings({ manual: true });
+}
 
 function selectTab(button) {
     document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
@@ -261,12 +265,12 @@ function drawChart(ctx, width, height, series) {
     });
 }
 
-function drawEmptyChartMessage(ctx, width, height) {
+function drawEmptyChartMessage(ctx, width, height, message = 'Waiting for synced section readings') {
     ctx.fillStyle = '#5a6680';
     ctx.font = '600 14px Poppins, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('Waiting for synced section readings', width / 2, height / 2);
+    ctx.fillText(message, width / 2, height / 2);
 }
 
 function drawGridLine(ctx, x1, y1, x2, y2) {
@@ -277,6 +281,13 @@ function drawGridLine(ctx, x1, y1, x2, y2) {
 }
 
 function drawLine(ctx, data, color, padding, laneHeight, width, height, laneTop) {
+    if (data.length === 1) {
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(width / 2, laneTop + laneHeight / 2, 4, 0, Math.PI * 2);
+        ctx.fill();
+        return;
+    }
     if (data.length < 2) return;
     const step = (width - padding * 2) / (data.length - 1);
     const min = Math.min(...data);
@@ -297,16 +308,19 @@ function drawLine(ctx, data, color, padding, laneHeight, width, height, laneTop)
     ctx.stroke();
 }
 
-function loadLatestReadings() {
+function loadLatestReadings(options = {}) {
+    setRefreshLoading(Boolean(options.manual));
     fetch('ReadingServlet.do', { headers: { Accept: 'application/json' } })
         .then(response => response.json())
         .then(data => {
             if (!data.success) {
                 clearLiveReadings();
+                updateSyncMeta(null);
                 return updateSyncStatus('Sign in and sync a phone health section to see readings.');
             }
             if (!hasAnyReading(data)) {
                 clearLiveReadings();
+                updateSyncMeta(data.latestSection);
                 return updateSyncStatus('No synced app data found yet. Sync from the mobile app, then refresh this dashboard.');
             }
 
@@ -315,11 +329,16 @@ function loadLatestReadings() {
             setText('temperatureValue', data.temperature === null ? '--' : data.temperature);
             updateChartSeries(data);
             updateAlertBanner(data);
+            updateSyncMeta(data.latestSection);
             updateSyncStatus(buildSyncStatus(data.latestSyncedAt));
         })
         .catch(() => {
             clearLiveReadings();
+            updateSyncMeta(null);
             updateSyncStatus('Unable to load synced section readings from the server.');
+        })
+        .finally(() => {
+            setRefreshLoading(false);
         });
 }
 
@@ -341,6 +360,20 @@ function buildSyncStatus(latestSyncedAt) {
 }
 
 function updateChartSeries(data) {
+    if (Array.isArray(data.trendPoints) && data.trendPoints.length > 0) {
+        chartSeries.heartRate = data.trendPoints
+            .map(point => Number(point.heartRate))
+            .filter(Number.isFinite);
+        chartSeries.systolic = data.trendPoints
+            .map(point => Number(point.systolic))
+            .filter(Number.isFinite);
+        chartSeries.temperature = data.trendPoints
+            .map(point => Number(point.temperature))
+            .filter(Number.isFinite);
+        redrawChart();
+        return;
+    }
+
     if (data.heartRate !== null) appendChartPoint(chartSeries.heartRate, Number(data.heartRate));
 
     const bloodPressureMatch = String(data.bloodPressure || '').match(/(\d+)\s*\/\s*(\d+)/);
@@ -397,6 +430,47 @@ function updateAlertBanner(data) {
 
 function updateSyncStatus(message) {
     setText('syncStatus', message);
+}
+
+function updateSyncMeta(section) {
+    const element = document.getElementById('syncMeta');
+    if (!element) return;
+
+    if (!section) {
+        element.innerHTML = '<span>No saved mobile section found yet. Sync from the Android app first.</span>';
+        return;
+    }
+
+    const device = [section.manufacturer, section.deviceModel || section.deviceType]
+        .filter(Boolean)
+        .join(' ');
+    const windowEnd = formatDateTime(section.windowEnd);
+    const counts = [
+        `${section.heartRateCount || 0} heart`,
+        `${section.bloodPressureCount || 0} BP`,
+        `${section.temperatureCount || 0} temp`
+    ].join(' · ');
+
+    element.innerHTML = [
+        `<strong>${safe(section.source || 'APP_SYNC')}</strong>`,
+        device ? safe(device) : 'Mobile app',
+        windowEnd ? `Last section: ${safe(windowEnd)}` : '',
+        safe(counts)
+    ].filter(Boolean).join('<br>');
+}
+
+function setRefreshLoading(isLoading) {
+    const button = document.getElementById('refreshReadingsBtn');
+    if (!button) return;
+
+    button.disabled = isLoading;
+    button.querySelector('span').textContent = isLoading ? 'Checking App Data...' : 'Refresh App Data';
+}
+
+function formatDateTime(value) {
+    if (!value) return '';
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? '' : date.toLocaleString();
 }
 
 function parseNumberFromElement(id) {
