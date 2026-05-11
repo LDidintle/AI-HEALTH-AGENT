@@ -26,6 +26,7 @@ data class AppUiState(
     val signupFirstName: String = "",
     val signupSurname: String = "",
     val signupEmail: String = "",
+    val signupDob: String = "",
     val signupPassword: String = "",
     val signupConfirmPassword: String = "",
     val authScreen: AuthScreen = AuthScreen.Login,

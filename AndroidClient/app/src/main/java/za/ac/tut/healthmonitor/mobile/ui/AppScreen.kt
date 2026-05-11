@@ -75,6 +75,7 @@ fun AppScreen(
     onSignupFirstNameChanged: (String) -> Unit,
     onSignupSurnameChanged: (String) -> Unit,
     onSignupEmailChanged: (String) -> Unit,
+    onSignupDobChanged: (String) -> Unit,
     onSignupPasswordChanged: (String) -> Unit,
     onSignupConfirmPasswordChanged: (String) -> Unit,
     onLogin: () -> Unit,
@@ -147,6 +148,7 @@ fun AppScreen(
                         onFirstNameChanged = onSignupFirstNameChanged,
                         onSurnameChanged = onSignupSurnameChanged,
                         onEmailChanged = onSignupEmailChanged,
+                        onDobChanged = onSignupDobChanged,
                         onPasswordChanged = onSignupPasswordChanged,
                         onConfirmPasswordChanged = onSignupConfirmPasswordChanged,
                         onRegister = onRegister,
@@ -259,6 +261,7 @@ private fun SignupContent(
     onFirstNameChanged: (String) -> Unit,
     onSurnameChanged: (String) -> Unit,
     onEmailChanged: (String) -> Unit,
+    onDobChanged: (String) -> Unit,
     onPasswordChanged: (String) -> Unit,
     onConfirmPasswordChanged: (String) -> Unit,
     onRegister: () -> Unit,
@@ -281,6 +284,7 @@ private fun SignupContent(
                 AccountField("First Name *", uiState.signupFirstName, onFirstNameChanged)
                 AccountField("Surname *", uiState.signupSurname, onSurnameChanged)
                 AccountField("Email *", uiState.signupEmail, onEmailChanged, keyboardType = KeyboardType.Email)
+                AccountField("Date of Birth *", uiState.signupDob, onDobChanged, placeholder = "YYYY-MM-DD")
                 AccountField("Password *", uiState.signupPassword, onPasswordChanged, keyboardType = KeyboardType.Password, isPassword = true)
                 AccountField("Confirm Password *", uiState.signupConfirmPassword, onConfirmPasswordChanged, keyboardType = KeyboardType.Password, isPassword = true)
                 Button(onClick = onRegister, modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(vertical = 14.dp)) { Text("Create Account") }

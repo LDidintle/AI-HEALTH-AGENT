@@ -2,6 +2,7 @@ package za.ac.tut.web;
 
 import java.io.IOException;
 import java.sql.Connection;
+import java.sql.Date;
 import java.sql.PreparedStatement;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -20,14 +21,25 @@ public class UpdateUserServlet extends HttpServlet {
             int id = Integer.parseInt(request.getParameter("id"));
             String cellNumber = request.getParameter("cell_number");
             String emergencyNumber = request.getParameter("emergency_contact_number");
+            String idNumber = PatientValidation.trimToNull(request.getParameter("id_number"));
+            String dobText = PatientValidation.trimToNull(request.getParameter("dob"));
             boolean verified = "true".equals(request.getParameter("is_verified"));
             boolean hasCellNumber = PatientValidation.trimToNull(cellNumber) != null;
             boolean hasEmergencyNumber = PatientValidation.trimToNull(emergencyNumber) != null;
+            Date dateOfBirth = PatientValidation.parseDateOfBirth(dobText);
 
             if ((hasCellNumber && !PatientValidation.isValidSouthAfricanPhone(cellNumber))
                     || (hasEmergencyNumber && !PatientValidation.isValidSouthAfricanPhone(emergencyNumber))
                     || PatientValidation.samePhone(cellNumber, emergencyNumber)) {
                 throw new ServletException("Phone numbers must be valid South African numbers and must not be the same.");
+            }
+
+            if (dobText != null && dateOfBirth == null) {
+                throw new ServletException("Date of birth must be a real past date.");
+            }
+
+            if (idNumber != null && !PatientValidation.isValidIdNumber(idNumber)) {
+                throw new ServletException("South African ID number must be 13 digits.");
             }
 
             String sql = "UPDATE users SET title=?, first_name=?, surname=?, dob=?, gender=?, marital_status=?, "
@@ -40,12 +52,12 @@ public class UpdateUserServlet extends HttpServlet {
                 ps.setString(1, request.getParameter("title"));
                 ps.setString(2, request.getParameter("first_name"));
                 ps.setString(3, request.getParameter("surname"));
-                ps.setString(4, request.getParameter("dob"));
+                ps.setDate(4, dateOfBirth);
                 ps.setString(5, request.getParameter("gender"));
                 ps.setString(6, request.getParameter("marital_status"));
                 ps.setString(7, request.getParameter("email"));
                 ps.setString(8, PatientValidation.normalizePhone(cellNumber));
-                ps.setString(9, request.getParameter("id_number"));
+                ps.setString(9, idNumber);
                 ps.setString(10, request.getParameter("emergency_contact_name"));
                 ps.setString(11, PatientValidation.normalizePhone(emergencyNumber));
                 ps.setString(12, request.getParameter("blood_group"));

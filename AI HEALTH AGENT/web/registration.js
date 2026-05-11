@@ -14,7 +14,7 @@ const termsCheckbox = document.getElementById('termsCheckbox');
 const submitBtn = document.getElementById('submitBtn');
 
 if (dobInput) {
-    dobInput.max = new Date().toISOString().split('T')[0];
+    setLatestAllowedDateOfBirth(dobInput);
 }
 
 /* ================= LOCATION ================= */
@@ -196,11 +196,11 @@ document.querySelector('form').addEventListener('submit', event => {
             );
         }
 
-        if (dob > today) {
+        if (dob >= today) {
 
             return stopSubmit(
                 event,
-                'Date of Birth cannot be in the future!'
+                'Date of Birth must be before today.'
             );
         }
     }

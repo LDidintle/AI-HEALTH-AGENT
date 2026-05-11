@@ -38,12 +38,14 @@ class BackendApiClient(
         firstName: String,
         surname: String,
         email: String,
+        dob: String,
         password: String
     ): LoginResponse {
         val body = FormBody.Builder()
             .add("firstName", firstName)
             .add("surname", surname)
             .add("email", email)
+            .add("dob", dob)
             .add("password", password)
             .build()
 

@@ -1,6 +1,11 @@
 package za.ac.tut.util;
 
+import java.sql.Date;
+import java.time.LocalDate;
+
 public final class PatientValidation {
+
+    private static final int MAX_PATIENT_AGE_YEARS = 120;
 
     private PatientValidation() {
     }
@@ -41,5 +46,28 @@ public final class PatientValidation {
     public static boolean isValidIdNumber(String value) {
         String trimmed = trimToNull(value);
         return trimmed != null && trimmed.matches("[0-9]{13}");
+    }
+
+    public static Date parseDateOfBirth(String value) {
+        String trimmed = trimToNull(value);
+        if (trimmed == null) {
+            return null;
+        }
+
+        try {
+            LocalDate dateOfBirth = LocalDate.parse(trimmed);
+            LocalDate today = LocalDate.now();
+            if (!dateOfBirth.isBefore(today) || dateOfBirth.isBefore(today.minusYears(MAX_PATIENT_AGE_YEARS))) {
+                return null;
+            }
+
+            return Date.valueOf(dateOfBirth);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    public static boolean isValidDateOfBirth(String value) {
+        return parseDateOfBirth(value) != null;
     }
 }

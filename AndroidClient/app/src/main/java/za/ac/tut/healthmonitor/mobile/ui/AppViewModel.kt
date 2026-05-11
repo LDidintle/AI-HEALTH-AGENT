@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.Instant
+import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
@@ -67,6 +68,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.update { it.copy(signupEmail = value) }
     }
 
+    fun updateSignupDob(value: String) {
+        _uiState.update { it.copy(signupDob = value) }
+    }
+
     fun updateSignupPassword(value: String) {
         _uiState.update { it.copy(signupPassword = value) }
     }
@@ -118,6 +123,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             currentState.signupFirstName,
             currentState.signupSurname,
             currentState.signupEmail,
+            currentState.signupDob,
             currentState.signupPassword,
             currentState.signupConfirmPassword
         )
@@ -132,11 +138,17 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
+        if (!isValidDateOfBirth(currentState.signupDob.trim())) {
+            _uiState.update { it.copy(errorMessage = "Date of birth must be before today. Use YYYY-MM-DD.") }
+            return
+        }
+
         launchLoadingTask {
             repository.register(
                 firstName = currentState.signupFirstName.trim(),
                 surname = currentState.signupSurname.trim(),
                 email = currentState.signupEmail.trim(),
+                dob = currentState.signupDob.trim(),
                 password = currentState.signupPassword
             )
 
@@ -145,12 +157,23 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     authScreen = AuthScreen.Login,
                     email = currentState.signupEmail.trim(),
                     password = "",
+                    signupDob = "",
                     signupPassword = "",
                     signupConfirmPassword = "",
                     errorMessage = null,
                     infoMessage = "Account created. Staff can verify it from the patient directory."
                 )
             }
+        }
+    }
+
+    private fun isValidDateOfBirth(value: String): Boolean {
+        return try {
+            val dateOfBirth = LocalDate.parse(value)
+            val today = LocalDate.now()
+            dateOfBirth.isBefore(today) && !dateOfBirth.isBefore(today.minusYears(120))
+        } catch (exception: Exception) {
+            false
         }
     }
 
@@ -363,6 +386,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         val state = _uiState.value
         if (state.editFirstName.isBlank() || state.editSurname.isBlank()) {
             _uiState.update { it.copy(errorMessage = "First name and surname are required.") }
+            return
+        }
+
+        if (state.editDob.isNotBlank() && !isValidDateOfBirth(state.editDob.trim())) {
+            _uiState.update { it.copy(errorMessage = "Date of birth must be before today. Use YYYY-MM-DD.") }
             return
         }
 

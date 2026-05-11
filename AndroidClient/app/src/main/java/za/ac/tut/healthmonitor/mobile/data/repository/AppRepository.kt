@@ -20,12 +20,14 @@ class AppRepository(
         firstName: String,
         surname: String,
         email: String,
+        dob: String,
         password: String
     ): LoginResponse {
         return backendApiClient.register(
             firstName = firstName,
             surname = surname,
             email = email,
+            dob = dob,
             password = password
         )
     }

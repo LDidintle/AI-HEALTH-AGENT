@@ -107,6 +107,7 @@ class MainActivity : ComponentActivity() {
                     onSignupFirstNameChanged = appViewModel::updateSignupFirstName,
                     onSignupSurnameChanged = appViewModel::updateSignupSurname,
                     onSignupEmailChanged = appViewModel::updateSignupEmail,
+                    onSignupDobChanged = appViewModel::updateSignupDob,
                     onSignupPasswordChanged = appViewModel::updateSignupPassword,
                     onSignupConfirmPasswordChanged = appViewModel::updateSignupConfirmPassword,
                     onLogin = appViewModel::login,

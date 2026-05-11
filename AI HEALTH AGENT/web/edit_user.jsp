@@ -83,5 +83,9 @@
             </div>
         </form>
     </main>
+    <script src="patient-date.js"></script>
+    <script>
+        setLatestAllowedDateOfBirth(document.getElementById('dob'));
+    </script>
 </body>
 </html>

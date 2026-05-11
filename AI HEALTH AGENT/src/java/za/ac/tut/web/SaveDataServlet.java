@@ -12,6 +12,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
+import za.ac.tut.util.PatientValidation;
 
 /**
  *
@@ -29,9 +30,10 @@ public class SaveDataServlet extends HttpServlet {
         String name = trimToNull(request.getParameter("first_name"));
         String surname = trimToNull(request.getParameter("surname"));
         String email = trimToNull(request.getParameter("email"));
+        String dob = trimToNull(request.getParameter("dob"));
 
-        if (isBlank(name) || isBlank(surname) || isBlank(email)) {
-            reject(request, response, "Please enter your name, surname, and email address.");
+        if (isBlank(name) || isBlank(surname) || isBlank(email) || isBlank(dob)) {
+            reject(request, response, "Please enter your name, surname, email address, and date of birth.");
             return;
         }
 
@@ -39,11 +41,17 @@ public class SaveDataServlet extends HttpServlet {
             reject(request, response, "Please enter a valid email address.");
             return;
         }
+
+        if (!PatientValidation.isValidDateOfBirth(dob)) {
+            reject(request, response, "Date of birth must be a real past date.");
+            return;
+        }
 	        
         session.setAttribute("title", title);
         session.setAttribute("name", name);
         session.setAttribute("surname", surname);
         session.setAttribute("email", email);
+        session.setAttribute("dob", dob);
         
         
         RequestDispatcher disp = request.getRequestDispatcher("password.jsp");

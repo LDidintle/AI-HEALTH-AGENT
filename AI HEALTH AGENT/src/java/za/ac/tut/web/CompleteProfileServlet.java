@@ -5,7 +5,6 @@ import java.sql.Connection;
 import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.time.LocalDate;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -69,9 +68,9 @@ public class CompleteProfileServlet extends HttpServlet {
             return;
         }
 
-        Date dob = parseDob(request.getParameter("dob"));
+        Date dob = PatientValidation.parseDateOfBirth(request.getParameter("dob"));
         if (!isBlank(request.getParameter("dob")) && dob == null) {
-            reject(request, response, userId, "Please enter a valid date of birth.");
+            reject(request, response, userId, "Date of birth must be a real past date.");
             return;
         }
 
@@ -163,23 +162,6 @@ public class CompleteProfileServlet extends HttpServlet {
         }
 
         return Integer.valueOf(String.valueOf(session.getAttribute("userId")));
-    }
-
-    private Date parseDob(String value) {
-        String trimmed = trimToNull(value);
-        if (trimmed == null) {
-            return null;
-        }
-
-        try {
-            LocalDate dob = LocalDate.parse(trimmed);
-            if (dob.isAfter(LocalDate.now())) {
-                return null;
-            }
-            return Date.valueOf(dob);
-        } catch (Exception e) {
-            return null;
-        }
     }
 
     private static boolean isBlank(Object value) {

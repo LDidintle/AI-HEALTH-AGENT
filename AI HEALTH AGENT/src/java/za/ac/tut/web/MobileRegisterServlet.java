@@ -3,6 +3,7 @@ package za.ac.tut.web;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
+import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLIntegrityConstraintViolationException;
@@ -13,6 +14,7 @@ import javax.servlet.http.HttpServletResponse;
 import za.ac.tut.model.PasswordUtils;
 import za.ac.tut.util.Database;
 import za.ac.tut.util.JsonUtil;
+import za.ac.tut.util.PatientValidation;
 
 public class MobileRegisterServlet extends HttpServlet {
 
@@ -24,11 +26,19 @@ public class MobileRegisterServlet extends HttpServlet {
         String firstName = trimToNull(request.getParameter("firstName"));
         String surname = trimToNull(request.getParameter("surname"));
         String email = trimToNull(request.getParameter("email"));
+        String dobText = trimToNull(request.getParameter("dob"));
         String password = trimToNull(request.getParameter("password"));
 
-        if (firstName == null || surname == null || email == null || password == null) {
+        if (firstName == null || surname == null || email == null || dobText == null || password == null) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            writeJson(response, "{\"success\":false,\"message\":\"firstName, surname, email and password are required.\"}");
+            writeJson(response, "{\"success\":false,\"message\":\"firstName, surname, email, dob and password are required.\"}");
+            return;
+        }
+
+        Date dateOfBirth = PatientValidation.parseDateOfBirth(dobText);
+        if (dateOfBirth == null) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            writeJson(response, "{\"success\":false,\"message\":\"Date of birth must be a real past date.\"}");
             return;
         }
 
@@ -50,8 +60,8 @@ public class MobileRegisterServlet extends HttpServlet {
                 conn.setAutoCommit(false);
 
                 String userSql = "INSERT INTO users "
-                        + "(title, first_name, surname, email, is_verified) "
-                        + "VALUES ('Patient', ?, ?, ?, FALSE)";
+                        + "(title, first_name, surname, dob, email, is_verified) "
+                        + "VALUES ('Patient', ?, ?, ?, ?, FALSE)";
                 String authSql = "INSERT INTO user_auth (user_id, password_hash) VALUES (?, ?)";
 
                 try (
@@ -60,7 +70,8 @@ public class MobileRegisterServlet extends HttpServlet {
 
                     userStatement.setString(1, firstName);
                     userStatement.setString(2, surname);
-                    userStatement.setString(3, email);
+                    userStatement.setDate(3, dateOfBirth);
+                    userStatement.setString(4, email);
 
                     userStatement.executeUpdate();
 

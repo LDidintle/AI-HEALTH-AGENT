@@ -7,6 +7,7 @@ import javax.servlet.ServletException;
 import javax.servlet.http.*;
 import za.ac.tut.model.PasswordUtils;
 import za.ac.tut.util.Database;
+import za.ac.tut.util.PatientValidation;
 
 public class TestServlet extends HttpServlet {
 
@@ -27,9 +28,17 @@ public class TestServlet extends HttpServlet {
             String name = (String) session.getAttribute("name");
             String surname = (String) session.getAttribute("surname");
             String email = (String) session.getAttribute("email");
+            String dob = (String) session.getAttribute("dob");
 
-            if (isBlank(name) || isBlank(surname) || isBlank(email)) {
+            if (isBlank(name) || isBlank(surname) || isBlank(email) || isBlank(dob)) {
                 response.sendRedirect("welcome.html");
+                return;
+            }
+
+            Date dateOfBirth = PatientValidation.parseDateOfBirth(dob);
+            if (dateOfBirth == null) {
+                request.setAttribute("error", "Date of birth must be a real past date.");
+                request.getRequestDispatcher("password.jsp").forward(request, response);
                 return;
             }
 
@@ -52,8 +61,8 @@ public class TestServlet extends HttpServlet {
 
        
             String sqlUser = "INSERT INTO users "
-                    + "(title, first_name, surname, email, is_verified) "
-                    + "VALUES (?, ?, ?, ?, FALSE)";
+                    + "(title, first_name, surname, dob, email, is_verified) "
+                    + "VALUES (?, ?, ?, ?, ?, FALSE)";
             String sqlAuth = "INSERT INTO user_auth (user_id, password_hash) VALUES (?, ?)";
 
             
@@ -67,7 +76,8 @@ public class TestServlet extends HttpServlet {
                     psUser.setString(1, title);
                     psUser.setString(2, name);
                     psUser.setString(3, surname);
-                    psUser.setString(4, email);
+                    psUser.setDate(4, dateOfBirth);
+                    psUser.setString(5, email);
 
                     int rowsInserted = psUser.executeUpdate();
                     if (rowsInserted == 0) {

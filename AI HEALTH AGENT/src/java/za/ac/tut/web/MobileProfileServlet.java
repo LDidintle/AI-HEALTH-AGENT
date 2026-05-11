@@ -2,7 +2,6 @@ package za.ac.tut.web;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.time.LocalDate;
 import java.sql.Connection;
 import java.sql.Date;
 import java.sql.PreparedStatement;
@@ -116,10 +115,10 @@ public class MobileProfileServlet extends HttpServlet {
             return;
         }
 
-        Date dob = parseDob(dobText);
+        Date dob = PatientValidation.parseDateOfBirth(dobText);
         if (dobText != null && dob == null) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            writeJson(response, "{\"success\":false,\"message\":\"Date of birth must be a valid past date.\"}");
+            writeJson(response, "{\"success\":false,\"message\":\"Date of birth must be a real past date.\"}");
             return;
         }
 
@@ -196,22 +195,6 @@ public class MobileProfileServlet extends HttpServlet {
 
     private String dateToString(Date date) {
         return date == null ? null : date.toString();
-    }
-
-    private Date parseDob(String value) {
-        if (value == null) {
-            return null;
-        }
-
-        try {
-            LocalDate dob = LocalDate.parse(value);
-            if (dob.isAfter(LocalDate.now())) {
-                return null;
-            }
-            return Date.valueOf(dob);
-        } catch (Exception e) {
-            return null;
-        }
     }
 
     private void writeJson(HttpServletResponse response, String json) throws IOException {
