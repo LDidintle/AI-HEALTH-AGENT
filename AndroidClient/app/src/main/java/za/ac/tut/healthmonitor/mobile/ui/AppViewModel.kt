@@ -20,6 +20,7 @@ import kotlin.random.Random
 import za.ac.tut.healthmonitor.mobile.data.model.BloodPressureValue
 import za.ac.tut.healthmonitor.mobile.data.model.BackendProfile
 import za.ac.tut.healthmonitor.mobile.data.model.HealthSectionSyncPayload
+import za.ac.tut.healthmonitor.mobile.data.model.HealthSyncPayload
 import za.ac.tut.healthmonitor.mobile.data.model.LatestReadingsResponse
 import za.ac.tut.healthmonitor.mobile.data.model.ReadingValue
 import za.ac.tut.healthmonitor.mobile.data.model.TemperatureValue
@@ -642,7 +643,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private fun persistSection(payload: HealthSectionSyncPayload) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                repository.syncHealthSection(payload, currentUserEmail())
+                val email = currentUserEmail()
+                try {
+                    repository.syncHealthSection(payload, email)
+                } catch (sectionError: Exception) {
+                    repository.syncReadings(payload.toHealthSyncPayload(), email)
+                }
             } catch (_: Exception) {
                 _uiState.update {
                     it.copy(errorMessage = "Section displayed, but saving to the database failed.")
@@ -655,6 +661,21 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         val state = _uiState.value
         return state.userProfile?.email?.takeIf { it.isNotBlank() }
             ?: state.email.takeIf { it.isNotBlank() }
+    }
+
+    private fun HealthSectionSyncPayload.toHealthSyncPayload(): HealthSyncPayload {
+        return HealthSyncPayload(
+            heartRate = heartRateLatest,
+            temperature = temperatureLatest,
+            systolic = systolicLatest,
+            diastolic = diastolicLatest,
+            source = source,
+            recordedAt = windowEnd,
+            externalRecordId = "section-${windowEnd}",
+            deviceType = deviceType,
+            deviceManufacturer = deviceManufacturer,
+            deviceModel = deviceModel
+        )
     }
 
     private fun HealthSectionSyncPayload.toLatestReadings(): LatestReadingsResponse {

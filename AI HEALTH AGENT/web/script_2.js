@@ -260,7 +260,7 @@ function drawChart(ctx, width, height, series) {
     for (let i = 0; i <= 4; i++) drawGridLine(ctx, padding, padding + chartHeight * i / 4, width - padding, padding + chartHeight * i / 4);
     for (let i = 0; i <= 6; i++) drawGridLine(ctx, padding + chartWidth * i / 6, padding, padding + chartWidth * i / 6, height - padding);
 
-    if (!series.some(item => item.values.length > 1)) {
+    if (!series.some(item => item.values.length > 0)) {
         drawEmptyChartMessage(ctx, width, height);
         return;
     }
@@ -340,7 +340,8 @@ function loadLatestReadings(options = {}) {
             setText('temperatureValue', data.temperature === null ? '--' : data.temperature);
             updateChartSeries(data);
             updateAlertBanner(data);
-            updateSyncMeta(data.latestSection);
+            updateWellnessSuggestions(data);
+            updateSyncMeta(data.latestSection, { hasReadings: true });
             updateSyncStatus(buildSyncStatus(data.latestSyncedAt));
         })
         .catch(() => {
@@ -524,6 +525,10 @@ function updateSyncMeta(section, options = {}) {
     }
 
     if (!section) {
+        if (options.hasReadings) {
+            element.innerHTML = '<span>Showing latest saved app readings. Section trend details are not available on this deployment.</span>';
+            return;
+        }
         element.innerHTML = '<span>No saved mobile section found for this account yet. Sync from the Android app first.</span>';
         return;
     }
@@ -544,6 +549,55 @@ function updateSyncMeta(section, options = {}) {
         windowEnd ? `Last section: ${safe(windowEnd)}` : '',
         safe(counts)
     ].filter(Boolean).join('<br>');
+}
+
+function updateWellnessSuggestions(data) {
+    const heartRate = data.heartRate === null ? null : Number(data.heartRate);
+    const temperature = data.temperature === null ? null : Number(data.temperature);
+    const bloodPressureMatch = String(data.bloodPressure || '').match(/(\d+)\s*\/\s*(\d+)/);
+    const systolic = bloodPressureMatch ? Number(bloodPressureMatch[1]) : null;
+    const diastolic = bloodPressureMatch ? Number(bloodPressureMatch[2]) : null;
+    const suggestions = [];
+
+    if (heartRate !== null) {
+        if (heartRate < 60) {
+            suggestions.push(`Heart rate is ${heartRate} BPM, which is low for many adults. Rest and contact staff if you feel dizzy, weak, faint, or short of breath.`);
+        } else if (heartRate > 100) {
+            suggestions.push(`Heart rate is ${heartRate} BPM, which is high for a resting reading. Sit quietly, recheck it, and contact staff if it stays high.`);
+        } else {
+            suggestions.push(`Heart rate is ${heartRate} BPM, which is within a common resting range. Keep watching the trend and symptoms.`);
+        }
+    }
+
+    if (systolic !== null && diastolic !== null) {
+        if (systolic < 90 || diastolic < 60) {
+            suggestions.push(`Blood pressure is ${systolic}/${diastolic} mmHg, which is low. Hydrate if appropriate and seek help if you feel dizzy, faint, confused, or weak.`);
+        } else if (systolic >= 140 || diastolic >= 90) {
+            suggestions.push(`Blood pressure is ${systolic}/${diastolic} mmHg, which is high. Recheck after resting and share it with doctor/staff if it remains high.`);
+        } else {
+            suggestions.push(`Blood pressure is ${systolic}/${diastolic} mmHg. It does not look severely abnormal from this single reading.`);
+        }
+    }
+
+    if (temperature !== null) {
+        if (temperature >= 38) {
+            suggestions.push(`Temperature is ${temperature.toFixed(1)} C, which may indicate fever. Rest, hydrate, and contact staff if symptoms continue.`);
+        } else if (temperature < 35.5) {
+            suggestions.push(`Temperature is ${temperature.toFixed(1)} C, which is low. Warm up safely and seek help if you feel very cold or confused.`);
+        }
+    }
+
+    while (suggestions.length < 2) {
+        suggestions.push('Keep monitoring symptoms and sync again after your next phone or watch reading.');
+    }
+
+    setSuggestionText('cause1', suggestions[0]);
+    setSuggestionText('cause2', suggestions[1]);
+}
+
+function setSuggestionText(key, value) {
+    const element = document.querySelector(`[data-key="${key}"]`);
+    if (element) element.textContent = value;
 }
 
 function setRefreshLoading(isLoading) {
