@@ -98,6 +98,10 @@
         <servlet-class>za.ac.tut.web.HospitalLoginServlet</servlet-class>
     </servlet>
     <servlet>
+        <servlet-name>HospitalRegisterServlet</servlet-name>
+        <servlet-class>za.ac.tut.web.HospitalRegisterServlet</servlet-class>
+    </servlet>
+    <servlet>
         <servlet-name>HospitalPatientsServlet</servlet-name>
         <servlet-class>za.ac.tut.web.HospitalPatientsServlet</servlet-class>
     </servlet>
@@ -192,6 +196,10 @@
     <servlet-mapping>
         <servlet-name>HospitalLoginServlet</servlet-name>
         <url-pattern>/HospitalLoginServlet.do</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>HospitalRegisterServlet</servlet-name>
+        <url-pattern>/HospitalRegisterServlet.do</url-pattern>
     </servlet-mapping>
     <servlet-mapping>
         <servlet-name>HospitalPatientsServlet</servlet-name>

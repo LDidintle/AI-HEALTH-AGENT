@@ -1,9 +1,10 @@
 <%@page import="java.util.List"%>
 <%@page import="java.math.BigDecimal"%>
-<%@page import="za.ac.tut.model.PatientSummaryRow"%>
+<%@page import="java.sql.Timestamp"%>
+<%@page import="za.ac.tut.model.HospitalAlertPatientRow"%>
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
 <%
-    List<PatientSummaryRow> patients = (List<PatientSummaryRow>) request.getAttribute("patients");
+    List<HospitalAlertPatientRow> patients = (List<HospitalAlertPatientRow>) request.getAttribute("patients");
 %>
 <!DOCTYPE html>
 <html lang="en">
@@ -16,8 +17,8 @@
 <body class="app-page">
     <main class="shell wide">
         <p class="eyebrow">Hospital portal</p>
-        <h1>Patient Search</h1>
-        <p class="lead">Search registered patients and review read-only doctor summaries. This portal cannot add, edit, or remove patients.</p>
+        <h1><%= request.getAttribute("hospitalName") == null ? "Patient Alerts" : request.getAttribute("hospitalName") %></h1>
+        <p class="lead">Review patients previously assigned to this hospital from emergency alerts<%= request.getAttribute("hospitalServiceArea") == null ? "." : " in " + request.getAttribute("hospitalServiceArea") + "." %> This portal cannot add, edit, or remove patients.</p>
 
         <div class="actions">
             <a class="btn secondary" href="index.html">Logout</a>
@@ -25,7 +26,7 @@
 
         <div class="toolbar">
             <div>
-                <label for="patientSearch">Search patients</label>
+                <label for="patientSearch">Search alert patients</label>
                 <input type="search" id="patientSearch" placeholder="Search by system ID, ID number, name, email, phone, condition, or blood group">
             </div>
             <button class="btn secondary" type="button" id="clearSearch">Clear</button>
@@ -37,7 +38,8 @@
             <table class="data-table" id="patientsTable">
                 <tr>
                     <th>System ID</th>
-                    <th>Patient</th>
+                    <th>Alert Patient</th>
+                    <th>Latest Alert</th>
                     <th>ID Number</th>
                     <th>Personal Number</th>
                     <th>Emergency Contact</th>
@@ -47,10 +49,14 @@
                     <th>Details</th>
                 </tr>
                 <% if (patients != null && !patients.isEmpty()) {
-                    for (PatientSummaryRow row : patients) { %>
+                    for (HospitalAlertPatientRow row : patients) { %>
                     <tr data-patient-row>
                         <td><%= row.getUser().getId() %></td>
                         <td><%= row.getUser().getFirstName() %> <%= row.getUser().getSurname() %><br><%= row.getUser().getEmail() %></td>
+                        <td>
+                            <span class="status-pill <%= "CRITICAL".equals(row.getLatestAlertStatus()) ? "pending" : "verified" %>"><%= safe(row.getLatestAlertStatus()) %></span><br>
+                            <%= formatTimestamp(row.getLatestAlertCreatedAt()) %>
+                        </td>
                         <td><%= safe(row.getUser().getIdNumber()) %></td>
                         <td><%= safe(row.getUser().getCellNumber()) %></td>
                         <td><%= safe(row.getUser().getEmergencyContactName()) %><br><%= safe(row.getUser().getEmergencyContactNumber()) %></td>
@@ -65,10 +71,10 @@
                     </tr>
                 <%  }
                 } else { %>
-                    <tr><td colspan="9" class="empty">No patients found</td></tr>
+                    <tr><td colspan="10" class="empty">No emergency-alert patients assigned to this hospital yet</td></tr>
                 <% } %>
                 <tr id="noSearchResults" class="hidden">
-                    <td colspan="9" class="empty">No matching patients found</td>
+                    <td colspan="10" class="empty">No matching alert patients found</td>
                 </tr>
             </table>
         </div>
@@ -110,5 +116,9 @@
 
     private String formatDecimal(BigDecimal value) {
         return value == null ? "No data" : value.setScale(1, java.math.RoundingMode.HALF_UP).toPlainString();
+    }
+
+    private String formatTimestamp(Timestamp value) {
+        return value == null ? "No alert date" : value.toString();
     }
 %>

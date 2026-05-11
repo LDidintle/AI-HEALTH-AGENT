@@ -11,7 +11,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
-import za.ac.tut.model.PatientSummaryRow;
+import za.ac.tut.model.HospitalAlertPatientRow;
 import za.ac.tut.model.User;
 import za.ac.tut.util.Database;
 import za.ac.tut.util.PatientMapper;
@@ -27,21 +27,43 @@ public class HospitalPatientsServlet extends HttpServlet {
             return;
         }
 
-        List<PatientSummaryRow> patients = new ArrayList<>();
+        List<HospitalAlertPatientRow> patients = new ArrayList<>();
+        HttpSession session = request.getSession(false);
+        Integer hospitalId = session == null ? null : (Integer) session.getAttribute("hospitalId");
+        boolean legacyHospital = session != null && "true".equals(String.valueOf(session.getAttribute("hospitalLegacy")));
+
+        String sql = legacyHospital
+                ? "SELECT * FROM users ORDER BY surname, first_name"
+                : "SELECT DISTINCT u.* FROM users u "
+                    + "JOIN emergency_alerts ea ON ea.user_id = u.id "
+                    + "JOIN hospital_alert_assignments haa ON haa.alert_id = ea.alert_id "
+                    + "WHERE haa.hospital_id = ? "
+                    + "ORDER BY u.surname, u.first_name";
 
         try (Connection conn = Database.getConnection();
-             PreparedStatement ps = conn.prepareStatement("SELECT * FROM users ORDER BY surname, first_name");
-             ResultSet rs = ps.executeQuery()) {
+             PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            while (rs.next()) {
-                User user = PatientMapper.fromResultSet(rs);
-                PatientSummaryRow row = new PatientSummaryRow();
-                row.setUser(user);
-                row.setSummary(PatientSummaryService.loadSummary(conn, user.getId()));
-                patients.add(row);
+            if (!legacyHospital) {
+                ps.setInt(1, hospitalId);
+            }
+
+            try (ResultSet rs = ps.executeQuery()) {
+
+                while (rs.next()) {
+                    User user = PatientMapper.fromResultSet(rs);
+                    HospitalAlertPatientRow row = new HospitalAlertPatientRow();
+                    row.setUser(user);
+                    row.setSummary(PatientSummaryService.loadSummary(conn, user.getId()));
+                    if (!legacyHospital) {
+                        loadLatestAlert(conn, hospitalId, row);
+                    }
+                    patients.add(row);
+                }
             }
 
             request.setAttribute("patients", patients);
+            request.setAttribute("hospitalName", session.getAttribute("hospitalName"));
+            request.setAttribute("hospitalServiceArea", session.getAttribute("hospitalServiceArea"));
             request.getRequestDispatcher("hospital_patients.jsp").forward(request, response);
         } catch (Exception e) {
             throw new ServletException("Unable to load hospital patient list.", e);
@@ -50,6 +72,28 @@ public class HospitalPatientsServlet extends HttpServlet {
 
     private boolean hasHospitalSession(HttpServletRequest request) {
         HttpSession session = request.getSession(false);
-        return session != null && "true".equals(String.valueOf(session.getAttribute("hospital")));
+        if (session == null || !"true".equals(String.valueOf(session.getAttribute("hospital")))) {
+            return false;
+        }
+        return "true".equals(String.valueOf(session.getAttribute("hospitalLegacy")))
+                || session.getAttribute("hospitalId") instanceof Integer;
+    }
+
+    private void loadLatestAlert(Connection conn, int hospitalId, HospitalAlertPatientRow row) throws Exception {
+        String sql = "SELECT ea.alert_status, ea.created_at FROM emergency_alerts ea "
+                + "JOIN hospital_alert_assignments haa ON haa.alert_id = ea.alert_id "
+                + "WHERE haa.hospital_id = ? AND ea.user_id = ? "
+                + "ORDER BY ea.created_at DESC, ea.alert_id DESC LIMIT 1";
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, hospitalId);
+            ps.setInt(2, row.getUser().getId());
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    row.setLatestAlertStatus(rs.getString("alert_status"));
+                    row.setLatestAlertCreatedAt(rs.getTimestamp("created_at"));
+                }
+            }
+        }
     }
 }

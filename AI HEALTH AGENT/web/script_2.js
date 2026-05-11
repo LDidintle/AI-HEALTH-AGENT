@@ -51,7 +51,6 @@ const copy = {
 
 const LIVE_REFRESH_INTERVAL_MS = 5000;
 const MAX_CHART_POINTS = 12;
-const LIVE_FEED_STALE_AFTER_MS = 75000;
 const chartSeries = {
     heartRate: [],
     systolic: [],
@@ -306,9 +305,9 @@ function loadLatestReadings() {
                 clearLiveReadings();
                 return updateSyncStatus('Sign in and sync a phone health section to see readings.');
             }
-            if (!isLiveFeedFresh(data)) {
+            if (!hasAnyReading(data)) {
                 clearLiveReadings();
-                return updateSyncStatus('No recent phone health section found. Sync the latest section from the mobile app.');
+                return updateSyncStatus('No synced app data found yet. Sync from the mobile app, then refresh this dashboard.');
             }
 
             setText('heartRateValue', data.heartRate === null ? '--' : data.heartRate);
@@ -316,7 +315,7 @@ function loadLatestReadings() {
             setText('temperatureValue', data.temperature === null ? '--' : data.temperature);
             updateChartSeries(data);
             updateAlertBanner(data);
-            updateSyncStatus(`Latest synced section refreshed. Last checked ${new Date().toLocaleTimeString()}.`);
+            updateSyncStatus(buildSyncStatus(data.latestSyncedAt));
         })
         .catch(() => {
             clearLiveReadings();
@@ -324,10 +323,21 @@ function loadLatestReadings() {
         });
 }
 
-function isLiveFeedFresh(data) {
-    if (!data.latestSyncedAt) return false;
-    const syncedTime = new Date(data.latestSyncedAt).getTime();
-    return Number.isFinite(syncedTime) && Date.now() - syncedTime <= LIVE_FEED_STALE_AFTER_MS;
+function hasAnyReading(data) {
+    return data.heartRate !== null || data.bloodPressure !== null || data.temperature !== null;
+}
+
+function buildSyncStatus(latestSyncedAt) {
+    if (!latestSyncedAt) {
+        return `Showing latest saved app data. Last checked ${new Date().toLocaleTimeString()}.`;
+    }
+
+    const syncedTime = new Date(latestSyncedAt);
+    if (Number.isNaN(syncedTime.getTime())) {
+        return `Showing latest saved app data. Last checked ${new Date().toLocaleTimeString()}.`;
+    }
+
+    return `Showing latest synced app data from ${syncedTime.toLocaleString()}. Last checked ${new Date().toLocaleTimeString()}.`;
 }
 
 function updateChartSeries(data) {

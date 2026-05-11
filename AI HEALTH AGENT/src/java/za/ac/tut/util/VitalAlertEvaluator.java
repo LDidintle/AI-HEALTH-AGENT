@@ -5,6 +5,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Timestamp;
+import java.sql.Statement;
 
 public final class VitalAlertEvaluator {
 
@@ -29,7 +30,7 @@ public final class VitalAlertEvaluator {
         String sql = "INSERT INTO emergency_alerts (user_id, bpm, alert_status, countdown_seconds) "
                 + "VALUES (?, ?, ?, ?)";
 
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setInt(1, userId);
             if (heartRate == null) {
                 ps.setNull(2, java.sql.Types.INTEGER);
@@ -39,7 +40,58 @@ public final class VitalAlertEvaluator {
             ps.setString(3, decision.status);
             ps.setInt(4, decision.countdownSeconds);
             ps.executeUpdate();
+
+            try (ResultSet rs = ps.getGeneratedKeys()) {
+                if (rs.next()) {
+                    assignAlertToHospital(conn, rs.getInt(1), userId);
+                }
+            }
         }
+    }
+
+    private static void assignAlertToHospital(Connection conn, int alertId, int userId) throws Exception {
+        Integer hospitalId = findHospitalForUser(conn, userId);
+        if (hospitalId == null) {
+            return;
+        }
+
+        String sql = "INSERT INTO hospital_alert_assignments (alert_id, hospital_id) VALUES (?, ?)";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, alertId);
+            ps.setInt(2, hospitalId);
+            ps.executeUpdate();
+        }
+    }
+
+    private static Integer findHospitalForUser(Connection conn, int userId) throws Exception {
+        String patientAddress = null;
+        try (PreparedStatement ps = conn.prepareStatement("SELECT address FROM users WHERE id = ?")) {
+            ps.setInt(1, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    patientAddress = rs.getString("address");
+                }
+            }
+        }
+
+        if (patientAddress == null || patientAddress.trim().isEmpty()) {
+            return null;
+        }
+
+        String normalizedAddress = patientAddress.toLowerCase();
+        String sql = "SELECT hospital_id, service_area FROM hospitals WHERE active = TRUE ORDER BY name";
+        try (PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                String serviceArea = rs.getString("service_area");
+                if (serviceArea != null && !serviceArea.trim().isEmpty()
+                        && normalizedAddress.contains(serviceArea.trim().toLowerCase())) {
+                    return rs.getInt("hospital_id");
+                }
+            }
+        }
+
+        return null;
     }
 
     private static AlertDecision decide(
