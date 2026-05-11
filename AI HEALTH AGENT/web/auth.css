@@ -10,6 +10,33 @@ body {
     width: min(420px, 100%);
 }
 
+.portal-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 20px 0;
+}
+
+.portal-action {
+    min-height: 48px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--ink);
+    font: inherit;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.portal-action.active {
+    background: linear-gradient(45deg, var(--primary), var(--primary-dark));
+    color: #06130e;
+}
+
+.portal-panel.hidden {
+    display: none;
+}
+
 .secondary-link {
     display: block;
     margin-top: 14px;
