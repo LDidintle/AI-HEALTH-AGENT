@@ -316,8 +316,7 @@ function drawLine(ctx, data, color, padding, laneHeight, width, height, laneTop)
 
 function loadLatestReadings(options = {}) {
     setRefreshLoading(Boolean(options.manual));
-    fetch('ReadingServlet.do', { headers: { Accept: 'application/json' } })
-        .then(response => response.json().then(data => ({ status: response.status, data })))
+    fetchLatestReadings()
         .then(({ status, data }) => {
             if (status === 401) {
                 showSignedOutState();
@@ -352,6 +351,77 @@ function loadLatestReadings(options = {}) {
         .finally(() => {
             setRefreshLoading(false);
         });
+}
+
+function fetchLatestReadings() {
+    return fetchJson('ReadingServlet.do')
+        .then(result => {
+            if (result.status >= 500) {
+                return fetchJson('api/mobile/health-sync')
+                    .then(fallback => ({
+                        status: fallback.status,
+                        data: normalizeMobileReadings(fallback.data)
+                    }));
+            }
+
+            return result;
+        });
+}
+
+function fetchJson(url) {
+    return fetch(url, { headers: { Accept: 'application/json' } })
+        .then(response => response.json().then(data => ({ status: response.status, data })));
+}
+
+function normalizeMobileReadings(data) {
+    if (!data.success) {
+        return data;
+    }
+
+    const bloodPressure = data.bloodPressure
+        ? `${data.bloodPressure.systolic}/${data.bloodPressure.diastolic}`
+        : null;
+    const latestSyncedAt = latestTimestamp([
+        data.heartRate?.recordedAt,
+        data.temperature?.recordedAt,
+        data.bloodPressure?.recordedAt
+    ]);
+    const sources = [
+        data.heartRate?.source,
+        data.temperature?.source,
+        data.bloodPressure?.source
+    ].filter(Boolean);
+
+    return {
+        success: true,
+        email: data.email,
+        heartRate: data.heartRate?.value ?? null,
+        temperature: data.temperature?.value ?? null,
+        bloodPressure,
+        latestSyncedAt,
+        latestSection: sources.length === 0 ? null : {
+            source: [...new Set(sources)].join(', '),
+            windowEnd: latestSyncedAt,
+            heartRateCount: data.heartRate ? 1 : 0,
+            temperatureCount: data.temperature ? 1 : 0,
+            bloodPressureCount: data.bloodPressure ? 1 : 0,
+            deviceType: 'MOBILE',
+            manufacturer: null,
+            deviceModel: null
+        },
+        trendPoints: [],
+        activeAlert: null
+    };
+}
+
+function latestTimestamp(values) {
+    const timestamps = values
+        .filter(Boolean)
+        .map(value => new Date(String(value).replace(' ', 'T')))
+        .filter(date => !Number.isNaN(date.getTime()))
+        .sort((first, second) => second.getTime() - first.getTime());
+
+    return timestamps.length === 0 ? null : timestamps[0].toISOString();
 }
 
 function hasAnyReading(data) {

@@ -45,7 +45,9 @@ public class ReadingServlet extends HttpServlet {
                 String latestTemperature = getLatestTemperature(conn, userId);
                 String latestBloodPressure = getLatestBloodPressure(conn, userId);
                 Timestamp latestSyncedAt = getLatestSyncedAt(conn, userId);
-                String activeAlertJson = getActiveAlertJson(conn, userId);
+                String latestSectionJson = safeJsonObject(() -> getLatestSectionJson(conn, userId), "null");
+                String trendPointsJson = safeJsonObject(() -> getTrendPointsJson(conn, userId), "[]");
+                String activeAlertJson = safeJsonObject(() -> getActiveAlertJson(conn, userId), "null");
 
                 String json = "{"
                         + "\"success\":true,"
@@ -54,8 +56,8 @@ public class ReadingServlet extends HttpServlet {
                         + "\"temperature\":" + (latestTemperature == null ? "null" : latestTemperature) + ","
                         + "\"bloodPressure\":" + (latestBloodPressure == null ? "null" : JsonUtil.quote(latestBloodPressure)) + ","
                         + "\"latestSyncedAt\":" + (latestSyncedAt == null ? "null" : JsonUtil.quote(latestSyncedAt.toInstant().toString())) + ","
-                        + "\"latestSection\":" + getLatestSectionJson(conn, userId) + ","
-                        + "\"trendPoints\":" + getTrendPointsJson(conn, userId) + ","
+                        + "\"latestSection\":" + latestSectionJson + ","
+                        + "\"trendPoints\":" + trendPointsJson + ","
                         + "\"activeAlert\":" + activeAlertJson
                         + "}";
 
@@ -263,9 +265,21 @@ public class ReadingServlet extends HttpServlet {
         return timestamp == null ? "null" : JsonUtil.quote(timestamp.toInstant().toString());
     }
 
+    private String safeJsonObject(JsonSupplier supplier, String fallback) {
+        try {
+            return supplier.get();
+        } catch (Exception e) {
+            return fallback;
+        }
+    }
+
     private void writeJson(HttpServletResponse response, String json) throws IOException {
         try (PrintWriter out = response.getWriter()) {
             out.write(json);
         }
+    }
+
+    private interface JsonSupplier {
+        String get() throws Exception;
     }
 }
