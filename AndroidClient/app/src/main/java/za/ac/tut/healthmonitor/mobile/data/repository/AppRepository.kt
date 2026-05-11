@@ -36,16 +36,16 @@ class AppRepository(
         return backendApiClient.getProfile()
     }
 
-    fun getLatestReadings(): LatestReadingsResponse {
-        return backendApiClient.getLatestReadings()
+    fun getLatestReadings(email: String? = null): LatestReadingsResponse {
+        return backendApiClient.getLatestReadings(email)
     }
 
-    fun syncReadings(payload: HealthSyncPayload): SyncResponse {
-        return backendApiClient.syncReadings(payload)
+    fun syncReadings(payload: HealthSyncPayload, email: String? = null): SyncResponse {
+        return backendApiClient.syncReadings(payload, email)
     }
 
-    fun syncHealthSection(payload: HealthSectionSyncPayload): SyncResponse {
-        return backendApiClient.syncHealthSection(payload)
+    fun syncHealthSection(payload: HealthSectionSyncPayload, email: String? = null): SyncResponse {
+        return backendApiClient.syncHealthSection(payload, email)
     }
 
     fun logout(): SyncResponse {

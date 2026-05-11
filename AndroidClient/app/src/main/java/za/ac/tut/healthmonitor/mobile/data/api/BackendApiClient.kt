@@ -6,6 +6,7 @@ import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.IOException
+import java.net.URLEncoder
 import java.util.Locale
 import za.ac.tut.healthmonitor.mobile.BuildConfig
 import za.ac.tut.healthmonitor.mobile.data.model.AiChatResponse
@@ -56,14 +57,21 @@ class BackendApiClient(
         return get("api/mobile/me", ProfileResponse::class.java)
     }
 
-    fun getLatestReadings(): LatestReadingsResponse {
-        return get("api/mobile/health-sync", LatestReadingsResponse::class.java)
+    fun getLatestReadings(email: String? = null): LatestReadingsResponse {
+        val path = if (email.isNullOrBlank()) {
+            "api/mobile/health-sync"
+        } else {
+            "api/mobile/health-sync?email=${urlEncode(email)}"
+        }
+
+        return get(path, LatestReadingsResponse::class.java)
     }
 
-    fun syncReadings(payload: HealthSyncPayload): SyncResponse {
+    fun syncReadings(payload: HealthSyncPayload, email: String? = null): SyncResponse {
         val builder = FormBody.Builder()
             .add("source", payload.source ?: "HEALTH_CONNECT")
 
+        email?.takeIf { it.isNotBlank() }?.let { builder.add("email", it) }
         payload.heartRate?.let { builder.add("heartRate", it.toString()) }
         payload.temperature?.let { builder.add("temperature", String.format(Locale.US, "%.2f", it)) }
         payload.systolic?.let { builder.add("systolic", it.toString()) }
@@ -77,7 +85,7 @@ class BackendApiClient(
         return post("api/mobile/health-sync", builder.build(), SyncResponse::class.java)
     }
 
-    fun syncHealthSection(payload: HealthSectionSyncPayload): SyncResponse {
+    fun syncHealthSection(payload: HealthSectionSyncPayload, email: String? = null): SyncResponse {
         val builder = FormBody.Builder()
             .add("windowStart", payload.windowStart)
             .add("windowEnd", payload.windowEnd)
@@ -86,6 +94,7 @@ class BackendApiClient(
             .add("temperatureCount", payload.temperatureCount.toString())
             .add("bloodPressureCount", payload.bloodPressureCount.toString())
 
+        email?.takeIf { it.isNotBlank() }?.let { builder.add("email", it) }
         payload.heartRateLatest?.let { builder.add("heartRateLatest", it.toString()) }
         payload.heartRateMin?.let { builder.add("heartRateMin", it.toString()) }
         payload.heartRateMax?.let { builder.add("heartRateMax", it.toString()) }
@@ -216,5 +225,9 @@ class BackendApiClient(
         } catch (_: Exception) {
             "The server returned HTTP $statusCode. Please update the app and try again."
         }
+    }
+
+    private fun urlEncode(value: String): String {
+        return URLEncoder.encode(value, "UTF-8")
     }
 }

@@ -535,7 +535,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
                 if (section.isEmpty()) {
                     val savedReadings = withContext(Dispatchers.IO) {
-                        repository.getLatestReadings()
+                        repository.getLatestReadings(currentUserEmail())
                     }
 
                     if (savedReadings.hasAnyNonDemoReading()) {
@@ -642,13 +642,19 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private fun persistSection(payload: HealthSectionSyncPayload) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                repository.syncHealthSection(payload)
+                repository.syncHealthSection(payload, currentUserEmail())
             } catch (_: Exception) {
                 _uiState.update {
                     it.copy(errorMessage = "Section displayed, but saving to the database failed.")
                 }
             }
         }
+    }
+
+    private fun currentUserEmail(): String? {
+        val state = _uiState.value
+        return state.userProfile?.email?.takeIf { it.isNotBlank() }
+            ?: state.email.takeIf { it.isNotBlank() }
     }
 
     private fun HealthSectionSyncPayload.toLatestReadings(): LatestReadingsResponse {
