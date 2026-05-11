@@ -33,9 +33,9 @@ public class AdminServlet extends HttpServlet {
             HttpSession session = request.getSession();
             session.setAttribute("admin", "true");
 
-            response.sendRedirect("admin_dashboard.jsp");
+            response.sendRedirect(request.getContextPath() + "/admin_dashboard.jsp");
         } else {
-            response.sendRedirect("error.jsp");
+            response.sendRedirect(request.getContextPath() + "/admin?error=invalid");
         }
         
     }

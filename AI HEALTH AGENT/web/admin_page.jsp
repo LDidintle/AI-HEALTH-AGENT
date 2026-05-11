@@ -1,2 +1,2 @@
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
-<% response.sendRedirect("admin_sign.html"); %>
+<% response.sendRedirect(request.getContextPath() + "/admin"); %>

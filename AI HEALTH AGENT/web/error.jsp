@@ -30,7 +30,7 @@
                 : escapeHtml(request.getAttribute("error")) %></p>
 
         <div class="actions">
-            <a class="btn primary" href="admin_sign.html">Staff Login</a>
+            <a class="btn primary" href="admin">Staff Login</a>
             <a class="btn secondary" href="index.html">Home</a>
         </div>
     </main>

@@ -23,7 +23,7 @@
                 <strong>Find patient</strong>
                 <span>Search one patient by email and view their details.</span>
             </a>
-            <a class="admin-tile" href="index.html">
+            <a class="admin-tile" href="SignOutServlet.do">
                 <strong>Logout</strong>
                 <span>Return to the SmartHealth home page.</span>
             </a>

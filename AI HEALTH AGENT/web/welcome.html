@@ -31,7 +31,17 @@
 	<input type="email" placeholder="Email Address@gmail.com" name="email" required 
 	pattern="^[a-zA-Z0-9._%+-]+@gmail\.com$">
 
-	        <button type="submit">Continue</button>
+	<div class="terms-box">
+    <label class="checkbox-option">
+        <input type="checkbox" id="termsCheckbox">
+        I accept the 
+        <a href="documents/Health_System_Terms.html" target="_blank">
+            Terms & Conditions
+        </a>
+    </label>
+</div>
+
+<button type="submit" id="submitBtn" disabled>Continue</button>
         <a class="back-link" href="index.html">Back to home</a>
         <a class="back-link" href="user_sign.html">Already have an account? Sign in</a>
 

@@ -54,8 +54,10 @@ label {
     color: var(--ink);
 }
 
-/* ================= INPUTS, SELECTS, TEXTAREA ================= */
-input, select, textarea {
+/* ================= INPUTS ================= */
+input,
+select,
+textarea {
     width: 100%;
     padding: 12px;
     margin-top: 5px;
@@ -72,18 +74,19 @@ textarea::placeholder {
     color: #647084;
 }
 
-/* Focus effect */
-input:focus, select:focus, textarea:focus {
+input:focus,
+select:focus,
+textarea:focus {
     border-color: var(--primary);
     box-shadow: 0 0 0 3px rgba(0, 204, 119, 0.16);
     outline: none;
 }
 
-/* Textarea */
 textarea {
     resize: none;
 }
 
+/* ================= HELP TEXT ================= */
 .requirements {
     margin: 8px 0 0;
     padding-left: 20px;
@@ -107,6 +110,7 @@ textarea {
     color: var(--danger);
 }
 
+/* ================= SECONDARY BUTTON ================= */
 .secondary-action {
     margin-top: 8px;
     background: transparent;
@@ -118,20 +122,36 @@ textarea {
     background: rgba(0, 255, 153, 0.12);
 }
 
+/* ================= CHECKBOX ================= */
 .checkbox-option {
     display: flex;
     align-items: center;
     gap: 10px;
-    margin: 12px 0 6px;
+    margin: 15px 0 8px;
     color: var(--muted);
+    font-size: 14px;
+    line-height: 1.5;
 }
 
 .checkbox-option input[type="checkbox"] {
     width: 18px;
     height: 18px;
     margin: 0;
+    accent-color: var(--primary);
+    cursor: pointer;
 }
 
+.checkbox-option a {
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.checkbox-option a:hover {
+    text-decoration: underline;
+}
+
+/* ================= SUCCESS ================= */
 .success-eyebrow {
     margin: 0 0 8px;
     text-align: center;
@@ -166,7 +186,6 @@ textarea {
     margin-top: 5px;
 }
 
-
 .radio-option {
     display: flex;
     align-items: center;
@@ -178,11 +197,9 @@ textarea {
     transition: 0.3s;
 }
 
-
 .radio-option:hover {
     background: rgba(0, 204, 119, 0.12);
 }
-
 
 .radio-option input[type="radio"] {
     appearance: none;
@@ -195,7 +212,6 @@ textarea {
     margin: 0;
 }
 
-/* Inner dot when selected */
 .radio-option input[type="radio"]:checked::before {
     content: "";
     position: absolute;
@@ -203,8 +219,8 @@ textarea {
     height: 10px;
     background: var(--primary);
     border-radius: 50%;
-    top: 2px;
-    left: 2px;
+    top: 1px;
+    left: 1px;
 }
 
 /* ================= BUTTON ================= */
@@ -222,12 +238,22 @@ button {
     transition: 0.3s;
 }
 
-/* Button hover */
-button:hover {
+button:hover:not(:disabled) {
     transform: translateY(-2px);
     box-shadow: 0 5px 15px rgba(0,0,0,0.2);
 }
 
+/* ================= DISABLED BUTTON ================= */
+button:disabled {
+    background: #5f6b77;
+    color: #d8d8d8;
+    cursor: not-allowed;
+    opacity: 0.7;
+    transform: none;
+    box-shadow: none;
+}
+
+/* ================= LINKS ================= */
 .back-link {
     display: block;
     margin-top: 12px;
@@ -241,7 +267,9 @@ button:hover {
     color: var(--primary);
 }
 
+/* ================= MOBILE ================= */
 @media (max-width: 520px) {
+
     body {
         padding: 22px 12px;
     }
@@ -254,5 +282,9 @@ button:hover {
     .radio-group {
         flex-direction: column;
         gap: 6px;
+    }
+
+    .checkbox-option {
+        align-items: flex-start;
     }
 }

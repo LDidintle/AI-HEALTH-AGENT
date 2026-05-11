@@ -1,5 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <web-app version="3.1" xmlns="http://xmlns.jcp.org/xml/ns/javaee" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee http://xmlns.jcp.org/xml/ns/javaee/web-app_3_1.xsd">
+    <filter>
+        <filter-name>AdminAuthFilter</filter-name>
+        <filter-class>za.ac.tut.web.AdminAuthFilter</filter-class>
+    </filter>
+    <filter-mapping>
+        <filter-name>AdminAuthFilter</filter-name>
+        <url-pattern>/admin_dashboard.jsp</url-pattern>
+        <url-pattern>/ViewUsersServlet.do</url-pattern>
+        <url-pattern>/DeleteUserServlet.do</url-pattern>
+        <url-pattern>/EditUserServlet.do</url-pattern>
+        <url-pattern>/UpdateUserServlet.do</url-pattern>
+        <url-pattern>/ReadUserServlet.do</url-pattern>
+        <url-pattern>/read_user.jsp</url-pattern>
+        <url-pattern>/list_of_users.jsp</url-pattern>
+        <url-pattern>/edit_user.jsp</url-pattern>
+        <url-pattern>/read_user_result.jsp</url-pattern>
+    </filter-mapping>
     <servlet>
         <servlet-name>SavePasswordServlet</servlet-name>
         <servlet-class>za.ac.tut.web.SavePasswordServlet</servlet-class>
@@ -88,6 +105,14 @@
         <servlet-name>HospitalPatientDetailsServlet</servlet-name>
         <servlet-class>za.ac.tut.web.HospitalPatientDetailsServlet</servlet-class>
     </servlet>
+    <servlet>
+        <servlet-name>AdminSignServlet</servlet-name>
+        <servlet-class>za.ac.tut.web.AdminSignServlet</servlet-class>
+    </servlet>
+    <servlet>
+        <servlet-name>SignOutServlet</servlet-name>
+        <servlet-class>za.ac.tut.web.SignOutServlet</servlet-class>
+    </servlet>
     <servlet-mapping>
         <servlet-name>SavePasswordServlet</servlet-name>
         <url-pattern>/SavePasswordServlet.do</url-pattern>
@@ -175,6 +200,15 @@
     <servlet-mapping>
         <servlet-name>HospitalPatientDetailsServlet</servlet-name>
         <url-pattern>/HospitalPatientDetailsServlet.do</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>AdminSignServlet</servlet-name>
+        <url-pattern>/admin</url-pattern>
+        <url-pattern>/admin/</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>SignOutServlet</servlet-name>
+        <url-pattern>/SignOutServlet.do</url-pattern>
     </servlet-mapping>
     <session-config>
         <session-timeout>

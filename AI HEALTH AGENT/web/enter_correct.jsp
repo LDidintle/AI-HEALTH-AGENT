@@ -27,7 +27,7 @@
 
             <div class="actions">
                 <button class="btn primary" type="submit">Log in</button>
-                <a class="btn secondary" href="admin_sign.html">Back</a>
+                <a class="btn secondary" href="admin">Back</a>
                 <a class="btn secondary" href="index.html">Home</a>
             </div>
         </form>
