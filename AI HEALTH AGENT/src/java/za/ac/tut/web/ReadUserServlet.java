@@ -36,7 +36,7 @@ public class ReadUserServlet extends HttpServlet {
 
         String sql = "SELECT id, title, first_name, surname, dob, gender, marital_status, "
                 + "email, cell_number, id_number, emergency_contact_name, emergency_contact_number, "
-                + "blood_group, known_allergies, chronic_conditions, address FROM users "
+                + "blood_group, known_allergies, chronic_conditions, address, is_verified FROM users "
                 + "WHERE email = ? OR id = ?";
 
         try {
