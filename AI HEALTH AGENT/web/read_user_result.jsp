@@ -59,7 +59,7 @@
         <div class="actions">
             <% if (readonlyPortal) { %>
                 <a class="btn primary" href="HospitalPatientsServlet.do">Back to Patient Search</a>
-                <a class="btn secondary" href="index.html">Logout</a>
+                <a class="btn secondary" href="SignOutServlet.do">Logout</a>
             <% } else { %>
                 <a class="btn primary" href="read_user.jsp">Read Another Patient</a>
                 <a class="btn secondary" href="admin_dashboard.jsp">Dashboard</a>

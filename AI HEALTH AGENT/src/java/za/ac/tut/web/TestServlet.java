@@ -7,6 +7,7 @@ import javax.servlet.ServletException;
 import javax.servlet.http.*;
 import za.ac.tut.model.PasswordUtils;
 import za.ac.tut.util.Database;
+import za.ac.tut.util.PatientAccountProcedureService;
 import za.ac.tut.util.PatientValidation;
 
 public class TestServlet extends HttpServlet {
@@ -60,43 +61,12 @@ public class TestServlet extends HttpServlet {
             String hashedPass = pu.hashPassword(pass);
 
        
-            String sqlUser = "INSERT INTO users "
-                    + "(title, first_name, surname, dob, email, is_verified) "
-                    + "VALUES (?, ?, ?, ?, ?, FALSE)";
-            String sqlAuth = "INSERT INTO user_auth (user_id, password_hash) VALUES (?, ?)";
-
-            
             try (Connection conn = Database.getConnection()) {
                 conn.setAutoCommit(false);
 
-                try (
-                    PreparedStatement psUser = conn.prepareStatement(sqlUser, PreparedStatement.RETURN_GENERATED_KEYS);
-                    PreparedStatement psAuth = conn.prepareStatement(sqlAuth)
-                ) {
-                    psUser.setString(1, title);
-                    psUser.setString(2, name);
-                    psUser.setString(3, surname);
-                    psUser.setDate(4, dateOfBirth);
-                    psUser.setString(5, email);
-
-                    int rowsInserted = psUser.executeUpdate();
-                    if (rowsInserted == 0) {
-                        throw new SQLException("Failed to insert user.");
-                    }
-
-                    int userId;
-                    try (ResultSet rs = psUser.getGeneratedKeys()) {
-                        if (rs.next()) {
-                            userId = rs.getInt(1);
-                        } else {
-                            throw new SQLException("Failed to get user ID.");
-                        }
-                    }
-
-                    psAuth.setInt(1, userId);
-                    psAuth.setString(2, hashedPass);
-                    psAuth.executeUpdate();
-
+                try {
+                    PatientAccountProcedureService.createPatientAccount(
+                            conn, title, name, surname, dateOfBirth, email, hashedPass);
                     conn.commit();
 
                     session.invalidate();

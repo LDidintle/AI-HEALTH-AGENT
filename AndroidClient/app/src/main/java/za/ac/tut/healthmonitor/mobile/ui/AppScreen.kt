@@ -86,6 +86,7 @@ fun AppScreen(
     onOpenSamsungHealth: () -> Unit,
     onSyncSamsungHealth: () -> Unit,
     onStartDemoSync: () -> Unit,
+    onStartEmergencyDemoSync: () -> Unit,
     onLogout: () -> Unit,
     onSelectLanguage: (String) -> Unit,
     onOpenProfile: () -> Unit,
@@ -126,6 +127,7 @@ fun AppScreen(
                     onOpenSamsungHealth = onOpenSamsungHealth,
                     onSyncSamsungHealth = onSyncSamsungHealth,
                     onStartDemoSync = onStartDemoSync,
+                    onStartEmergencyDemoSync = onStartEmergencyDemoSync,
                     onLogout = onLogout,
                     onSelectLanguage = onSelectLanguage,
                     onOpenProfile = onOpenProfile,
@@ -371,6 +373,7 @@ private fun DashboardContent(
     onOpenSamsungHealth: () -> Unit,
     onSyncSamsungHealth: () -> Unit,
     onStartDemoSync: () -> Unit,
+    onStartEmergencyDemoSync: () -> Unit,
     onLogout: () -> Unit,
     onSelectLanguage: (String) -> Unit,
     onOpenProfile: () -> Unit,
@@ -402,13 +405,7 @@ private fun DashboardContent(
         ActionButton(text = copy.chat, onClick = onOpenChat, colors = listOf(AccentBlue, Yellow), textColor = Ink)
         ActionButton(text = copy.alert, onClick = onSendParamedicAlert, colors = listOf(Danger, Color(0xFF8F1B13)), textColor = Color.White)
 
-        if (uiState.alertSent) {
-            Text(
-                text = "Emergency alert shown. If this is serious, call emergency services now.",
-                color = Color.White,
-                style = MaterialTheme.typography.bodyMedium
-            )
-        }
+        EmergencyNotificationCard(uiState)
 
         SyncActionsCard(
             uiState = uiState,
@@ -418,6 +415,7 @@ private fun DashboardContent(
             onOpenSamsungHealth = onOpenSamsungHealth,
             onSyncSamsungHealth = onSyncSamsungHealth,
             onStartDemoSync = onStartDemoSync,
+            onStartEmergencyDemoSync = onStartEmergencyDemoSync,
             onLogout = onLogout
         )
         AiSuggestionsCard(uiState.latestReadings, copy)
@@ -658,6 +656,34 @@ private fun ActionButton(text: String, onClick: () -> Unit, colors: List<Color>,
 }
 
 @Composable
+private fun EmergencyNotificationCard(uiState: AppUiState) {
+    val alert = uiState.activeAlert
+    if (!uiState.alertSent && alert == null) {
+        return
+    }
+
+    Card(colors = CardDefaults.cardColors(containerColor = Danger), shape = RoundedCornerShape(18.dp)) {
+        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Emergency Alert Notification", color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
+            Text(
+                text = alert?.message ?: "Emergency alert shown. If this is serious, call emergency services now.",
+                color = Color.White,
+                style = MaterialTheme.typography.bodyLarge
+            )
+            alert?.hospitalName?.takeIf { it.isNotBlank() }?.let {
+                Text("Assigned hospital: $it", color = Color.White, style = MaterialTheme.typography.bodyMedium)
+            }
+            alert?.status?.takeIf { it.isNotBlank() }?.let {
+                Text("Status: $it", color = Color.White, style = MaterialTheme.typography.bodyMedium)
+            }
+            alert?.bpm?.let {
+                Text("Heart rate: $it BPM", color = Color.White, style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+    }
+}
+
+@Composable
 private fun SyncActionsCard(
     uiState: AppUiState,
     onRefresh: () -> Unit,
@@ -666,6 +692,7 @@ private fun SyncActionsCard(
     onOpenSamsungHealth: () -> Unit,
     onSyncSamsungHealth: () -> Unit,
     onStartDemoSync: () -> Unit,
+    onStartEmergencyDemoSync: () -> Unit,
     onLogout: () -> Unit
 ) {
     Card(colors = CardDefaults.cardColors(containerColor = Glass), shape = RoundedCornerShape(18.dp)) {
@@ -709,6 +736,13 @@ private fun SyncActionsCard(
                 colors = ButtonDefaults.buttonColors(containerColor = Yellow, contentColor = Ink)
             ) {
                 Text("Load Demo Section")
+            }
+            Button(
+                onClick = onStartEmergencyDemoSync,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = Danger, contentColor = Color.White)
+            ) {
+                Text("Trigger Emergency Demo Alert")
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 TextButton(onClick = onRefresh, modifier = Modifier.weight(1f)) { Text("Clear") }

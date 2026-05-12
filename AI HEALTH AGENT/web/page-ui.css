@@ -264,6 +264,49 @@ button.btn {
     font-weight: 700;
 }
 
+.report-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 22px 0;
+}
+
+.report-tabs a {
+    border: 1px solid rgba(255,255,255,0.22);
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: var(--ink);
+    text-decoration: none;
+    font-weight: 700;
+    background: rgba(255,255,255,0.12);
+}
+
+.report-tabs a.active,
+.report-tabs a:hover {
+    color: #06130e;
+    background: linear-gradient(45deg, var(--primary), var(--primary-dark));
+}
+
+.report-filter {
+    margin: 18px 0;
+    padding: 16px;
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 10px;
+    background: rgba(255,255,255,0.12);
+}
+
+.filter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+}
+
+.report-meta {
+    margin: 16px 0 12px;
+    color: var(--ink);
+    font-weight: 700;
+}
+
 .readonly-list {
     margin: 0;
 }
@@ -293,6 +336,7 @@ button.btn {
 
 @media (max-width: 720px) {
     .toolbar,
+    .filter-grid,
     .readonly-list div {
         grid-template-columns: 1fr;
     }

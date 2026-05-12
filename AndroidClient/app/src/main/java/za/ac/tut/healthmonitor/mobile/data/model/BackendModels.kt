@@ -31,6 +31,25 @@ data class LatestReadingsResponse(
     val message: String? = null
 )
 
+data class AlertNotificationResponse(
+    val success: Boolean,
+    val hasAlert: Boolean = false,
+    val alert: EmergencyAlertNotification? = null,
+    val message: String? = null
+)
+
+data class EmergencyAlertNotification(
+    val id: Int,
+    val status: String? = null,
+    val bpm: Int? = null,
+    val countdownSeconds: Int? = null,
+    val createdAt: String? = null,
+    val hospitalName: String? = null,
+    val hospitalServiceArea: String? = null,
+    val assignmentStatus: String? = null,
+    val message: String? = null
+)
+
 data class BackendUser(
     val id: Int,
     val email: String,

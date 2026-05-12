@@ -21,7 +21,8 @@
         <p class="lead">Review patients previously assigned to this hospital from emergency alerts<%= request.getAttribute("hospitalServiceArea") == null ? "." : " in " + request.getAttribute("hospitalServiceArea") + "." %> This portal cannot add, edit, or remove patients.</p>
 
         <div class="actions">
-            <a class="btn secondary" href="index.html">Logout</a>
+            <a class="btn primary" href="ReportsServlet.do?type=alerts">Emergency Report</a>
+            <a class="btn secondary" href="SignOutServlet.do">Logout</a>
         </div>
 
         <div class="toolbar">

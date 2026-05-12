@@ -2,13 +2,13 @@ package za.ac.tut.web;
 
 import java.io.IOException;
 import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import za.ac.tut.util.Database;
+import za.ac.tut.util.PatientAccountProcedureService;
 
 public class DeleteUserServlet extends HttpServlet {
 
@@ -17,25 +17,17 @@ public class DeleteUserServlet extends HttpServlet {
             throws ServletException, IOException {
 
         try {
-            int id = Integer.parseInt(request.getParameter("id"));
+            int id = parseId(request.getParameter("id"));
+            if (id <= 0) {
+                throw new ServletException("A valid patient ID is required before deleting.");
+            }
 
             Connection conn = null;
             try {
                 conn = Database.getConnection();
-                PreparedStatement deleteAuthPs = conn.prepareStatement("DELETE FROM user_auth WHERE user_id = ?");
-                PreparedStatement deleteUserPs = conn.prepareStatement("DELETE FROM users WHERE id = ?");
-
                 conn.setAutoCommit(false);
-
-                deleteAuthPs.setInt(1, id);
-                deleteAuthPs.executeUpdate();
-
-                deleteUserPs.setInt(1, id);
-                deleteUserPs.executeUpdate();
-
+                PatientAccountProcedureService.deletePatientAccount(conn, id);
                 conn.commit();
-                deleteAuthPs.close();
-                deleteUserPs.close();
                 conn.close();
             } catch (Exception e) {
                 if (conn != null) {
@@ -53,6 +45,18 @@ public class DeleteUserServlet extends HttpServlet {
 
         } catch (Exception e) {
             throw new ServletException("Unable to delete user.", e);
+        }
+    }
+
+    private int parseId(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return -1;
+        }
+
+        try {
+            return Integer.parseInt(value.trim());
+        } catch (NumberFormatException e) {
+            return -1;
         }
     }
 }

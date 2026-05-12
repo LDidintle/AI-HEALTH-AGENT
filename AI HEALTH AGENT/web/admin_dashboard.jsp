@@ -23,6 +23,22 @@
                 <strong>Find patient</strong>
                 <span>Search one patient by email and view their details.</span>
             </a>
+            <a class="admin-tile" href="ReportsServlet.do?type=management">
+                <strong>Management summary</strong>
+                <span>Review patient totals, readings, alerts, and active devices.</span>
+            </a>
+            <a class="admin-tile" href="ReportsServlet.do?type=vitals">
+                <strong>Patient vitals report</strong>
+                <span>Filter average readings by date, patient, or search text.</span>
+            </a>
+            <a class="admin-tile" href="ReportsServlet.do?type=alerts">
+                <strong>Emergency alert report</strong>
+                <span>Track alerts, hospital assignment, and ambulance status.</span>
+            </a>
+            <a class="admin-tile" href="ReportsServlet.do?type=sync">
+                <strong>Mobile sync report</strong>
+                <span>Check phone and watch sync activity by patient and device.</span>
+            </a>
             <a class="admin-tile" href="SignOutServlet.do">
                 <strong>Logout</strong>
                 <span>Return to the SmartHealth home page.</span>

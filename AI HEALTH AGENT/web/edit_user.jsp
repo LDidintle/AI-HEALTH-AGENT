@@ -1,4 +1,21 @@
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
+<%!
+    private String value(Object value) {
+        if (value == null) {
+            return "";
+        }
+        return value.toString()
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;");
+    }
+
+    private String selected(Object current, String option) {
+        return option.equals(value(current)) ? "selected" : "";
+    }
+%>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -17,7 +34,14 @@
             <input type="hidden" name="id" value="${id}">
 
             <label for="title">Title</label>
-            <input type="text" id="title" name="title" value="${title}">
+            <select id="title" name="title">
+                <option value="">Not saved</option>
+                <option <%= selected(request.getAttribute("title"), "Mr") %>>Mr</option>
+                <option <%= selected(request.getAttribute("title"), "Ms") %>>Ms</option>
+                <option <%= selected(request.getAttribute("title"), "Mrs") %>>Mrs</option>
+                <option <%= selected(request.getAttribute("title"), "Dr") %>>Dr</option>
+                <option <%= selected(request.getAttribute("title"), "Patient") %>>Patient</option>
+            </select>
 
             <label for="first_name">First Name</label>
             <input type="text" id="first_name" name="first_name" value="${first_name}">
@@ -29,10 +53,22 @@
             <input type="date" id="dob" name="dob" value="${dob}">
 
             <label for="gender">Gender</label>
-            <input type="text" id="gender" name="gender" value="${gender}">
+            <select id="gender" name="gender">
+                <option value="">Prefer not to say yet</option>
+                <option <%= selected(request.getAttribute("gender"), "Female") %>>Female</option>
+                <option <%= selected(request.getAttribute("gender"), "Male") %>>Male</option>
+                <option <%= selected(request.getAttribute("gender"), "Other") %>>Other</option>
+                <option <%= selected(request.getAttribute("gender"), "Prefer not to say") %>>Prefer not to say</option>
+            </select>
 
             <label for="marital_status">Marital Status</label>
-            <input type="text" id="marital_status" name="marital_status" value="${marital_status}">
+            <select id="marital_status" name="marital_status">
+                <option value="">Not saved yet</option>
+                <option <%= selected(request.getAttribute("marital_status"), "Single") %>>Single</option>
+                <option <%= selected(request.getAttribute("marital_status"), "Married") %>>Married</option>
+                <option <%= selected(request.getAttribute("marital_status"), "Divorced") %>>Divorced</option>
+                <option <%= selected(request.getAttribute("marital_status"), "Widowed") %>>Widowed</option>
+            </select>
 
             <label for="email">Email</label>
             <input type="email" id="email" name="email" value="${email}">
@@ -46,7 +82,7 @@
             <input type="text" id="cell_number" name="cell_number" value="${cell_number}">
 
             <label for="id_number">South African ID Number</label>
-            <input type="number" id="id_number" name="id_number" value="${id_number}" inputmode="numeric">
+            <input type="text" id="id_number" name="id_number" value="${id_number}" inputmode="numeric" maxlength="13">
 
             <label for="emergency_contact_name">Emergency Contact / Next of Kin Name</label>
             <input type="text" id="emergency_contact_name" name="emergency_contact_name" value="${emergency_contact_name}">
@@ -56,16 +92,16 @@
 
             <label for="blood_group">Blood Group</label>
             <select id="blood_group" name="blood_group">
-                <option value="${blood_group}">${blood_group}</option>
-                <option>A+</option>
-                <option>A-</option>
-                <option>B+</option>
-                <option>B-</option>
-                <option>AB+</option>
-                <option>AB-</option>
-                <option>O+</option>
-                <option>O-</option>
-                <option>Unknown</option>
+                <option value="">Not sure yet</option>
+                <option <%= selected(request.getAttribute("blood_group"), "A+") %>>A+</option>
+                <option <%= selected(request.getAttribute("blood_group"), "A-") %>>A-</option>
+                <option <%= selected(request.getAttribute("blood_group"), "B+") %>>B+</option>
+                <option <%= selected(request.getAttribute("blood_group"), "B-") %>>B-</option>
+                <option <%= selected(request.getAttribute("blood_group"), "AB+") %>>AB+</option>
+                <option <%= selected(request.getAttribute("blood_group"), "AB-") %>>AB-</option>
+                <option <%= selected(request.getAttribute("blood_group"), "O+") %>>O+</option>
+                <option <%= selected(request.getAttribute("blood_group"), "O-") %>>O-</option>
+                <option <%= selected(request.getAttribute("blood_group"), "Unknown") %>>Unknown</option>
             </select>
 
             <label for="known_allergies">Known Allergies</label>

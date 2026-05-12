@@ -7,6 +7,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
+import za.ac.tut.util.AuthUtil;
 
 public class AdminSignServlet extends HttpServlet {
 
@@ -14,7 +15,7 @@ public class AdminSignServlet extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         HttpSession session = request.getSession(false);
-        boolean isAdmin = session != null && "true".equals(session.getAttribute("admin"));
+        boolean isAdmin = AuthUtil.isAdmin(session);
 
         if (isAdmin) {
             response.sendRedirect(request.getContextPath() + "/admin_dashboard.jsp");

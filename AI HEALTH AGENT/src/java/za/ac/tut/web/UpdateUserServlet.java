@@ -18,7 +18,10 @@ public class UpdateUserServlet extends HttpServlet {
             throws ServletException, IOException {
 
         try {
-            int id = Integer.parseInt(request.getParameter("id"));
+            int id = parseId(request.getParameter("id"));
+            if (id <= 0) {
+                throw new ServletException("A valid patient ID is required before updating.");
+            }
             String cellNumber = request.getParameter("cell_number");
             String emergencyNumber = request.getParameter("emergency_contact_number");
             String idNumber = PatientValidation.trimToNull(request.getParameter("id_number"));
@@ -76,5 +79,16 @@ public class UpdateUserServlet extends HttpServlet {
             throw new ServletException("Unable to update user details.", e);
         }
     }
-}
 
+    private int parseId(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return -1;
+        }
+
+        try {
+            return Integer.parseInt(value.trim());
+        } catch (NumberFormatException e) {
+            return -1;
+        }
+    }
+}

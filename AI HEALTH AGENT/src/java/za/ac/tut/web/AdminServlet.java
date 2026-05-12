@@ -13,6 +13,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
+import za.ac.tut.util.AuthUtil;
 
 /**
  *
@@ -31,7 +32,7 @@ public class AdminServlet extends HttpServlet {
         if (staffUser != null && staffPass != null
                 && staffUser.equals(username) && staffPass.equals(password)) {
             HttpSession session = request.getSession();
-            session.setAttribute("admin", "true");
+            AuthUtil.markAdmin(session);
 
             response.sendRedirect(request.getContextPath() + "/admin_dashboard.jsp");
         } else {

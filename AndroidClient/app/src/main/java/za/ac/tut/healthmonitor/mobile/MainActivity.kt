@@ -159,6 +159,7 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                     onStartDemoSync = appViewModel::startDemoSync,
+                    onStartEmergencyDemoSync = appViewModel::startEmergencyDemoSync,
                     onLogout = appViewModel::logout,
                     onSelectLanguage = appViewModel::selectLanguage,
                     onOpenProfile = appViewModel::openProfile,

@@ -21,6 +21,7 @@
 
             <div class="error"><%= request.getAttribute("passwordError") != null ? request.getAttribute("passwordError") : "" %></div>
             <button type="submit">Login</button>
+            <a class="secondary-link" href="PasswordResetRequestServlet.do">Forgot Password?</a>
             <a class="secondary-link" href="index.html">Back to home</a>
         </form>
     </main>

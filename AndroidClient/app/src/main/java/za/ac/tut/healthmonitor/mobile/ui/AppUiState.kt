@@ -1,6 +1,7 @@
 package za.ac.tut.healthmonitor.mobile.ui
 
 import za.ac.tut.healthmonitor.mobile.data.model.BackendProfile
+import za.ac.tut.healthmonitor.mobile.data.model.EmergencyAlertNotification
 import za.ac.tut.healthmonitor.mobile.data.model.LatestReadingsResponse
 
 enum class AuthScreen {
@@ -59,6 +60,7 @@ data class AppUiState(
         ChatMessage(false, "Hello! How can I assist you with your health today?")
     ),
     val alertSent: Boolean = false,
+    val activeAlert: EmergencyAlertNotification? = null,
     val errorMessage: String? = null,
     val infoMessage: String? = null
 )

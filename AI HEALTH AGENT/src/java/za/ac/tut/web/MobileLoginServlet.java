@@ -11,6 +11,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import za.ac.tut.model.PasswordUtils;
+import za.ac.tut.util.AuthUtil;
 import za.ac.tut.util.Database;
 import za.ac.tut.util.JsonUtil;
 
@@ -47,18 +48,16 @@ public class MobileLoginServlet extends HttpServlet {
                             return;
                         }
 
-                        String hashedEnteredPassword = PasswordUtils.hashPassword(password);
                         String storedHash = rs.getString("password_hash");
 
-                        if (!hashedEnteredPassword.equals(storedHash)) {
+                        if (!PasswordUtils.verifyPassword(password, storedHash)) {
                             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                             writeJson(response, "{\"success\":false,\"message\":\"Invalid email or password.\"}");
                             return;
                         }
 
                         HttpSession session = request.getSession(true);
-                        session.setAttribute("user", rs.getString("email"));
-                        session.setAttribute("userId", rs.getInt("id"));
+                        AuthUtil.markPatient(session, rs.getString("email"), rs.getInt("id"));
 
                         String fullName = rs.getString("first_name") + " " + rs.getString("surname");
                         String json = "{"

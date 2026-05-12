@@ -19,7 +19,7 @@
 
         <div class="actions">
             <a class="btn primary" href="admin_dashboard.jsp">Dashboard</a>
-            <a class="btn secondary" href="index.html">Logout</a>
+            <a class="btn secondary" href="SignOutServlet.do">Logout</a>
         </div>
 
         <div class="toolbar">

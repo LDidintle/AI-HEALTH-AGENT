@@ -7,10 +7,10 @@ This project demonstrates DML operations through the web and mobile interfaces r
 Website:
 - `welcome.html` collects patient details.
 - `password.jsp` collects password setup.
-- `TestServlet.do` inserts into `users` and `user_auth`.
+- `TestServlet.do` calls `sp_register_patient_account`, which inserts into `users` and `user_auth`.
 
 Mobile:
-- `/api/mobile/register` inserts into `users` and `user_auth`.
+- `/api/mobile/register` calls `sp_register_patient_account`, which inserts into `users` and `user_auth`.
 - `/api/mobile/health-sync` inserts into `pulse_readings`, `temperature_readings`, `blood_pressure_readings`, and `device_sync_events`.
 
 ## Read
@@ -34,6 +34,16 @@ Website:
 
 Website:
 - `DeleteUserServlet.do` deletes selected patient records from `users`.
+- `DeleteUserServlet.do` calls `sp_delete_patient_account`, which deletes from `user_auth` and `users`.
+
+## Stored Procedures
+
+Run the matching routine script before marking the stored-procedure requirement:
+
+- PostgreSQL/Supabase: `database/stored_routines_postgresql.sql`
+- MariaDB: `database/stored_routines_mariadb.sql`
+
+The application calls these routines first for patient account creation and deletion. If an older development database has not been migrated yet, the Java service falls back to the same transaction-safe DML so existing demos do not fail unexpectedly.
 
 ## Suggested Demonstration Order
 

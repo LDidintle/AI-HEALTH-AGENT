@@ -117,6 +117,22 @@
         <servlet-name>SignOutServlet</servlet-name>
         <servlet-class>za.ac.tut.web.SignOutServlet</servlet-class>
     </servlet>
+    <servlet>
+        <servlet-name>ReportsServlet</servlet-name>
+        <servlet-class>za.ac.tut.web.ReportsServlet</servlet-class>
+    </servlet>
+    <servlet>
+        <servlet-name>MobileAlertsServlet</servlet-name>
+        <servlet-class>za.ac.tut.web.MobileAlertsServlet</servlet-class>
+    </servlet>
+    <servlet>
+        <servlet-name>PasswordResetRequestServlet</servlet-name>
+        <servlet-class>za.ac.tut.web.PasswordResetRequestServlet</servlet-class>
+    </servlet>
+    <servlet>
+        <servlet-name>PasswordResetConfirmServlet</servlet-name>
+        <servlet-class>za.ac.tut.web.PasswordResetConfirmServlet</servlet-class>
+    </servlet>
     <servlet-mapping>
         <servlet-name>SavePasswordServlet</servlet-name>
         <url-pattern>/SavePasswordServlet.do</url-pattern>
@@ -217,6 +233,22 @@
     <servlet-mapping>
         <servlet-name>SignOutServlet</servlet-name>
         <url-pattern>/SignOutServlet.do</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>ReportsServlet</servlet-name>
+        <url-pattern>/ReportsServlet.do</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>MobileAlertsServlet</servlet-name>
+        <url-pattern>/api/mobile/alerts</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>PasswordResetRequestServlet</servlet-name>
+        <url-pattern>/PasswordResetRequestServlet.do</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>PasswordResetConfirmServlet</servlet-name>
+        <url-pattern>/PasswordResetConfirmServlet.do</url-pattern>
     </servlet-mapping>
     <session-config>
         <session-timeout>

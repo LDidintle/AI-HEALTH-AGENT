@@ -10,6 +10,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import za.ac.tut.model.PasswordUtils;
+import za.ac.tut.util.AuthUtil;
 import za.ac.tut.util.Database;
 
 public class UserConfirmServlet extends HttpServlet {
@@ -27,8 +28,6 @@ public class UserConfirmServlet extends HttpServlet {
             return;
         }
 
-        String hashedEnteredPassword = PasswordUtils.hashPassword(password);
-
         try {
             try (Connection conn = Database.getConnection()) {
 
@@ -44,13 +43,12 @@ public class UserConfirmServlet extends HttpServlet {
                 ResultSet rs = ps.executeQuery();
 
                 if (rs.next()) {
-                    String dbPasswordHash = rs.getString("password_hash").trim(); // Trim spaces
+                    String dbPasswordHash = rs.getString("password_hash");
 
-                    if (hashedEnteredPassword.equals(dbPasswordHash)) {
+                    if (PasswordUtils.verifyPassword(password, dbPasswordHash)) {
                         // Password correct
                         HttpSession session = request.getSession();
-                        session.setAttribute("user", rs.getString("email"));
-                        session.setAttribute("userId", rs.getInt("id"));
+                        AuthUtil.markPatient(session, rs.getString("email"), rs.getInt("id"));
 
                         if (rs.getBoolean("is_verified") && CompleteProfileServlet.isProfileIncomplete(rs)) {
                             response.sendRedirect("CompleteProfileServlet.do");

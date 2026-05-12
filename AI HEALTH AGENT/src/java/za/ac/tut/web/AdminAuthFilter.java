@@ -9,7 +9,7 @@ import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
+import za.ac.tut.util.AuthUtil;
 
 public class AdminAuthFilter implements Filter {
 
@@ -23,10 +23,7 @@ public class AdminAuthFilter implements Filter {
             throws IOException, ServletException {
         HttpServletRequest httpRequest = (HttpServletRequest) request;
         HttpServletResponse httpResponse = (HttpServletResponse) response;
-        HttpSession session = httpRequest.getSession(false);
-
-        boolean isAdmin = session != null && "true".equals(session.getAttribute("admin"));
-        if (!isAdmin) {
+        if (!AuthUtil.isAdmin(httpRequest)) {
             httpResponse.sendRedirect(httpRequest.getContextPath() + "/admin");
             return;
         }

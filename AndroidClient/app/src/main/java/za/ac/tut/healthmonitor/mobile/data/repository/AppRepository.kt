@@ -1,6 +1,7 @@
 package za.ac.tut.healthmonitor.mobile.data.repository
 
 import za.ac.tut.healthmonitor.mobile.data.api.BackendApiClient
+import za.ac.tut.healthmonitor.mobile.data.model.AlertNotificationResponse
 import za.ac.tut.healthmonitor.mobile.data.model.HealthSectionSyncPayload
 import za.ac.tut.healthmonitor.mobile.data.model.HealthSyncPayload
 import za.ac.tut.healthmonitor.mobile.data.model.LatestReadingsResponse
@@ -38,6 +39,10 @@ class AppRepository(
 
     fun getLatestReadings(email: String? = null): LatestReadingsResponse {
         return backendApiClient.getLatestReadings(email)
+    }
+
+    fun getAlertNotification(email: String? = null): AlertNotificationResponse {
+        return backendApiClient.getAlertNotification(email)
     }
 
     fun syncReadings(payload: HealthSyncPayload, email: String? = null): SyncResponse {

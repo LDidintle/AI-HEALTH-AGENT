@@ -10,6 +10,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import za.ac.tut.model.PasswordUtils;
+import za.ac.tut.util.AuthUtil;
 import za.ac.tut.util.Database;
 
 public class HospitalLoginServlet extends HttpServlet {
@@ -30,7 +31,7 @@ public class HospitalLoginServlet extends HttpServlet {
         if (hospitalUser != null && hospitalPass != null
                 && hospitalUser.equals(username) && hospitalPass.equals(password)) {
             HttpSession session = request.getSession();
-            session.setAttribute("hospital", "true");
+            AuthUtil.markHospital(session);
             session.setAttribute("hospitalLegacy", "true");
             response.sendRedirect("HospitalPatientsServlet.do");
             return;
@@ -56,12 +57,12 @@ public class HospitalLoginServlet extends HttpServlet {
                 }
 
                 String expectedHash = rs.getString("password_hash");
-                if (!PasswordUtils.hashPassword(password).equals(expectedHash)) {
+                if (!PasswordUtils.verifyPassword(password, expectedHash)) {
                     return false;
                 }
 
                 HttpSession session = request.getSession();
-                session.setAttribute("hospital", "true");
+                AuthUtil.markHospital(session);
                 session.setAttribute("hospitalId", rs.getInt("hospital_id"));
                 session.setAttribute("hospitalName", rs.getString("name"));
                 session.setAttribute("hospitalServiceArea", rs.getString("service_area"));

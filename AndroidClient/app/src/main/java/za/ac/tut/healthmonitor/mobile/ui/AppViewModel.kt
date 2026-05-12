@@ -19,6 +19,7 @@ import kotlin.math.sin
 import kotlin.random.Random
 import za.ac.tut.healthmonitor.mobile.data.model.BloodPressureValue
 import za.ac.tut.healthmonitor.mobile.data.model.BackendProfile
+import za.ac.tut.healthmonitor.mobile.data.model.EmergencyAlertNotification
 import za.ac.tut.healthmonitor.mobile.data.model.HealthSectionSyncPayload
 import za.ac.tut.healthmonitor.mobile.data.model.HealthSyncPayload
 import za.ac.tut.healthmonitor.mobile.data.model.LatestReadingsResponse
@@ -274,6 +275,26 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun startEmergencyDemoSync() {
+        viewModelScope.launch {
+            val section = buildEmergencyDemoSection()
+            val readings = section.payload.toLatestReadings()
+            persistSection(section.payload)
+            _uiState.update {
+                it.copy(
+                    latestReadings = readings,
+                    trendPoints = section.trendPoints.toUiTrendPoints(),
+                    lastSectionSyncAt = formattedNow(),
+                    lastSyncSummary = sectionSummary(section.payload),
+                    alertSent = true,
+                    errorMessage = null,
+                    infoMessage = "Emergency demo reading synced. Checking hospital alert notification..."
+                )
+            }
+            demoTick += 1
+        }
+    }
+
     fun logout() {
         clearSectionState(showMessage = false)
         launchLoadingTask {
@@ -490,6 +511,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun refreshAlertNotification() {
+        viewModelScope.launch(Dispatchers.IO) {
+            checkAlertNotification()
+        }
+    }
+
     private fun chatHistory(messages: List<ChatMessage>): String {
         return messages.takeLast(8).joinToString("\n") {
             (if (it.fromUser) "User: " else "Assistant: ") + it.text
@@ -640,6 +667,48 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
+    private fun buildEmergencyDemoSection(): HealthSection {
+        val end = Instant.now()
+        val start = end.minusSeconds(60 * DEFAULT_SECTION_WINDOW_MINUTES)
+        val trendPoints = (0 until MAX_TREND_POINTS).map { index ->
+            HealthSectionTrendPoint(
+                heartRate = (118 + index * 2).coerceAtMost(142),
+                systolic = (152 + index * 3).coerceAtMost(188),
+                temperature = 38.0 + index * 0.08
+            )
+        }
+
+        val heartRates = trendPoints.mapNotNull { it.heartRate }
+        val temperatures = trendPoints.mapNotNull { it.temperature }
+        val systolicLatest = 188
+        val diastolicLatest = 122
+
+        return HealthSection(
+            payload = HealthSectionSyncPayload(
+                windowStart = start.toString(),
+                windowEnd = end.toString(),
+                source = "EMERGENCY_DEMO",
+                heartRateLatest = heartRates.lastOrNull(),
+                heartRateMin = heartRates.minOrNull(),
+                heartRateMax = heartRates.maxOrNull(),
+                heartRateAverage = heartRates.average(),
+                heartRateCount = heartRates.size,
+                temperatureLatest = temperatures.lastOrNull(),
+                temperatureMin = temperatures.minOrNull(),
+                temperatureMax = temperatures.maxOrNull(),
+                temperatureAverage = temperatures.average(),
+                temperatureCount = temperatures.size,
+                systolicLatest = systolicLatest,
+                diastolicLatest = diastolicLatest,
+                bloodPressureCount = 1,
+                deviceType = "WATCH",
+                deviceManufacturer = "Samsung",
+                deviceModel = "Galaxy Watch 5 Emergency Demo"
+            ),
+            trendPoints = trendPoints
+        )
+    }
+
     private fun persistSection(payload: HealthSectionSyncPayload) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
@@ -649,12 +718,40 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 } catch (sectionError: Exception) {
                     repository.syncReadings(payload.toHealthSyncPayload(), email)
                 }
+                checkAlertNotification()
             } catch (_: Exception) {
                 _uiState.update {
                     it.copy(errorMessage = "Section displayed, but saving to the database failed.")
                 }
             }
         }
+    }
+
+    private fun checkAlertNotification() {
+        try {
+            val alertResponse = repository.getAlertNotification(currentUserEmail())
+            if (alertResponse.hasAlert && alertResponse.alert != null) {
+                val alert = alertResponse.alert
+                _uiState.update {
+                    it.copy(
+                        activeAlert = alert,
+                        alertSent = true,
+                        infoMessage = alert.toNotificationText(),
+                        errorMessage = null
+                    )
+                }
+            } else {
+                _uiState.update { it.copy(activeAlert = null) }
+            }
+        } catch (_: Exception) {
+            // Alert polling is supportive; do not block normal sync if the endpoint is unavailable.
+        }
+    }
+
+    private fun EmergencyAlertNotification.toNotificationText(): String {
+        val hospital = hospitalName?.takeIf { it.isNotBlank() } ?: "hospital staff"
+        val statusText = status?.takeIf { it.isNotBlank() } ?: "alert"
+        return "$statusText emergency alert sent to $hospital."
     }
 
     private fun currentUserEmail(): String? {

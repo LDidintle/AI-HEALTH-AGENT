@@ -10,6 +10,7 @@ import java.net.URLEncoder
 import java.util.Locale
 import za.ac.tut.healthmonitor.mobile.BuildConfig
 import za.ac.tut.healthmonitor.mobile.data.model.AiChatResponse
+import za.ac.tut.healthmonitor.mobile.data.model.AlertNotificationResponse
 import za.ac.tut.healthmonitor.mobile.data.model.HealthSectionSyncPayload
 import za.ac.tut.healthmonitor.mobile.data.model.HealthSyncPayload
 import za.ac.tut.healthmonitor.mobile.data.model.LatestReadingsResponse
@@ -65,6 +66,16 @@ class BackendApiClient(
         }
 
         return get(path, LatestReadingsResponse::class.java)
+    }
+
+    fun getAlertNotification(email: String? = null): AlertNotificationResponse {
+        val path = if (email.isNullOrBlank()) {
+            "api/mobile/alerts"
+        } else {
+            "api/mobile/alerts?email=${urlEncode(email)}"
+        }
+
+        return get(path, AlertNotificationResponse::class.java)
     }
 
     fun syncReadings(payload: HealthSyncPayload, email: String? = null): SyncResponse {

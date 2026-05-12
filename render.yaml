@@ -17,6 +17,20 @@ services:
         sync: false
       - key: SMARTHEALTH_DB_PASSWORD
         sync: false
+      - key: SMARTHEALTH_SMTP_HOST
+        sync: false
+      - key: SMARTHEALTH_SMTP_PORT
+        value: 587
+      - key: SMARTHEALTH_SMTP_USER
+        sync: false
+      - key: SMARTHEALTH_SMTP_PASSWORD
+        sync: false
+      - key: SMARTHEALTH_SMTP_FROM
+        sync: false
+      - key: SMARTHEALTH_SMTP_STARTTLS
+        value: true
+      - key: SMARTHEALTH_SHOW_RESET_OTP
+        value: false
       - key: SMARTHEALTH_STAFF_USER
         sync: false
       - key: SMARTHEALTH_STAFF_PASSWORD

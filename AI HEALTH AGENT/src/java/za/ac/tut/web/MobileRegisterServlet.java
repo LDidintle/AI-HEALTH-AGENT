@@ -14,6 +14,7 @@ import javax.servlet.http.HttpServletResponse;
 import za.ac.tut.model.PasswordUtils;
 import za.ac.tut.util.Database;
 import za.ac.tut.util.JsonUtil;
+import za.ac.tut.util.PatientAccountProcedureService;
 import za.ac.tut.util.PatientValidation;
 
 public class MobileRegisterServlet extends HttpServlet {
@@ -59,33 +60,10 @@ public class MobileRegisterServlet extends HttpServlet {
 
                 conn.setAutoCommit(false);
 
-                String userSql = "INSERT INTO users "
-                        + "(title, first_name, surname, dob, email, is_verified) "
-                        + "VALUES ('Patient', ?, ?, ?, ?, FALSE)";
-                String authSql = "INSERT INTO user_auth (user_id, password_hash) VALUES (?, ?)";
-
-                try (
-                        PreparedStatement userStatement = conn.prepareStatement(userSql, PreparedStatement.RETURN_GENERATED_KEYS);
-                        PreparedStatement authStatement = conn.prepareStatement(authSql)) {
-
-                    userStatement.setString(1, firstName);
-                    userStatement.setString(2, surname);
-                    userStatement.setDate(3, dateOfBirth);
-                    userStatement.setString(4, email);
-
-                    userStatement.executeUpdate();
-
-                    int userId;
-                    try (ResultSet generatedKeys = userStatement.getGeneratedKeys()) {
-                        if (!generatedKeys.next()) {
-                            throw new IllegalStateException("User ID was not generated.");
-                        }
-                        userId = generatedKeys.getInt(1);
-                    }
-
-                    authStatement.setInt(1, userId);
-                    authStatement.setString(2, PasswordUtils.hashPassword(password));
-                    authStatement.executeUpdate();
+                try {
+                    int userId = PatientAccountProcedureService.createPatientAccount(
+                            conn, "Patient", firstName, surname, dateOfBirth, email,
+                            PasswordUtils.hashPassword(password));
 
                     conn.commit();
 
