@@ -19,15 +19,13 @@ Ends the Android user's backend session.
 Returns the latest heart rate, temperature, and blood pressure for the logged-in web user.
 
 - `POST /api/mobile/health-sync`
-Allows the Android phone app to push synced health readings into this database.
+Allows the signed-in Android phone app to push synced health readings into this database.
 
-- `GET /api/mobile/health-sync?email=user@example.com`
-Returns the latest stored readings for a specific user. This is useful for testing the mobile bridge.
+- `GET /api/mobile/health-sync`
+Returns the latest stored readings for the signed-in Android user.
 
 ## Mobile POST parameters
 
-- `email` required
-If the user is already logged in through `/api/mobile/login`, `email` may be omitted and the session user is used.
 - `source` optional, defaults to `HEALTH_CONNECT`
 - `heartRate` optional integer
 - `temperature` optional decimal
@@ -45,14 +43,13 @@ At least one of the following must be supplied:
 ## Example request
 
 ```bash
-curl -X POST http://localhost:8080/SWP_MergedProject2/api/mobile/login \
+curl -c cookies.txt -X POST http://localhost:8080/SWP_MergedProject2/api/mobile/login \
   -d "email=john@gmail.com" \
   -d "password=your-password"
 ```
 
 ```bash
-curl -X POST http://localhost:8080/SWP_MergedProject2/api/mobile/health-sync \
-  -d "email=john@gmail.com" \
+curl -b cookies.txt -X POST http://localhost:8080/SWP_MergedProject2/api/mobile/health-sync \
   -d "source=HEALTH_CONNECT" \
   -d "heartRate=82" \
   -d "temperature=36.90" \

@@ -1,0 +1,200 @@
+erDiagram
+    USERS ||--o| CLIENT : "is a client"
+    USERS ||--o| ADMIN : "is an admin"
+    USERS ||--o| HOSPITAL_USER : "is hospital user"
+
+    CLIENT ||--o{ USER_AUTH : "has login"
+    CLIENT ||--o| LANGUAGE_SETTINGS : "prefers"
+    CLIENT ||--o{ DEVICES : "owns"
+    CLIENT ||--o{ PULSE_READINGS : "has"
+    CLIENT ||--o{ TEMPERATURE_READINGS : "has"
+    CLIENT ||--o{ BLOOD_PRESSURE_READINGS : "has"
+    CLIENT ||--o{ HEALTH_SYNC_SECTIONS : "syncs"
+    CLIENT ||--o{ DEVICE_SYNC_EVENTS : "creates"
+    CLIENT ||--o{ EMERGENCY_ALERTS : "triggers"
+    CLIENT ||--o{ VOICE_LOGS : "creates"
+    CLIENT ||--o{ PASSWORD_RESET_OTPS : "requests"
+    CLIENT ||--o{ AI_CHAT_MESSAGES : "sends"
+
+    DEVICES ||--o{ PULSE_READINGS : "records"
+    DEVICES ||--o{ TEMPERATURE_READINGS : "records"
+    DEVICES ||--o{ BLOOD_PRESSURE_READINGS : "records"
+    DEVICES ||--o{ HEALTH_SYNC_SECTIONS : "summarizes"
+    DEVICES ||--o{ DEVICE_SYNC_EVENTS : "logs"
+
+    HOSPITAL_USER }o--|| HOSPITALS : "works for"
+    HOSPITALS ||--o{ HOSPITAL_AUTH : "has login"
+    HOSPITALS ||--o{ HOSPITAL_ALERT_ASSIGNMENTS : "receives"
+
+    EMERGENCY_ALERTS ||--o{ AMBULANCE_NOTIFICATIONS : "sends"
+    EMERGENCY_ALERTS ||--o{ HOSPITAL_ALERT_ASSIGNMENTS : "assigned through"
+
+    HEALTH_ADVICE }o..o{ PULSE_READINGS : "reference only"
+    HEALTH_ADVICE }o..o{ TEMPERATURE_READINGS : "reference only"
+
+    USERS {
+        int id PK
+        varchar email UK
+        varchar first_name
+        varchar surname
+        date dob
+        varchar gender
+        varchar cell_number
+        varchar id_number
+        text address
+        boolean is_verified
+        timestamp created_at
+    }
+
+    CLIENT {
+        int user_id PK_FK
+    }
+
+    ADMIN {
+        int user_id PK_FK
+        varchar role
+    }
+
+    HOSPITAL_USER {
+        int user_id PK_FK
+        int hospital_id FK
+    }
+
+    USER_AUTH {
+        int auth_id PK
+        int user_id FK
+        varchar password_hash
+        timestamp created_at
+    }
+
+    LANGUAGE_SETTINGS {
+        int language_id PK
+        int user_id FK_UK
+        varchar language
+    }
+
+    DEVICES {
+        int device_id PK
+        int user_id FK
+        varchar device_type
+        varchar manufacturer
+        varchar device_model
+        varchar platform
+        boolean active
+    }
+
+    PULSE_READINGS {
+        int pulse_id PK
+        int user_id FK
+        int device_id FK
+        int bpm
+        varchar status
+        timestamp recorded_at
+    }
+
+    TEMPERATURE_READINGS {
+        int temp_id PK
+        int user_id FK
+        int device_id FK
+        decimal temperature
+        varchar status
+        timestamp recorded_at
+    }
+
+    BLOOD_PRESSURE_READINGS {
+        int bp_id PK
+        int user_id FK
+        int device_id FK
+        int systolic
+        int diastolic
+        varchar status
+        timestamp recorded_at
+    }
+
+    HEALTH_SYNC_SECTIONS {
+        int section_id PK
+        int user_id FK
+        int device_id FK
+        timestamp window_start
+        timestamp window_end
+        decimal heart_rate_average
+        decimal temperature_average
+    }
+
+    DEVICE_SYNC_EVENTS {
+        int sync_id PK
+        int user_id FK
+        int device_id FK
+        varchar source_platform
+        varchar sync_status
+    }
+
+    EMERGENCY_ALERTS {
+        int alert_id PK
+        int user_id FK
+        int bpm
+        varchar alert_status
+        int countdown_seconds
+        timestamp created_at
+    }
+
+    AMBULANCE_NOTIFICATIONS {
+        int notification_id PK
+        int alert_id FK
+        timestamp sent_time
+        varchar response_status
+    }
+
+    HOSPITALS {
+        int hospital_id PK
+        varchar email UK
+        varchar name
+        varchar phone
+        varchar service_area
+        boolean active
+    }
+
+    HOSPITAL_AUTH {
+        int auth_id PK
+        int hospital_id FK
+        varchar password_hash
+        timestamp created_at
+    }
+
+    HOSPITAL_ALERT_ASSIGNMENTS {
+        int assignment_id PK
+        int alert_id FK
+        int hospital_id FK
+        varchar status
+        timestamp assigned_at
+    }
+
+    VOICE_LOGS {
+        int voice_id PK
+        int user_id FK
+        text command_text
+        timestamp command_time
+    }
+
+    PASSWORD_RESET_OTPS {
+        int reset_id PK
+        int user_id FK
+        varchar otp_hash
+        timestamp expires_at
+        timestamp used_at
+    }
+
+    AI_CHAT_MESSAGES {
+        int chat_id PK
+        int user_id FK
+        varchar sender_role
+        text message
+        string vitals_snapshot
+        timestamp created_at
+    }
+
+    HEALTH_ADVICE {
+        int advice_id PK
+        varchar advice_type
+        text message
+    }

@@ -22,16 +22,11 @@ public class MobileAlertsServlet extends HttpServlet {
         response.setContentType("application/json;charset=UTF-8");
 
         Integer userId = resolveUserId(request);
-        String email = resolveEmail(request);
 
         try (Connection conn = Database.getConnection()) {
-            if (userId == null && email != null) {
-                userId = findUserIdByEmail(conn, email);
-            }
-
             if (userId == null) {
-                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                writeJson(response, "{\"success\":false,\"message\":\"Sign in or provide an email address to check alerts.\"}");
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                writeJson(response, "{\"success\":false,\"message\":\"Sign in before checking alerts.\"}");
                 return;
             }
 
@@ -39,16 +34,6 @@ public class MobileAlertsServlet extends HttpServlet {
         } catch (Exception e) {
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             writeJson(response, "{\"success\":false,\"message\":\"Unable to check emergency alerts.\"}");
-        }
-    }
-
-    private Integer findUserIdByEmail(Connection conn, String email) throws Exception {
-        String sql = "SELECT id FROM users WHERE email = ?";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, email);
-            try (ResultSet rs = ps.executeQuery()) {
-                return rs.next() ? rs.getInt("id") : null;
-            }
         }
     }
 
@@ -96,39 +81,11 @@ public class MobileAlertsServlet extends HttpServlet {
     }
 
     private Integer resolveUserId(HttpServletRequest request) {
-        String userIdParam = trimToNull(request.getParameter("userId"));
-        if (userIdParam != null) {
-            try {
-                return Integer.valueOf(userIdParam);
-            } catch (NumberFormatException e) {
-                return null;
-            }
-        }
-
         HttpSession session = request.getSession(false);
         if (session == null || session.getAttribute("userId") == null) {
             return null;
         }
         return Integer.valueOf(String.valueOf(session.getAttribute("userId")));
-    }
-
-    private String resolveEmail(HttpServletRequest request) {
-        String email = trimToNull(request.getParameter("email"));
-        if (email != null) {
-            return email;
-        }
-
-        HttpSession session = request.getSession(false);
-        Object sessionEmail = session == null ? null : session.getAttribute("user");
-        return sessionEmail == null ? null : String.valueOf(sessionEmail);
-    }
-
-    private String trimToNull(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private void writeJson(HttpServletResponse response, String json) throws IOException {

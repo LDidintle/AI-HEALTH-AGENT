@@ -26,8 +26,8 @@ public class MobileHealthSyncServlet extends HttpServlet {
 
         String email = resolveEmail(request);
         if (email == null) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            writeJson(response, "{\"success\":false,\"message\":\"email is required when no session is active.\"}");
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            writeJson(response, "{\"success\":false,\"message\":\"Sign in before reading synchronized data.\"}");
             return;
         }
 
@@ -75,8 +75,8 @@ public class MobileHealthSyncServlet extends HttpServlet {
         String deviceModel = trimToNull(request.getParameter("deviceModel"));
 
         if (email == null) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            writeJson(response, "{\"success\":false,\"message\":\"email is required when no session is active.\"}");
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            writeJson(response, "{\"success\":false,\"message\":\"Sign in before synchronizing health readings.\"}");
             return;
         }
 
@@ -419,11 +419,6 @@ public class MobileHealthSyncServlet extends HttpServlet {
     }
 
     private String resolveEmail(HttpServletRequest request) {
-        String email = trimToNull(request.getParameter("email"));
-        if (email != null) {
-            return email;
-        }
-
         HttpSession session = request.getSession(false);
         if (session == null) {
             return null;

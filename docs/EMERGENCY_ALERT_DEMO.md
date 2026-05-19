@@ -41,12 +41,12 @@ The patient address contains `Pretoria`, so abnormal readings are assigned to th
 11. Open `Reports > Emergency Alerts` or the hospital `Emergency Report`.
 12. Export CSV to show the report-export requirement.
 
-## Backup Browser/API Proof
+## Backup API Proof
 
-If the Android UI is slow, use this endpoint after signing in or with the seeded patient email:
+If the Android UI is slow, sign in through the mobile login endpoint first so the same HTTP client has a patient session cookie. Then call:
 
 ```text
-/api/mobile/alerts?email=demo.patient@smarthealth.local
+/api/mobile/alerts
 ```
 
 Expected result after the emergency demo:

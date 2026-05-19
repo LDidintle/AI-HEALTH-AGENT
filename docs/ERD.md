@@ -2,6 +2,13 @@
 
 This ERD reflects the current SmartHealth database design, including Galaxy Watch 5 readings that flow through Samsung Health, Health Connect, the Android app, and the Java backend.
 
+Additional diagram exports are stored in `docs/diagrams/`:
+
+- `smarthealth-live-eerd.mmd` for the Mermaid source
+- `smarthealth-live-eerd-link.txt` for the Mermaid Live editor link
+- `smarthealth-top-down-eerd.drawio` for editable Draw.io source
+- `smarthealth-top-down-eerd.pdf` for a portable diagram export
+
 ```mermaid
 erDiagram
     users ||--o{ user_auth : has

@@ -75,7 +75,10 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 
     implementation("androidx.health.connect:connect-client:1.1.0")
+    implementation("androidx.security:security-crypto:1.1.0")
     implementation(files("libs/samsung-health-data-api-1.1.0.aar"))
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.google.code.gson:gson:2.11.0")
+
+    testImplementation("junit:junit:4.13.2")
 }

@@ -9,6 +9,7 @@ import javax.servlet.http.HttpServletResponse;
 import za.ac.tut.util.Database;
 import za.ac.tut.util.MailService;
 import za.ac.tut.util.PasswordResetService;
+import za.ac.tut.util.ResetOtpVisibility;
 
 public class PasswordResetRequestServlet extends HttpServlet {
 
@@ -38,7 +39,7 @@ public class PasswordResetRequestServlet extends HttpServlet {
 
             if (result.isUserFound()) {
                 boolean sent = MailService.sendPasswordResetOtp(email, result.getOtp());
-                if (!sent && isDemoOtpVisible()) {
+                if (!sent && ResetOtpVisibility.isDemoOtpVisible()) {
                     request.setAttribute("demoOtp", result.getOtp());
                 }
             }
@@ -47,14 +48,6 @@ public class PasswordResetRequestServlet extends HttpServlet {
         } catch (Exception e) {
             throw new ServletException("Unable to request password reset OTP.", e);
         }
-    }
-
-    private boolean isDemoOtpVisible() {
-        String value = System.getProperty("SMARTHEALTH_SHOW_RESET_OTP");
-        if (value == null || value.trim().isEmpty()) {
-            value = System.getenv("SMARTHEALTH_SHOW_RESET_OTP");
-        }
-        return value == null || value.trim().isEmpty() || Boolean.parseBoolean(value);
     }
 
     private String trimToNull(String value) {

@@ -253,12 +253,12 @@ docs/REMOTE_DATABASE.md
 - Database backups should not be committed because they may contain user data or password hashes.
 - Staff credentials are read from environment variables.
 - The AI API key is read from environment variables.
-- The current password hashing helper uses SHA-256. For production systems, use a password hashing algorithm designed for authentication, such as BCrypt, Argon2, or PBKDF2 with a unique salt and appropriate work factor.
+- New passwords are hashed with PBKDF2-SHA256 using a per-password salt. Legacy SHA-256 hashes are still accepted during login so older demo accounts can continue to sign in until their passwords are reset.
 - Health data is sensitive. A production version should add stronger authentication, access control, audit logging, HTTPS-only deployment, rate limiting, and privacy review.
 
 ## Future Improvements
 
-- Replace SHA-256 password hashing with BCrypt, Argon2, or PBKDF2
+- Migrate or reset any remaining legacy SHA-256 password hashes
 - Add stronger session protection and role-based authorization checks
 - Add automated tests for authentication, patient CRUD, mobile sync, and AI fallback behavior
 - Add input validation helpers shared across servlets

@@ -33,10 +33,14 @@ import za.ac.tut.healthmonitor.mobile.health.SamsungHealthDataManager
 
 class AppViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val repository = AppRepository()
+    private val repository = AppRepository(application.applicationContext)
     private val _uiState = MutableStateFlow(AppUiState())
     val uiState: StateFlow<AppUiState> = _uiState.asStateFlow()
     private var demoTick = 0
+
+    init {
+        restoreSession()
+    }
 
     fun updateEmail(email: String) {
         _uiState.update { it.copy(email = email) }
@@ -115,6 +119,29 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                         verificationMessage
                     }
                 )
+            }
+        }
+    }
+
+    private fun restoreSession() {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val profile = repository.getProfile().user
+                _uiState.update {
+                    it.copy(
+                        isLoggedIn = true,
+                        userProfile = profile,
+                        isProfileOpen = false,
+                        errorMessage = null,
+                        infoMessage = if (profile?.isVerified == true) {
+                            "Session restored. Sync latest section to view readings."
+                        } else {
+                            "Session restored. Your account is pending staff verification."
+                        }
+                    )
+                }
+            } catch (_: Exception) {
+                repository.clearSession()
             }
         }
     }
@@ -563,7 +590,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
                 if (section.isEmpty()) {
                     val savedReadings = withContext(Dispatchers.IO) {
-                        repository.getLatestReadings(currentUserEmail())
+                        repository.getLatestReadings()
                     }
 
                     if (savedReadings.hasAnyNonDemoReading()) {
@@ -712,11 +739,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private fun persistSection(payload: HealthSectionSyncPayload) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val email = currentUserEmail()
                 try {
-                    repository.syncHealthSection(payload, email)
+                    repository.syncHealthSection(payload)
                 } catch (sectionError: Exception) {
-                    repository.syncReadings(payload.toHealthSyncPayload(), email)
+                    repository.syncReadings(payload.toHealthSyncPayload())
                 }
                 checkAlertNotification()
             } catch (_: Exception) {
@@ -729,7 +755,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun checkAlertNotification() {
         try {
-            val alertResponse = repository.getAlertNotification(currentUserEmail())
+            val alertResponse = repository.getAlertNotification()
             if (alertResponse.hasAlert && alertResponse.alert != null) {
                 val alert = alertResponse.alert
                 _uiState.update {
@@ -752,12 +778,6 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         val hospital = hospitalName?.takeIf { it.isNotBlank() } ?: "hospital staff"
         val statusText = status?.takeIf { it.isNotBlank() } ?: "alert"
         return "$statusText emergency alert sent to $hospital."
-    }
-
-    private fun currentUserEmail(): String? {
-        val state = _uiState.value
-        return state.userProfile?.email?.takeIf { it.isNotBlank() }
-            ?: state.email.takeIf { it.isNotBlank() }
     }
 
     private fun HealthSectionSyncPayload.toHealthSyncPayload(): HealthSyncPayload {

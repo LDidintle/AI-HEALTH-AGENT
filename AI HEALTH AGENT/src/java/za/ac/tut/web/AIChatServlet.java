@@ -30,7 +30,7 @@ public class AIChatServlet extends HttpServlet {
     private static final int LLM_TIMEOUT_SECONDS = 30;
     private static final String ENDPOINT = config("SMARTHEALTH_LLM_ENDPOINT", "https://api.openai.com/v1/responses");
     private static final String MODEL = config("SMARTHEALTH_LLM_MODEL", "gpt-5");
-    private static final boolean WEB_SEARCH_ENABLED = Boolean.parseBoolean(config("SMARTHEALTH_AGENT_WEB_SEARCH", "true"));
+    private static final boolean WEB_SEARCH_ENABLED = Boolean.parseBoolean(config("SMARTHEALTH_AGENT_WEB_SEARCH", "false"));
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)

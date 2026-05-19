@@ -9,7 +9,7 @@ The forgot-password flow is available from the patient login page.
 3. Enter the patient email address.
 4. Click `Send OTP`.
 5. If SMTP is configured, check the email inbox for the OTP.
-6. If SMTP is not configured, the page shows `Demo OTP` so the flow can still be demonstrated locally.
+6. If SMTP is not configured and `SMARTHEALTH_SHOW_RESET_OTP=true`, the page shows `Demo OTP` so the flow can still be demonstrated locally.
 7. Enter the OTP.
 8. Enter a strong new password:
    - at least 8 characters
@@ -33,7 +33,7 @@ SMARTHEALTH_SMTP_STARTTLS=true
 SMARTHEALTH_SHOW_RESET_OTP=false
 ```
 
-For local demos without SMTP, leave SMTP unset and keep `SMARTHEALTH_SHOW_RESET_OTP=true` or unset.
+For local demos without SMTP, set `SMARTHEALTH_SHOW_RESET_OTP=true`. Leave it unset or set it to `false` outside local demos.
 
 ## Database Migration
 

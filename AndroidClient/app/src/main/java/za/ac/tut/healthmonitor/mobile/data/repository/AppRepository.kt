@@ -1,5 +1,6 @@
 package za.ac.tut.healthmonitor.mobile.data.repository
 
+import android.content.Context
 import za.ac.tut.healthmonitor.mobile.data.api.BackendApiClient
 import za.ac.tut.healthmonitor.mobile.data.model.AlertNotificationResponse
 import za.ac.tut.healthmonitor.mobile.data.model.HealthSectionSyncPayload
@@ -12,6 +13,8 @@ import za.ac.tut.healthmonitor.mobile.data.model.SyncResponse
 class AppRepository(
     private val backendApiClient: BackendApiClient = BackendApiClient()
 ) {
+
+    constructor(context: Context) : this(BackendApiClient(context.applicationContext))
 
     fun login(email: String, password: String): LoginResponse {
         return backendApiClient.login(email, password)
@@ -37,20 +40,20 @@ class AppRepository(
         return backendApiClient.getProfile()
     }
 
-    fun getLatestReadings(email: String? = null): LatestReadingsResponse {
-        return backendApiClient.getLatestReadings(email)
+    fun getLatestReadings(): LatestReadingsResponse {
+        return backendApiClient.getLatestReadings()
     }
 
-    fun getAlertNotification(email: String? = null): AlertNotificationResponse {
-        return backendApiClient.getAlertNotification(email)
+    fun getAlertNotification(): AlertNotificationResponse {
+        return backendApiClient.getAlertNotification()
     }
 
-    fun syncReadings(payload: HealthSyncPayload, email: String? = null): SyncResponse {
-        return backendApiClient.syncReadings(payload, email)
+    fun syncReadings(payload: HealthSyncPayload): SyncResponse {
+        return backendApiClient.syncReadings(payload)
     }
 
-    fun syncHealthSection(payload: HealthSectionSyncPayload, email: String? = null): SyncResponse {
-        return backendApiClient.syncHealthSection(payload, email)
+    fun syncHealthSection(payload: HealthSectionSyncPayload): SyncResponse {
+        return backendApiClient.syncHealthSection(payload)
     }
 
     fun logout(): SyncResponse {
