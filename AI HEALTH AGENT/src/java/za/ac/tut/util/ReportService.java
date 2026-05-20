@@ -160,7 +160,16 @@ public final class ReportService {
                             rs.getTimestamp("latest_pulse"),
                             rs.getTimestamp("latest_temperature"),
                             rs.getTimestamp("latest_bp")));
-                    row.put("risk", screeningNote(avgPulse, avgTemperature, avgSystolic, avgDiastolic, readingCount));
+                    HealthRiskPredictionService.PredictionResult prediction = HealthRiskPredictionService.predict(
+                            new HealthRiskPredictionService.VitalSnapshot(
+                                    avgPulse == null ? null : avgPulse.setScale(0, java.math.RoundingMode.HALF_UP).intValue(),
+                                    avgTemperature,
+                                    avgSystolic == null ? null : avgSystolic.setScale(0, java.math.RoundingMode.HALF_UP).intValue(),
+                                    avgDiastolic == null ? null : avgDiastolic.setScale(0, java.math.RoundingMode.HALF_UP).intValue()
+                            ),
+                            0
+                    );
+                    row.put("risk", prediction.getRiskLevel().name() + " - " + prediction.getSummary());
                     result.addRow(row);
                 }
             }
@@ -466,39 +475,4 @@ public final class ReportService {
         builder.append(cleaned);
     }
 
-    private static String screeningNote(BigDecimal pulse, BigDecimal temperature,
-            BigDecimal systolic, BigDecimal diastolic, int readings) {
-        if (readings == 0) {
-            return "No readings in selected period.";
-        }
-        if (greaterOrEqual(systolic, 140) || greaterOrEqual(diastolic, 90)) {
-            return "Average blood pressure is high; review follow-up.";
-        }
-        if (lessThan(pulse, 50)) {
-            return "Average pulse is low; check symptoms.";
-        }
-        if (greaterThan(pulse, 100)) {
-            return "Average pulse is high; recheck resting readings.";
-        }
-        if (greaterOrEqual(temperature, new BigDecimal("38"))) {
-            return "Average temperature is raised.";
-        }
-        return "Averages are within expected screening range.";
-    }
-
-    private static boolean greaterThan(BigDecimal value, int threshold) {
-        return value != null && value.compareTo(BigDecimal.valueOf(threshold)) > 0;
-    }
-
-    private static boolean greaterOrEqual(BigDecimal value, int threshold) {
-        return value != null && value.compareTo(BigDecimal.valueOf(threshold)) >= 0;
-    }
-
-    private static boolean greaterOrEqual(BigDecimal value, BigDecimal threshold) {
-        return value != null && value.compareTo(threshold) >= 0;
-    }
-
-    private static boolean lessThan(BigDecimal value, int threshold) {
-        return value != null && value.compareTo(BigDecimal.valueOf(threshold)) < 0;
-    }
 }

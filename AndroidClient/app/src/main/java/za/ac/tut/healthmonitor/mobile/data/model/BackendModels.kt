@@ -28,7 +28,17 @@ data class LatestReadingsResponse(
     val heartRate: ReadingValue? = null,
     val temperature: TemperatureValue? = null,
     val bloodPressure: BloodPressureValue? = null,
+    val prediction: HealthPrediction? = null,
     val message: String? = null
+)
+
+data class HealthPrediction(
+    val riskLevel: String? = null,
+    val score: Int = 0,
+    val summary: String? = null,
+    val reasons: List<String> = emptyList(),
+    val recommendedAction: String? = null,
+    val dataQuality: String? = null
 )
 
 data class AlertNotificationResponse(

@@ -38,11 +38,15 @@ class SamsungHealthDataManager(
         bloodOxygenPermission
     )
 
-    suspend fun hasHeartRatePermission(): Boolean {
+    suspend fun hasAnyRequiredPermission(): Boolean {
         return store.getGrantedPermissions(requiredPermissions).any { it in requiredPermissions }
     }
 
-    suspend fun requestHeartRatePermission(activity: Activity): Boolean {
+    suspend fun hasAllRequiredPermissions(): Boolean {
+        return store.getGrantedPermissions(requiredPermissions).containsAll(requiredPermissions)
+    }
+
+    suspend fun requestRequiredPermissions(activity: Activity): Boolean {
         val grantedPermissions = store.getGrantedPermissions(requiredPermissions)
         if (grantedPermissions.containsAll(requiredPermissions)) {
             return true
@@ -53,7 +57,15 @@ class SamsungHealthDataManager(
         return (grantedPermissions + newlyGranted).any { it in requiredPermissions }
     }
 
-    suspend fun readLatestHeartRateSection(
+    suspend fun missingPermissionLabels(): List<String> {
+        val grantedPermissions = store.getGrantedPermissions(requiredPermissions)
+        return permissionLabels
+            .filterKeys { it !in grantedPermissions }
+            .values
+            .toList()
+    }
+
+    suspend fun readLatestSection(
         windowMinutes: Long = DEFAULT_SECTION_WINDOW_MINUTES
     ): HealthSection {
         val end = Instant.now()
@@ -317,4 +329,12 @@ class SamsungHealthDataManager(
         const val SAMSUNG_HEALTH_SOURCE = "SAMSUNG_HEALTH_DATA"
         const val ERR_ACCESS_CONTROL = 2003
     }
+
+    private val permissionLabels = mapOf(
+        heartRatePermission to "heart rate",
+        bloodPressurePermission to "blood pressure",
+        bodyTemperaturePermission to "body temperature",
+        skinTemperaturePermission to "skin temperature",
+        bloodOxygenPermission to "blood oxygen"
+    )
 }

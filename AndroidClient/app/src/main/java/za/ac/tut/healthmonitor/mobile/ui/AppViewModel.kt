@@ -234,13 +234,21 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             _uiState.update { it.copy(isLoading = true, errorMessage = null, infoMessage = null) }
             try {
                 val section = withContext(Dispatchers.IO) {
-                    if (!manager.hasHeartRatePermission()) {
-                        throw SecurityException("Samsung Health heart-rate permission is required.")
+                    if (!manager.hasAnyRequiredPermission()) {
+                        throw SecurityException("Samsung Health permissions are required.")
                     }
-                    manager.readLatestHeartRateSection(DEFAULT_SECTION_WINDOW_MINUTES)
+                    manager.readLatestSection(DEFAULT_SECTION_WINDOW_MINUTES)
                 }
 
                 if (section.isEmpty()) {
+                    val missingPermissions = withContext(Dispatchers.IO) {
+                        manager.missingPermissionLabels()
+                    }
+                    val reason = if (missingPermissions.isNotEmpty()) {
+                        "Missing Samsung Health permissions: ${missingPermissions.joinToString(", ")}."
+                    } else {
+                        "Samsung Health did not return heart rate, blood pressure, or temperature records. Check that the watch has recent measurements and that Samsung Health supports sharing those data types."
+                    }
                     _uiState.update {
                         it.copy(
                             isLoading = false,
@@ -249,7 +257,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                             lastSectionSyncAt = null,
                             lastSyncSummary = null,
                             errorMessage = null,
-                            infoMessage = "Samsung Health is connected, but it did not return readable heart-rate records yet."
+                            infoMessage = reason
                         )
                     }
                     return@launch
@@ -257,6 +265,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
                 val readings = section.payload.toLatestReadings()
                 persistSection(section.payload)
+                val missingReadingsMessage = section.payload.missingSamsungReadingsMessage()
                 _uiState.update {
                     it.copy(
                         isLoading = false,
@@ -265,7 +274,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                         lastSectionSyncAt = formattedNow(),
                         lastSyncSummary = sectionSummary(section.payload),
                         errorMessage = null,
-                        infoMessage = "Latest Samsung Health heart-rate data synced."
+                        infoMessage = missingReadingsMessage ?: "Latest Samsung Health section synced."
                     )
                 }
             } catch (e: Exception) {
@@ -744,6 +753,13 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 } catch (sectionError: Exception) {
                     repository.syncReadings(payload.toHealthSyncPayload())
                 }
+                val savedReadings = repository.getLatestReadings()
+                _uiState.update {
+                    it.copy(
+                        latestReadings = savedReadings,
+                        trendPoints = if (it.trendPoints.isEmpty()) savedReadings.toUiTrendPoints() else it.trendPoints
+                    )
+                }
                 checkAlertNotification()
             } catch (_: Exception) {
                 _uiState.update {
@@ -793,6 +809,23 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             deviceManufacturer = deviceManufacturer,
             deviceModel = deviceModel
         )
+    }
+
+    private fun HealthSectionSyncPayload.missingSamsungReadingsMessage(): String? {
+        val missing = mutableListOf<String>()
+        if (heartRateLatest == null) {
+            missing += "heart rate"
+        }
+        if (systolicLatest == null || diastolicLatest == null) {
+            missing += "blood pressure"
+        }
+        if (temperatureLatest == null) {
+            missing += "temperature"
+        }
+        if (missing.isEmpty()) {
+            return null
+        }
+        return "Samsung Health section synced. Missing ${missing.joinToString(", ")} from this watch/source, so the app saved the available vitals only."
     }
 
     private fun HealthSectionSyncPayload.toLatestReadings(): LatestReadingsResponse {

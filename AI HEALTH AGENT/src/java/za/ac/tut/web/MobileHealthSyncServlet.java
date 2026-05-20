@@ -14,6 +14,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import za.ac.tut.util.Database;
+import za.ac.tut.util.HealthRiskPredictionService;
 import za.ac.tut.util.JsonUtil;
 import za.ac.tut.util.VitalAlertEvaluator;
 
@@ -46,7 +47,9 @@ public class MobileHealthSyncServlet extends HttpServlet {
                         + "\"email\":" + JsonUtil.quote(email) + ","
                         + "\"heartRate\":" + latestHeartRateJson(conn, userId) + ","
                         + "\"temperature\":" + latestTemperatureJson(conn, userId) + ","
-                        + "\"bloodPressure\":" + latestBloodPressureJson(conn, userId)
+                        + "\"bloodPressure\":" + latestBloodPressureJson(conn, userId) + ","
+                        + "\"prediction\":" + HealthRiskPredictionService.toJson(
+                                HealthRiskPredictionService.predictForUser(conn, userId))
                         + "}";
 
                 writeJson(response, json);

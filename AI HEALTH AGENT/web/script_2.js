@@ -411,7 +411,8 @@ function normalizeMobileReadings(data) {
             deviceModel: null
         },
         trendPoints: [],
-        activeAlert: null
+        activeAlert: null,
+        prediction: data.prediction || null
     };
 }
 
@@ -552,6 +553,19 @@ function updateSyncMeta(section, options = {}) {
 }
 
 function updateWellnessSuggestions(data) {
+    if (data.prediction) {
+        const reasons = Array.isArray(data.prediction.reasons) ? data.prediction.reasons : [];
+        setSuggestionText(
+            'cause1',
+            `${data.prediction.riskLevel || 'LOW'} risk score ${data.prediction.score || 0}/100: ${data.prediction.summary || 'Screening score available.'}`
+        );
+        setSuggestionText(
+            'cause2',
+            reasons[0] || data.prediction.recommendedAction || 'Keep monitoring trends. This screening score does not diagnose illness.'
+        );
+        return;
+    }
+
     const heartRate = data.heartRate === null ? null : Number(data.heartRate);
     const temperature = data.temperature === null ? null : Number(data.temperature);
     const bloodPressureMatch = String(data.bloodPressure || '').match(/(\d+)\s*\/\s*(\d+)/);

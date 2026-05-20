@@ -22,7 +22,11 @@ object HealthInsightEngine {
             readings?.heartRate?.source,
             readings?.temperature?.source,
             readings?.bloodPressure?.source
-        ).any { it.equals("HEALTH_CONNECT", ignoreCase = true) }
+        ).any {
+            it.equals("HEALTH_CONNECT", ignoreCase = true)
+                    || it.equals("HEALTH_CONNECT_SECTION", ignoreCase = true)
+                    || it.equals("SAMSUNG_HEALTH_DATA", ignoreCase = true)
+        }
     }
 
     fun hasAnyReading(readings: LatestReadingsResponse?): Boolean {

@@ -46,7 +46,7 @@ class MainActivity : ComponentActivity() {
                     val now = System.currentTimeMillis()
                     if (uiState.isLoggedIn && now - lastSamsungAutoSyncAt > AUTO_SYNC_COOLDOWN_MILLIS) {
                         try {
-                            if (samsungHealthDataManager.hasHeartRatePermission()) {
+                            if (samsungHealthDataManager.hasAnyRequiredPermission()) {
                                 lastSamsungAutoSyncAt = now
                                 appViewModel.syncSamsungHealthSection(samsungHealthDataManager)
                             }
@@ -146,10 +146,10 @@ class MainActivity : ComponentActivity() {
                     onSyncSamsungHealth = {
                         coroutineScope.launch {
                             try {
-                                if (samsungHealthDataManager.requestHeartRatePermission(this@MainActivity)) {
+                                if (samsungHealthDataManager.requestRequiredPermissions(this@MainActivity)) {
                                     appViewModel.syncSamsungHealthSection(samsungHealthDataManager)
                                 } else {
-                                    appViewModel.setInfoMessage("Samsung Health heart-rate permission was not granted.")
+                                    appViewModel.setInfoMessage("Samsung Health permissions were not granted.")
                                 }
                             } catch (e: Exception) {
                                 if (!samsungHealthDataManager.resolveIfPossible(e, this@MainActivity)) {

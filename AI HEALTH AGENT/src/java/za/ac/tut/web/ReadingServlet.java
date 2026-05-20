@@ -13,6 +13,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import za.ac.tut.util.Database;
+import za.ac.tut.util.HealthRiskPredictionService;
 import za.ac.tut.util.JsonUtil;
 
 public class ReadingServlet extends HttpServlet {
@@ -48,6 +49,8 @@ public class ReadingServlet extends HttpServlet {
                 String latestSectionJson = safeJsonObject(() -> getLatestSectionJson(conn, userId), "null");
                 String trendPointsJson = safeJsonObject(() -> getTrendPointsJson(conn, userId), "[]");
                 String activeAlertJson = safeJsonObject(() -> getActiveAlertJson(conn, userId), "null");
+                String predictionJson = HealthRiskPredictionService.toJson(
+                        HealthRiskPredictionService.predictForUser(conn, userId));
 
                 String json = "{"
                         + "\"success\":true,"
@@ -58,7 +61,8 @@ public class ReadingServlet extends HttpServlet {
                         + "\"latestSyncedAt\":" + (latestSyncedAt == null ? "null" : JsonUtil.quote(latestSyncedAt.toInstant().toString())) + ","
                         + "\"latestSection\":" + latestSectionJson + ","
                         + "\"trendPoints\":" + trendPointsJson + ","
-                        + "\"activeAlert\":" + activeAlertJson
+                        + "\"activeAlert\":" + activeAlertJson + ","
+                        + "\"prediction\":" + predictionJson
                         + "}";
 
                 writeJson(response, json);

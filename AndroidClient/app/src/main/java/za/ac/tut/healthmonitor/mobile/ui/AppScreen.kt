@@ -47,6 +47,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import za.ac.tut.healthmonitor.mobile.data.model.BloodPressureValue
+import za.ac.tut.healthmonitor.mobile.data.model.HealthPrediction
 import za.ac.tut.healthmonitor.mobile.data.model.LatestReadingsResponse
 import za.ac.tut.healthmonitor.mobile.data.model.ReadingValue
 import za.ac.tut.healthmonitor.mobile.data.model.TemperatureValue
@@ -401,6 +402,7 @@ private fun DashboardContent(
         MessageSection(uiState)
 
         VitalsPanel(uiState.latestReadings, copy)
+        PredictionCard(uiState.latestReadings?.prediction)
         ChartCard(uiState.trendPoints)
         ActionButton(text = copy.chat, onClick = onOpenChat, colors = listOf(AccentBlue, Yellow), textColor = Ink)
         ActionButton(text = copy.alert, onClick = onSendParamedicAlert, colors = listOf(Danger, Color(0xFF8F1B13)), textColor = Color.White)
@@ -420,6 +422,44 @@ private fun DashboardContent(
         )
         AiSuggestionsCard(uiState.latestReadings, copy)
         Spacer(modifier = Modifier.height(20.dp))
+    }
+}
+
+@Composable
+private fun PredictionCard(prediction: HealthPrediction?) {
+    if (prediction == null) {
+        return
+    }
+
+    val tint = when (prediction.riskLevel?.uppercase()) {
+        "URGENT" -> Danger
+        "HIGH" -> AccentCoral
+        "MEDIUM" -> Color(0xFFF0A83A)
+        else -> AccentBlue
+    }
+
+    Card(colors = CardDefaults.cardColors(containerColor = SoftPanel), shape = RoundedCornerShape(18.dp)) {
+        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Predictive screening", color = Ink, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
+            Text(
+                text = "${prediction.riskLevel ?: "LOW"} · ${prediction.score}/100",
+                color = tint,
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.headlineSmall
+            )
+            prediction.summary?.takeIf { it.isNotBlank() }?.let {
+                Text(it, color = Ink, style = MaterialTheme.typography.bodyLarge)
+            }
+            prediction.reasons.take(2).forEach {
+                Text("• $it", color = Ink, style = MaterialTheme.typography.bodyMedium)
+            }
+            prediction.recommendedAction?.takeIf { it.isNotBlank() }?.let {
+                Text(it, color = Muted, style = MaterialTheme.typography.bodyMedium)
+            }
+            prediction.dataQuality?.takeIf { it.isNotBlank() }?.let {
+                Text("Data quality: ${it.replace('_', ' ').lowercase()}", color = Muted, fontSize = 12.sp)
+            }
+        }
     }
 }
 
@@ -761,10 +801,10 @@ private fun HealthConnectChecklist() {
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        Text("For real watch data:", color = Color.White, fontWeight = FontWeight.Bold)
-        Text("1. Samsung Health must write heart rate into Health Connect.", color = Color(0xFFCFEBDD), style = MaterialTheme.typography.bodySmall)
-        Text("2. Health Connect > Data and access > Heart rate must show an entry.", color = Color(0xFFCFEBDD), style = MaterialTheme.typography.bodySmall)
-        Text("3. Take a fresh heart-rate reading after permissions are enabled.", color = Color(0xFFCFEBDD), style = MaterialTheme.typography.bodySmall)
+            Text("For real watch data:", color = Color.White, fontWeight = FontWeight.Bold)
+        Text("1. Samsung Health must contain recent watch readings.", color = Color(0xFFCFEBDD), style = MaterialTheme.typography.bodySmall)
+        Text("2. Grant heart, blood pressure, temperature, and oxygen permissions when available.", color = Color(0xFFCFEBDD), style = MaterialTheme.typography.bodySmall)
+        Text("3. If BP/temp stay blank, this watch/source is not sharing those records yet.", color = Color(0xFFCFEBDD), style = MaterialTheme.typography.bodySmall)
     }
 }
 
