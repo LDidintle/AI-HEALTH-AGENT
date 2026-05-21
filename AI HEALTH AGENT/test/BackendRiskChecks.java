@@ -17,6 +17,7 @@ public class BackendRiskChecks {
         predictsElevatedRiskForFastPulseWithFever();
         reportsLimitedDataWhenVitalsAreMissing();
         increasesScoreForRepeatedAbnormalSections();
+        marksPredictionAsRuleBasedScreening();
         System.out.println("Backend risk checks passed.");
     }
 
@@ -100,6 +101,16 @@ public class BackendRiskChecks {
                 3
         );
         assertTrue(repeated.getScore() > isolated.getScore(), "repeated abnormal sections should increase score");
+    }
+
+    private static void marksPredictionAsRuleBasedScreening() {
+        String json = HealthRiskPredictionService.toJson(HealthRiskPredictionService.predict(
+                new HealthRiskPredictionService.VitalSnapshot(76, new BigDecimal("36.70"), 118, 76),
+                0
+        ));
+        assertTrue(json.contains("\"modelType\":\"RULE_BASED_SCREENING_V1\""), "prediction JSON must identify the rule-based model");
+        assertTrue(json.contains("not a diagnosis"), "prediction JSON must include diagnostic disclaimer");
+        assertTrue(json.contains("not a trained machine-learning model"), "prediction JSON must not imply trained ML");
     }
 
     private static void assertTrue(boolean condition, String message) {

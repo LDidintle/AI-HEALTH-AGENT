@@ -10,6 +10,10 @@ import java.util.List;
 
 public final class HealthRiskPredictionService {
 
+    public static final String MODEL_TYPE = "RULE_BASED_SCREENING_V1";
+    public static final String DIAGNOSTIC_DISCLAIMER =
+            "This is a rule-based screening score, not a diagnosis and not a trained machine-learning model.";
+
     public enum RiskLevel {
         LOW,
         MEDIUM,
@@ -141,12 +145,14 @@ public final class HealthRiskPredictionService {
         reasonsJson.append("]");
 
         return "{"
+                + "\"modelType\":" + JsonUtil.quote(MODEL_TYPE) + ","
                 + "\"riskLevel\":" + JsonUtil.quote(prediction.riskLevel.name()) + ","
                 + "\"score\":" + prediction.score + ","
                 + "\"summary\":" + JsonUtil.quote(prediction.summary) + ","
                 + "\"reasons\":" + reasonsJson + ","
                 + "\"recommendedAction\":" + JsonUtil.quote(prediction.recommendedAction) + ","
-                + "\"dataQuality\":" + JsonUtil.quote(prediction.dataQuality.name())
+                + "\"dataQuality\":" + JsonUtil.quote(prediction.dataQuality.name()) + ","
+                + "\"diagnosticDisclaimer\":" + JsonUtil.quote(DIAGNOSTIC_DISCLAIMER)
                 + "}";
     }
 

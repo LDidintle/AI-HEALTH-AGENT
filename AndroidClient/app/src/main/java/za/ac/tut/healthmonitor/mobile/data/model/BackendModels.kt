@@ -33,12 +33,14 @@ data class LatestReadingsResponse(
 )
 
 data class HealthPrediction(
+    val modelType: String? = null,
     val riskLevel: String? = null,
     val score: Int = 0,
     val summary: String? = null,
     val reasons: List<String> = emptyList(),
     val recommendedAction: String? = null,
-    val dataQuality: String? = null
+    val dataQuality: String? = null,
+    val diagnosticDisclaimer: String? = null
 )
 
 data class AlertNotificationResponse(

@@ -559,10 +559,9 @@ function updateWellnessSuggestions(data) {
             'cause1',
             `${data.prediction.riskLevel || 'LOW'} risk score ${data.prediction.score || 0}/100: ${data.prediction.summary || 'Screening score available.'}`
         );
-        setSuggestionText(
-            'cause2',
-            reasons[0] || data.prediction.recommendedAction || 'Keep monitoring trends. This screening score does not diagnose illness.'
-        );
+        const firstReason = reasons[0] || data.prediction.recommendedAction || 'Keep monitoring trends.';
+        const disclaimer = data.prediction.diagnosticDisclaimer || 'This screening score does not diagnose illness.';
+        setSuggestionText('cause2', `${firstReason} ${disclaimer}`);
         return;
     }
 

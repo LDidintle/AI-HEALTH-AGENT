@@ -247,7 +247,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     val reason = if (missingPermissions.isNotEmpty()) {
                         "Missing Samsung Health permissions: ${missingPermissions.joinToString(", ")}."
                     } else {
-                        "Samsung Health did not return heart rate, blood pressure, or temperature records. Check that the watch has recent measurements and that Samsung Health supports sharing those data types."
+                        "Samsung Health did not return heart rate or blood pressure records. Check that the watch has recent measurements. Temperature may stay blank when this Galaxy Watch/source does not provide it."
                     }
                     _uiState.update {
                         it.copy(
@@ -824,6 +824,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
         if (missing.isEmpty()) {
             return null
+        }
+        if (missing.size == 1 && missing.first() == "temperature") {
+            return "Samsung Health section synced. Temperature is not available from this Galaxy Watch/source, so the app saved the available vitals only."
         }
         return "Samsung Health section synced. Missing ${missing.joinToString(", ")} from this watch/source, so the app saved the available vitals only."
     }

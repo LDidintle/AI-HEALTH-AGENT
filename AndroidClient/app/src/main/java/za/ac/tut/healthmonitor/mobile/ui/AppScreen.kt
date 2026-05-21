@@ -442,6 +442,12 @@ private fun PredictionCard(prediction: HealthPrediction?) {
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Predictive screening", color = Ink, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
             Text(
+                text = prediction.modelType?.replace('_', ' ')?.lowercase()
+                    ?: "rule-based screening",
+                color = Muted,
+                fontSize = 12.sp
+            )
+            Text(
                 text = "${prediction.riskLevel ?: "LOW"} · ${prediction.score}/100",
                 color = tint,
                 fontWeight = FontWeight.Bold,
@@ -458,6 +464,9 @@ private fun PredictionCard(prediction: HealthPrediction?) {
             }
             prediction.dataQuality?.takeIf { it.isNotBlank() }?.let {
                 Text("Data quality: ${it.replace('_', ' ').lowercase()}", color = Muted, fontSize = 12.sp)
+            }
+            prediction.diagnosticDisclaimer?.takeIf { it.isNotBlank() }?.let {
+                Text(it, color = Muted, fontSize = 12.sp)
             }
         }
     }
@@ -803,8 +812,8 @@ private fun HealthConnectChecklist() {
     ) {
             Text("For real watch data:", color = Color.White, fontWeight = FontWeight.Bold)
         Text("1. Samsung Health must contain recent watch readings.", color = Color(0xFFCFEBDD), style = MaterialTheme.typography.bodySmall)
-        Text("2. Grant heart, blood pressure, temperature, and oxygen permissions when available.", color = Color(0xFFCFEBDD), style = MaterialTheme.typography.bodySmall)
-        Text("3. If BP/temp stay blank, this watch/source is not sharing those records yet.", color = Color(0xFFCFEBDD), style = MaterialTheme.typography.bodySmall)
+        Text("2. Grant heart, blood pressure, oxygen, and any temperature permissions Samsung offers.", color = Color(0xFFCFEBDD), style = MaterialTheme.typography.bodySmall)
+        Text("3. If temperature stays blank, this Galaxy Watch/source may not provide temperature readings.", color = Color(0xFFCFEBDD), style = MaterialTheme.typography.bodySmall)
     }
 }
 
