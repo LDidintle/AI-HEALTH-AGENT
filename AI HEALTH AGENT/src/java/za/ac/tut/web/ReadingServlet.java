@@ -139,7 +139,8 @@ public class ReadingServlet extends HttpServlet {
     }
 
     private String getLatestSectionJson(Connection conn, int userId) throws Exception {
-        String sql = "SELECT h.source, h.window_start, h.window_end, h.heart_rate_count, "
+        String sql = "SELECT h.source, h.window_start, h.window_end, h.heart_rate_latest, "
+                + "h.heart_rate_min, h.heart_rate_max, h.heart_rate_average, h.heart_rate_count, "
                 + "h.temperature_count, h.blood_pressure_count, h.created_at, "
                 + "d.device_type, d.manufacturer, d.device_model "
                 + "FROM health_sync_sections h "
@@ -156,6 +157,10 @@ public class ReadingServlet extends HttpServlet {
                             + "\"source\":" + JsonUtil.quote(rs.getString("source")) + ","
                             + "\"windowStart\":" + quoteTimestamp(rs.getTimestamp("window_start")) + ","
                             + "\"windowEnd\":" + quoteTimestamp(rs.getTimestamp("window_end")) + ","
+                            + "\"heartRateLatest\":" + nullableInteger(rs, "heart_rate_latest") + ","
+                            + "\"heartRateMin\":" + nullableInteger(rs, "heart_rate_min") + ","
+                            + "\"heartRateMax\":" + nullableInteger(rs, "heart_rate_max") + ","
+                            + "\"heartRateAverage\":" + nullableDecimal(rs, "heart_rate_average") + ","
                             + "\"heartRateCount\":" + rs.getInt("heart_rate_count") + ","
                             + "\"temperatureCount\":" + rs.getInt("temperature_count") + ","
                             + "\"bloodPressureCount\":" + rs.getInt("blood_pressure_count") + ","

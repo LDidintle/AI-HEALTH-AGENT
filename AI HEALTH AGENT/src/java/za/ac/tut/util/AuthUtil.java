@@ -8,21 +8,25 @@ public final class AuthUtil {
     public static final String ROLE_ADMIN = "ADMIN";
     public static final String ROLE_HOSPITAL = "HOSPITAL";
     public static final String ROLE_PATIENT = "PATIENT";
+    public static final int SESSION_TIMEOUT_SECONDS = 30 * 60;
 
     private AuthUtil() {
     }
 
     public static void markAdmin(HttpSession session) {
+        session.setMaxInactiveInterval(SESSION_TIMEOUT_SECONDS);
         session.setAttribute("admin", "true");
         session.setAttribute("role", ROLE_ADMIN);
     }
 
     public static void markHospital(HttpSession session) {
+        session.setMaxInactiveInterval(SESSION_TIMEOUT_SECONDS);
         session.setAttribute("hospital", "true");
         session.setAttribute("role", ROLE_HOSPITAL);
     }
 
     public static void markPatient(HttpSession session, String email, int userId) {
+        session.setMaxInactiveInterval(SESSION_TIMEOUT_SECONDS);
         session.setAttribute("user", email);
         session.setAttribute("userId", userId);
         session.setAttribute("role", ROLE_PATIENT);

@@ -1,7 +1,18 @@
 import za.ac.tut.model.PasswordUtils;
+import za.ac.tut.model.ReportCriteria;
+import za.ac.tut.util.AuthUtil;
 import za.ac.tut.util.HealthRiskPredictionService;
+import za.ac.tut.util.PasswordPolicy;
+import za.ac.tut.util.PatientValidation;
+import za.ac.tut.util.RateLimitService;
+import za.ac.tut.util.ReportService;
 import za.ac.tut.util.ResetOtpVisibility;
+import za.ac.tut.util.VitalAlertEvaluator;
 import java.math.BigDecimal;
+import java.lang.reflect.Proxy;
+import java.util.HashMap;
+import java.util.Map;
+import javax.servlet.http.HttpSession;
 
 public class BackendRiskChecks {
 
@@ -18,6 +29,12 @@ public class BackendRiskChecks {
         reportsLimitedDataWhenVitalsAreMissing();
         increasesScoreForRepeatedAbnormalSections();
         marksPredictionAsRuleBasedScreening();
+        marksAuthRolesAndSessionTimeouts();
+        validatesPatientPhoneIdAndBirthDate();
+        enforcesPasswordPolicy();
+        rateLimitsRepeatedSensitiveActions();
+        classifiesEmergencyAlertDecisions();
+        normalizesReportTypesByRole();
         System.out.println("Backend risk checks passed.");
     }
 
@@ -113,6 +130,95 @@ public class BackendRiskChecks {
         assertTrue(json.contains("not a trained machine-learning model"), "prediction JSON must not imply trained ML");
     }
 
+    private static void marksAuthRolesAndSessionTimeouts() {
+        HttpSession patientSession = session();
+        AuthUtil.markPatient(patientSession, "patient@example.com", 42);
+        assertTrue(AuthUtil.isPatient(patientSession), "patient session should be recognized");
+        assertEquals(AuthUtil.ROLE_PATIENT, AuthUtil.currentRole(patientSession), "patient role should be current");
+        assertEquals(AuthUtil.SESSION_TIMEOUT_SECONDS, patientSession.getMaxInactiveInterval(), "patient session timeout should be set");
+
+        HttpSession adminSession = session();
+        AuthUtil.markAdmin(adminSession);
+        assertTrue(AuthUtil.isAdmin(adminSession), "admin session should be recognized");
+        assertEquals(AuthUtil.ROLE_ADMIN, AuthUtil.currentRole(adminSession), "admin role should be current");
+    }
+
+    private static void validatesPatientPhoneIdAndBirthDate() {
+        assertTrue(PatientValidation.isValidSouthAfricanPhone("+27 72 123 4567"), "SA mobile number should normalize and validate");
+        assertFalse(PatientValidation.isValidSouthAfricanPhone("0211234567"), "landline-like number should not validate as mobile");
+        assertTrue(PatientValidation.samePhone("0721234567", "+27 72 123 4567"), "same phone should compare after normalization");
+        assertTrue(PatientValidation.isValidIdNumber("9901015009087"), "13 digit SA ID shape should validate");
+        assertFalse(PatientValidation.isValidIdNumber("990101500908X"), "non-numeric SA ID should fail");
+        assertTrue(PatientValidation.isValidDateOfBirth("2000-01-01"), "past date of birth should validate");
+        assertFalse(PatientValidation.isValidDateOfBirth("2999-01-01"), "future date of birth should fail");
+    }
+
+    private static void enforcesPasswordPolicy() {
+        assertTrue(PasswordPolicy.isStrongPassword("Strong22!"), "strong password should pass");
+        assertFalse(PasswordPolicy.isStrongPassword("Strong2!"), "one digit should fail");
+        assertFalse(PasswordPolicy.isStrongPassword("strong22!"), "missing uppercase should fail");
+        assertFalse(PasswordPolicy.isStrongPassword("Strong22"), "missing special character should fail");
+    }
+
+    private static void rateLimitsRepeatedSensitiveActions() {
+        RateLimitService.clearForTests();
+        String key = RateLimitService.key("login", "127.0.0.1", "patient@example.com");
+        assertTrue(RateLimitService.allow(key, 2, 60_000), "first attempt should pass");
+        assertTrue(RateLimitService.allow(key, 2, 60_000), "second attempt should pass");
+        assertFalse(RateLimitService.allow(key, 2, 60_000), "third attempt should be rate limited");
+    }
+
+    private static void classifiesEmergencyAlertDecisions() {
+        VitalAlertEvaluator.AlertDecision emergencyBp = VitalAlertEvaluator.assess(null, null, 184, 122);
+        assertEquals("CRITICAL", emergencyBp.getStatus(), "emergency BP should be critical");
+        assertEquals(30, emergencyBp.getCountdownSeconds(), "critical alerts should use short countdown");
+
+        VitalAlertEvaluator.AlertDecision feverAndFastPulse = VitalAlertEvaluator.assess(
+                112, new BigDecimal("38.50"), 120, 80);
+        assertEquals("WARNING", feverAndFastPulse.getStatus(), "fast pulse plus fever should warn");
+        assertTrue(VitalAlertEvaluator.assess(76, new BigDecimal("36.70"), 118, 76) == null, "normal vitals should not alert");
+    }
+
+    private static void normalizesReportTypesByRole() {
+        assertEquals(ReportService.REPORT_MANAGEMENT, ReportService.normalizeReportType(null, false), "blank admin report should default to management");
+        assertEquals(ReportService.REPORT_ALERTS, ReportService.normalizeReportType("unknown", true), "hospital report should be alerts-only");
+        assertEquals(ReportService.REPORT_VITALS, ReportService.normalizeReportType(ReportService.REPORT_VITALS, false), "admin vitals report should be allowed");
+
+        ReportCriteria criteria = new ReportCriteria();
+        criteria.setHospital(true);
+        criteria.setReportType(ReportService.REPORT_MANAGEMENT);
+        assertEquals(ReportService.REPORT_ALERTS, ReportService.normalizeReportType(criteria.getReportType(), criteria.isHospital()), "hospital criteria should normalize to alerts");
+    }
+
+    private static HttpSession session() {
+        Map<String, Object> attributes = new HashMap<>();
+        int[] timeout = new int[] { -1 };
+        return (HttpSession) Proxy.newProxyInstance(
+                BackendRiskChecks.class.getClassLoader(),
+                new Class<?>[] { HttpSession.class },
+                (proxy, method, args) -> {
+                    String name = method.getName();
+                    if ("setAttribute".equals(name)) {
+                        attributes.put((String) args[0], args[1]);
+                        return null;
+                    }
+                    if ("getAttribute".equals(name)) {
+                        return attributes.get((String) args[0]);
+                    }
+                    if ("setMaxInactiveInterval".equals(name)) {
+                        timeout[0] = (Integer) args[0];
+                        return null;
+                    }
+                    if ("getMaxInactiveInterval".equals(name)) {
+                        return timeout[0];
+                    }
+                    if ("toString".equals(name)) {
+                        return "BackendRiskChecksSession";
+                    }
+                    return null;
+                });
+    }
+
     private static void assertTrue(boolean condition, String message) {
         if (!condition) {
             throw new AssertionError(message);
@@ -124,6 +230,12 @@ public class BackendRiskChecks {
     }
 
     private static void assertEquals(Object expected, Object actual, String message) {
+        if (expected == null) {
+            if (actual != null) {
+                throw new AssertionError(message + " expected=null actual=" + actual);
+            }
+            return;
+        }
         if (!expected.equals(actual)) {
             throw new AssertionError(message + " expected=" + expected + " actual=" + actual);
         }

@@ -50,7 +50,8 @@ public final class PasswordResetService {
 
         String sql = "SELECT reset_id, otp_hash, attempt_count FROM password_reset_otps "
                 + "WHERE user_id = ? AND used_at IS NULL AND expires_at > CURRENT_TIMESTAMP "
-                + "ORDER BY created_at DESC, reset_id DESC LIMIT 1";
+                + "ORDER BY created_at DESC, reset_id DESC "
+                + limitOne(conn);
 
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, userId);
@@ -115,6 +116,14 @@ public final class PasswordResetService {
                 return rs.next() ? rs.getInt("id") : null;
             }
         }
+    }
+
+    private static String limitOne(Connection conn) throws Exception {
+        String productName = conn.getMetaData().getDatabaseProductName();
+        if (productName != null && productName.toLowerCase().contains("derby")) {
+            return "FETCH FIRST 1 ROW ONLY";
+        }
+        return "LIMIT 1";
     }
 
     private static void expireExistingOtps(Connection conn, int userId) throws Exception {

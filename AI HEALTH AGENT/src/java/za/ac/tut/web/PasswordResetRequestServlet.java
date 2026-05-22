@@ -9,6 +9,7 @@ import javax.servlet.http.HttpServletResponse;
 import za.ac.tut.util.Database;
 import za.ac.tut.util.MailService;
 import za.ac.tut.util.PasswordResetService;
+import za.ac.tut.util.RateLimitService;
 import za.ac.tut.util.ResetOtpVisibility;
 
 public class PasswordResetRequestServlet extends HttpServlet {
@@ -23,6 +24,13 @@ public class PasswordResetRequestServlet extends HttpServlet {
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         String email = trimToNull(request.getParameter("email"));
+        if (!RateLimitService.allow(RateLimitService.key("password-reset", request.getRemoteAddr(), email),
+                5, 15L * 60L * 1000L)) {
+            request.setAttribute("error", "Too many password reset attempts. Try again later.");
+            request.getRequestDispatcher("reset_password.jsp").forward(request, response);
+            return;
+        }
+
         if (email == null || !email.matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")) {
             request.setAttribute("error", "Please enter a valid account email address.");
             request.getRequestDispatcher("reset_password.jsp").forward(request, response);

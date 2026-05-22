@@ -51,9 +51,11 @@ import za.ac.tut.healthmonitor.mobile.data.model.HealthPrediction
 import za.ac.tut.healthmonitor.mobile.data.model.LatestReadingsResponse
 import za.ac.tut.healthmonitor.mobile.data.model.ReadingValue
 import za.ac.tut.healthmonitor.mobile.data.model.TemperatureValue
+import za.ac.tut.healthmonitor.mobile.insights.ActivityState
 import za.ac.tut.healthmonitor.mobile.insights.HealthInsight
 import za.ac.tut.healthmonitor.mobile.insights.HealthInsightEngine
 import za.ac.tut.healthmonitor.mobile.insights.InsightSeverity
+import za.ac.tut.healthmonitor.mobile.insights.ReadingContext
 import za.ac.tut.healthmonitor.mobile.ui.theme.AccentBlue
 import za.ac.tut.healthmonitor.mobile.ui.theme.AccentCoral
 import za.ac.tut.healthmonitor.mobile.ui.theme.DeepNavy
@@ -81,13 +83,6 @@ fun AppScreen(
     onSignupConfirmPasswordChanged: (String) -> Unit,
     onLogin: () -> Unit,
     onRegister: () -> Unit,
-    onRefresh: () -> Unit,
-    onSyncLatestSection: () -> Unit,
-    onOpenHealthConnect: () -> Unit,
-    onOpenSamsungHealth: () -> Unit,
-    onSyncSamsungHealth: () -> Unit,
-    onStartDemoSync: () -> Unit,
-    onStartEmergencyDemoSync: () -> Unit,
     onLogout: () -> Unit,
     onSelectLanguage: (String) -> Unit,
     onOpenProfile: () -> Unit,
@@ -111,7 +106,10 @@ fun AppScreen(
     onCloseChat: () -> Unit,
     onChatInputChanged: (String) -> Unit,
     onSendChatMessage: () -> Unit,
-    onSendParamedicAlert: () -> Unit
+    onSendParamedicAlert: () -> Unit,
+    onReadingContextChanged: (ActivityState) -> Unit,
+    onSleepStartChanged: (String) -> Unit,
+    onSleepEndChanged: (String) -> Unit
 ) {
     Surface(modifier = Modifier.fillMaxSize()) {
         Box(
@@ -122,18 +120,14 @@ fun AppScreen(
             if (uiState.isLoggedIn) {
                 DashboardContent(
                     uiState = uiState,
-                    onRefresh = onRefresh,
-                    onSyncLatestSection = onSyncLatestSection,
-                    onOpenHealthConnect = onOpenHealthConnect,
-                    onOpenSamsungHealth = onOpenSamsungHealth,
-                    onSyncSamsungHealth = onSyncSamsungHealth,
-                    onStartDemoSync = onStartDemoSync,
-                    onStartEmergencyDemoSync = onStartEmergencyDemoSync,
                     onLogout = onLogout,
                     onSelectLanguage = onSelectLanguage,
                     onOpenProfile = onOpenProfile,
                     onOpenChat = onOpenChat,
-                    onSendParamedicAlert = onSendParamedicAlert
+                    onSendParamedicAlert = onSendParamedicAlert,
+                    onReadingContextChanged = onReadingContextChanged,
+                    onSleepStartChanged = onSleepStartChanged,
+                    onSleepEndChanged = onSleepEndChanged
                 )
             } else {
                 when (uiState.authScreen) {
@@ -368,18 +362,14 @@ private fun ExplainerStep(number: String, text: String) {
 @Composable
 private fun DashboardContent(
     uiState: AppUiState,
-    onRefresh: () -> Unit,
-    onSyncLatestSection: () -> Unit,
-    onOpenHealthConnect: () -> Unit,
-    onOpenSamsungHealth: () -> Unit,
-    onSyncSamsungHealth: () -> Unit,
-    onStartDemoSync: () -> Unit,
-    onStartEmergencyDemoSync: () -> Unit,
     onLogout: () -> Unit,
     onSelectLanguage: (String) -> Unit,
     onOpenProfile: () -> Unit,
     onOpenChat: () -> Unit,
-    onSendParamedicAlert: () -> Unit
+    onSendParamedicAlert: () -> Unit,
+    onReadingContextChanged: (ActivityState) -> Unit,
+    onSleepStartChanged: (String) -> Unit,
+    onSleepEndChanged: (String) -> Unit
 ) {
     val copy = copyFor(uiState.selectedLanguage)
 
@@ -402,6 +392,18 @@ private fun DashboardContent(
         MessageSection(uiState)
 
         VitalsPanel(uiState.latestReadings, copy)
+        HeartRateRangeCard(uiState.heartRateRange)
+        WatchContextCard(
+            selectedContext = uiState.readingContext,
+            lastSectionSyncAt = uiState.lastSectionSyncAt,
+            lastSyncSummary = uiState.lastSyncSummary,
+            sleepStart = uiState.sleepStart,
+            sleepEnd = uiState.sleepEnd,
+            onReadingContextChanged = onReadingContextChanged,
+            onSleepStartChanged = onSleepStartChanged,
+            onSleepEndChanged = onSleepEndChanged,
+            onLogout = onLogout
+        )
         PredictionCard(uiState.latestReadings?.prediction)
         ChartCard(uiState.trendPoints)
         ActionButton(text = copy.chat, onClick = onOpenChat, colors = listOf(AccentBlue, Yellow), textColor = Ink)
@@ -409,19 +411,157 @@ private fun DashboardContent(
 
         EmergencyNotificationCard(uiState)
 
-        SyncActionsCard(
-            uiState = uiState,
-            onRefresh = onRefresh,
-            onSyncLatestSection = onSyncLatestSection,
-            onOpenHealthConnect = onOpenHealthConnect,
-            onOpenSamsungHealth = onOpenSamsungHealth,
-            onSyncSamsungHealth = onSyncSamsungHealth,
-            onStartDemoSync = onStartDemoSync,
-            onStartEmergencyDemoSync = onStartEmergencyDemoSync,
-            onLogout = onLogout
-        )
-        AiSuggestionsCard(uiState.latestReadings, copy)
+        AiSuggestionsCard(uiState.latestReadings, uiState.readingContext, uiState.sleepStart, uiState.sleepEnd, copy)
         Spacer(modifier = Modifier.height(20.dp))
+    }
+}
+
+@Composable
+private fun HeartRateRangeCard(range: HeartRateRangeSummary?) {
+    if (range == null) {
+        return
+    }
+
+    val rangeText = when {
+        range.min != null && range.max != null -> "${range.min}-${range.max} BPM"
+        range.latest != null -> "${range.latest} BPM"
+        else -> "--"
+    }
+    val averageText = range.average?.let { String.format(java.util.Locale.US, "%.0f BPM avg", it) }
+    val detailParts = listOfNotNull(
+        range.source?.takeIf { it.isNotBlank() },
+        range.windowEnd?.takeIf { it.isNotBlank() }?.let { "section ended $it" },
+        "${range.count} samples"
+    )
+
+    Card(colors = CardDefaults.cardColors(containerColor = SoftPanel), shape = RoundedCornerShape(18.dp)) {
+        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("Latest heart-rate section", color = Ink, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
+            Text(rangeText, color = AccentCoral, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.headlineSmall)
+            range.latest?.let {
+                Text("Latest ${it} BPM", color = Ink, style = MaterialTheme.typography.bodyLarge)
+            }
+            averageText?.let {
+                Text(it, color = Muted, style = MaterialTheme.typography.bodyMedium)
+            }
+            HeartRateRangeBar(range.min, range.max)
+            Text(
+                detailParts.joinToString(" · "),
+                color = Muted,
+                fontSize = 12.sp
+            )
+            Text("Updated when Samsung Health section sync runs.", color = Muted, fontSize = 12.sp)
+        }
+    }
+}
+
+@Composable
+private fun HeartRateRangeBar(min: Int?, max: Int?) {
+    val low = min ?: return
+    val high = max ?: return
+    val startFraction = ((low - 40).toFloat() / 100f).coerceIn(0f, 1f)
+    val endFraction = ((high - 40).toFloat() / 100f).coerceIn(startFraction, 1f)
+    val rangeFraction = (endFraction - startFraction).coerceAtLeast(0.03f)
+
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(12.dp)
+        ) {
+            val stroke = size.height
+            drawLine(
+                color = Color(0xFFE8EDF4),
+                start = Offset(0f, size.height / 2f),
+                end = Offset(size.width, size.height / 2f),
+                strokeWidth = stroke,
+                cap = StrokeCap.Round
+            )
+            drawLine(
+                color = AccentCoral,
+                start = Offset(size.width * startFraction, size.height / 2f),
+                end = Offset(size.width * (startFraction + rangeFraction).coerceAtMost(1f), size.height / 2f),
+                strokeWidth = stroke,
+                cap = StrokeCap.Round
+            )
+        }
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("40", color = Muted, fontSize = 12.sp)
+            Text("140", color = Muted, fontSize = 12.sp)
+        }
+    }
+}
+
+@Composable
+private fun WatchContextCard(
+    selectedContext: ActivityState,
+    lastSectionSyncAt: String?,
+    lastSyncSummary: String?,
+    sleepStart: String,
+    sleepEnd: String,
+    onReadingContextChanged: (ActivityState) -> Unit,
+    onSleepStartChanged: (String) -> Unit,
+    onSleepEndChanged: (String) -> Unit,
+    onLogout: () -> Unit
+) {
+    Card(colors = CardDefaults.cardColors(containerColor = SoftPanel), shape = RoundedCornerShape(18.dp)) {
+        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Reading context", color = Ink, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
+            Text(
+                "Choose what you were doing so suggestions can interpret pulse and watch temperature more carefully.",
+                color = Muted,
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = sleepStart,
+                    onValueChange = onSleepStartChanged,
+                    label = { Text("Sleep start") },
+                    placeholder = { Text("22:00") },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f)
+                )
+                OutlinedTextField(
+                    value = sleepEnd,
+                    onValueChange = onSleepEndChanged,
+                    label = { Text("Wake time") },
+                    placeholder = { Text("06:30") },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                listOf(ActivityState.Resting, ActivityState.Exercising, ActivityState.Sleeping, ActivityState.NotSure)
+                    .forEach { context ->
+                        val selected = context == selectedContext
+                        TextButton(
+                            onClick = { onReadingContextChanged(context) },
+                            modifier = Modifier
+                                .weight(1f)
+                                .background(
+                                    if (selected) AccentBlue.copy(alpha = 0.18f) else Color(0xFFEFF5F2),
+                                    RoundedCornerShape(10.dp)
+                                )
+                        ) {
+                            Text(context.label, color = if (selected) Ink else Muted, fontSize = 12.sp)
+                        }
+                    }
+            }
+            Text(
+                "Galaxy Watch temperature is usually sleep temperature on supported watches. SmartHealth treats it as a trend signal, not a direct fever reading.",
+                color = Muted,
+                style = MaterialTheme.typography.bodySmall
+            )
+            lastSectionSyncAt?.let {
+                Text("Last automatic sync: $it", color = Muted, style = MaterialTheme.typography.bodySmall)
+            }
+            lastSyncSummary?.let {
+                Text(it, color = Muted, style = MaterialTheme.typography.bodySmall)
+            }
+            TextButton(onClick = onLogout, modifier = Modifier.fillMaxWidth()) {
+                Text("Logout")
+            }
+        }
     }
 }
 
@@ -622,7 +762,7 @@ private fun ChartCard(trendPoints: List<VitalTrendPoint>) {
                         .background(Color(0xFFEFF6F4), RoundedCornerShape(8.dp)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("Sync latest section to draw trends", color = Muted)
+                    Text("Waiting for automatic watch sync", color = Muted)
                 }
             } else {
                 Canvas(
@@ -733,93 +873,21 @@ private fun EmergencyNotificationCard(uiState: AppUiState) {
 }
 
 @Composable
-private fun SyncActionsCard(
-    uiState: AppUiState,
-    onRefresh: () -> Unit,
-    onSyncLatestSection: () -> Unit,
-    onOpenHealthConnect: () -> Unit,
-    onOpenSamsungHealth: () -> Unit,
-    onSyncSamsungHealth: () -> Unit,
-    onStartDemoSync: () -> Unit,
-    onStartEmergencyDemoSync: () -> Unit,
-    onLogout: () -> Unit
+private fun AiSuggestionsCard(
+    readings: LatestReadingsResponse?,
+    activityState: ActivityState,
+    sleepStart: String,
+    sleepEnd: String,
+    copy: DashboardCopy
 ) {
-    Card(colors = CardDefaults.cardColors(containerColor = Glass), shape = RoundedCornerShape(18.dp)) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Sync Actions", color = Color.White, fontWeight = FontWeight.Bold)
-            Text(
-                text = "Section sync: imports Health Connect first, or Samsung Health directly for testing.",
-                color = Color(0xFFCFEBDD),
-                style = MaterialTheme.typography.bodyMedium
-            )
-            HealthConnectChecklist()
-            uiState.lastSectionSyncAt?.let {
-                Text("Last section sync: $it", color = Color(0xFFCFEBDD), style = MaterialTheme.typography.bodySmall)
-            }
-            uiState.lastSyncSummary?.let {
-                Text(it, color = Color(0xFFCFEBDD), style = MaterialTheme.typography.bodySmall)
-            }
-            Button(
-                onClick = onSyncLatestSection,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Sync Health Connect")
-            }
-            Button(
-                onClick = onSyncSamsungHealth,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Sync Samsung Health")
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                TextButton(onClick = onOpenHealthConnect, modifier = Modifier.weight(1f)) {
-                    Text("Health Connect")
-                }
-                TextButton(onClick = onOpenSamsungHealth, modifier = Modifier.weight(1f)) {
-                    Text("Samsung Health")
-                }
-            }
-            Button(
-                onClick = onStartDemoSync,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = Yellow, contentColor = Ink)
-            ) {
-                Text("Load Demo Section")
-            }
-            Button(
-                onClick = onStartEmergencyDemoSync,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = Danger, contentColor = Color.White)
-            ) {
-                Text("Trigger Emergency Demo Alert")
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                TextButton(onClick = onRefresh, modifier = Modifier.weight(1f)) { Text("Clear") }
-                TextButton(onClick = onLogout, modifier = Modifier.weight(1f)) { Text("Logout") }
-            }
-        }
-    }
-}
-
-@Composable
-private fun HealthConnectChecklist() {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color(0x1AFFFFFF), RoundedCornerShape(12.dp))
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-            Text("For real watch data:", color = Color.White, fontWeight = FontWeight.Bold)
-        Text("1. Samsung Health must contain recent watch readings.", color = Color(0xFFCFEBDD), style = MaterialTheme.typography.bodySmall)
-        Text("2. Grant heart, blood pressure, oxygen, and any temperature permissions Samsung offers.", color = Color(0xFFCFEBDD), style = MaterialTheme.typography.bodySmall)
-        Text("3. If temperature stays blank, this Galaxy Watch/source may not provide temperature readings.", color = Color(0xFFCFEBDD), style = MaterialTheme.typography.bodySmall)
-    }
-}
-
-@Composable
-private fun AiSuggestionsCard(readings: LatestReadingsResponse?, copy: DashboardCopy) {
-    val insights = HealthInsightEngine.buildInsights(readings)
+    val insights = HealthInsightEngine.buildInsights(
+        readings,
+        ReadingContext(
+            activityState = activityState,
+            sleepStart = sleepStart,
+            sleepEnd = sleepEnd
+        )
+    )
 
     Card(colors = CardDefaults.cardColors(containerColor = SoftPanel), shape = RoundedCornerShape(18.dp)) {
         Column(modifier = Modifier.padding(22.dp)) {

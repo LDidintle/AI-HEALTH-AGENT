@@ -3,6 +3,7 @@ package za.ac.tut.healthmonitor.mobile.ui
 import za.ac.tut.healthmonitor.mobile.data.model.BackendProfile
 import za.ac.tut.healthmonitor.mobile.data.model.EmergencyAlertNotification
 import za.ac.tut.healthmonitor.mobile.data.model.LatestReadingsResponse
+import za.ac.tut.healthmonitor.mobile.insights.ActivityState
 
 enum class AuthScreen {
     Login,
@@ -21,6 +22,16 @@ data class VitalTrendPoint(
     val temperature: Double?
 )
 
+data class HeartRateRangeSummary(
+    val latest: Int?,
+    val min: Int?,
+    val max: Int?,
+    val average: Double?,
+    val count: Int,
+    val windowEnd: String?,
+    val source: String?
+)
+
 data class AppUiState(
     val email: String = "",
     val password: String = "",
@@ -35,6 +46,10 @@ data class AppUiState(
     val isLoggedIn: Boolean = false,
     val userProfile: BackendProfile? = null,
     val latestReadings: LatestReadingsResponse? = null,
+    val heartRateRange: HeartRateRangeSummary? = null,
+    val readingContext: ActivityState = ActivityState.NotSure,
+    val sleepStart: String = "22:00",
+    val sleepEnd: String = "06:30",
     val trendPoints: List<VitalTrendPoint> = emptyList(),
     val lastSectionSyncAt: String? = null,
     val lastSyncSummary: String? = null,

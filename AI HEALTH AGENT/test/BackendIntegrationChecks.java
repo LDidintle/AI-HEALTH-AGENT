@@ -1,0 +1,158 @@
+import java.math.BigDecimal;
+import java.sql.Connection;
+import java.sql.Date;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.Statement;
+import java.time.LocalDate;
+import za.ac.tut.model.PasswordUtils;
+import za.ac.tut.model.ReportCriteria;
+import za.ac.tut.model.ReportResult;
+import za.ac.tut.util.PasswordResetService;
+import za.ac.tut.util.PatientAccountProcedureService;
+import za.ac.tut.util.ReportService;
+import za.ac.tut.util.VitalAlertEvaluator;
+
+public class BackendIntegrationChecks {
+
+    public static void main(String[] args) throws Exception {
+        Class.forName("org.apache.derby.jdbc.EmbeddedDriver");
+        try (Connection conn = DriverManager.getConnection("jdbc:derby:memory:smarthealthIntegration;create=true")) {
+            createSchema(conn);
+            verifiesPatientCrud(conn);
+            verifiesPasswordReset(conn);
+            verifiesEmergencyAlertPersistence(conn);
+            verifiesReports(conn);
+        }
+        System.out.println("Backend integration checks passed.");
+    }
+
+    private static void createSchema(Connection conn) throws Exception {
+        try (Statement statement = conn.createStatement()) {
+            statement.execute("CREATE TABLE users ("
+                    + "id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, "
+                    + "title VARCHAR(20), first_name VARCHAR(80) NOT NULL, surname VARCHAR(80) NOT NULL, "
+                    + "dob DATE, email VARCHAR(160) NOT NULL UNIQUE, address CLOB, "
+                    + "emergency_contact_name VARCHAR(120), emergency_contact_number VARCHAR(40), "
+                    + "is_verified BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+            statement.execute("CREATE TABLE user_auth ("
+                    + "auth_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, "
+                    + "user_id INTEGER NOT NULL, password_hash VARCHAR(255) NOT NULL, "
+                    + "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+            statement.execute("CREATE TABLE password_reset_otps ("
+                    + "reset_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, "
+                    + "user_id INTEGER NOT NULL, otp_hash VARCHAR(255) NOT NULL, expires_at TIMESTAMP NOT NULL, "
+                    + "used_at TIMESTAMP, attempt_count INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+            statement.execute("CREATE TABLE devices ("
+                    + "device_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, user_id INTEGER NOT NULL, "
+                    + "device_type VARCHAR(40), manufacturer VARCHAR(80), device_model VARCHAR(80), "
+                    + "platform VARCHAR(80), active BOOLEAN DEFAULT TRUE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+            statement.execute("CREATE TABLE pulse_readings ("
+                    + "pulse_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, user_id INTEGER NOT NULL, "
+                    + "bpm INTEGER, status VARCHAR(20), source VARCHAR(40), recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+            statement.execute("CREATE TABLE temperature_readings ("
+                    + "temp_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, user_id INTEGER NOT NULL, "
+                    + "temperature DECIMAL(5,2), status VARCHAR(20), source VARCHAR(40), recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+            statement.execute("CREATE TABLE blood_pressure_readings ("
+                    + "bp_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, user_id INTEGER NOT NULL, "
+                    + "systolic INTEGER, diastolic INTEGER, status VARCHAR(20), source VARCHAR(40), recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+            statement.execute("CREATE TABLE device_sync_events ("
+                    + "sync_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, user_id INTEGER NOT NULL, "
+                    + "source_platform VARCHAR(80), sync_status VARCHAR(30), synced_for TIMESTAMP DEFAULT CURRENT_TIMESTAMP, device_id INTEGER)");
+            statement.execute("CREATE TABLE health_sync_sections ("
+                    + "section_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, user_id INTEGER NOT NULL, "
+                    + "source VARCHAR(80), window_start TIMESTAMP DEFAULT CURRENT_TIMESTAMP, window_end TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "
+                    + "heart_rate_latest INTEGER, heart_rate_min INTEGER, heart_rate_max INTEGER, heart_rate_average DECIMAL(6,2), heart_rate_count INTEGER DEFAULT 0, "
+                    + "temperature_latest DECIMAL(5,2), temperature_min DECIMAL(5,2), temperature_max DECIMAL(5,2), temperature_average DECIMAL(5,2), temperature_count INTEGER DEFAULT 0, "
+                    + "systolic_latest INTEGER, diastolic_latest INTEGER, blood_pressure_count INTEGER DEFAULT 0, "
+                    + "device_type VARCHAR(40), device_manufacturer VARCHAR(80), device_model VARCHAR(80), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+            statement.execute("CREATE TABLE emergency_alerts ("
+                    + "alert_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, user_id INTEGER NOT NULL, bpm INTEGER, "
+                    + "alert_status VARCHAR(30), countdown_seconds INTEGER, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+            statement.execute("CREATE TABLE hospitals ("
+                    + "hospital_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, name VARCHAR(100), email VARCHAR(160), "
+                    + "phone VARCHAR(40), service_area VARCHAR(100), address CLOB, active BOOLEAN DEFAULT TRUE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+            statement.execute("CREATE TABLE hospital_alert_assignments ("
+                    + "assignment_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, alert_id INTEGER NOT NULL, hospital_id INTEGER NOT NULL, "
+                    + "assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, status VARCHAR(30) DEFAULT 'ASSIGNED')");
+            statement.execute("CREATE TABLE ambulance_notifications ("
+                    + "notification_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, alert_id INTEGER NOT NULL, "
+                    + "sent_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP, response_status VARCHAR(40))");
+        }
+    }
+
+    private static void verifiesPatientCrud(Connection conn) throws Exception {
+        int userId = PatientAccountProcedureService.createPatientAccount(
+                conn, "Mr", "Integration", "Patient", Date.valueOf("2000-01-01"),
+                "integration@example.com", PasswordUtils.hashPassword("Strong22!"));
+        assertTrue(userId > 0, "patient create should return generated id");
+        assertEquals(1, count(conn, "SELECT COUNT(*) FROM users WHERE id = " + userId), "patient row should exist");
+        assertEquals(1, count(conn, "SELECT COUNT(*) FROM user_auth WHERE user_id = " + userId), "auth row should exist");
+        PatientAccountProcedureService.deletePatientAccount(conn, userId);
+        assertEquals(0, count(conn, "SELECT COUNT(*) FROM users WHERE id = " + userId), "patient delete should remove user");
+    }
+
+    private static void verifiesPasswordReset(Connection conn) throws Exception {
+        int userId = PatientAccountProcedureService.createPatientAccount(
+                conn, "Ms", "Reset", "Patient", Date.valueOf("2001-02-03"),
+                "reset@example.com", PasswordUtils.hashPassword("OldPass22!"));
+        PasswordResetService.ResetRequestResult request = PasswordResetService.createOtp(conn, "reset@example.com");
+        assertTrue(request.isUserFound(), "reset request should find user");
+        assertTrue(request.getOtp().matches("[0-9]{6}"), "OTP should be six digits");
+        PasswordResetService.ResetPasswordResult wrong = PasswordResetService.resetPassword(
+                conn, "reset@example.com", "000000", PasswordUtils.hashPassword("NewPass22!"));
+        assertFalse(wrong.isSuccess(), "wrong OTP should fail");
+        PasswordResetService.ResetPasswordResult right = PasswordResetService.resetPassword(
+                conn, "reset@example.com", request.getOtp(), PasswordUtils.hashPassword("NewPass22!"));
+        assertTrue(right.isSuccess(), "correct OTP should reset password");
+        assertEquals(1, count(conn, "SELECT COUNT(*) FROM password_reset_otps WHERE user_id = " + userId + " AND used_at IS NOT NULL"), "OTP should be marked used");
+    }
+
+    private static void verifiesEmergencyAlertPersistence(Connection conn) throws Exception {
+        int userId = PatientAccountProcedureService.createPatientAccount(
+                conn, "Dr", "Alert", "Patient", Date.valueOf("1999-03-04"),
+                "alert@example.com", PasswordUtils.hashPassword("Alert22!"));
+        try (Statement statement = conn.createStatement()) {
+            statement.executeUpdate("UPDATE users SET address = '10 Clinic Road, Pretoria Central' WHERE id = " + userId);
+            statement.executeUpdate("INSERT INTO hospitals (name, email, service_area, active) VALUES "
+                    + "('Pretoria Hospital', 'hospital@example.com', 'Pretoria', TRUE)");
+        }
+        VitalAlertEvaluator.evaluateAndStore(conn, userId, 132, null, null, null);
+        assertEquals(1, count(conn, "SELECT COUNT(*) FROM emergency_alerts WHERE user_id = " + userId + " AND alert_status = 'CRITICAL'"), "critical alert should persist");
+        assertEquals(1, count(conn, "SELECT COUNT(*) FROM hospital_alert_assignments"), "alert should be assigned to matching hospital");
+    }
+
+    private static void verifiesReports(Connection conn) throws Exception {
+        ReportCriteria criteria = new ReportCriteria();
+        criteria.setStartDate(LocalDate.now().minusDays(1));
+        criteria.setEndDate(LocalDate.now().plusDays(1));
+        criteria.setReportType(ReportService.REPORT_ALERTS);
+        ReportResult alerts = ReportService.loadReport(conn, criteria);
+        assertEquals(ReportService.REPORT_ALERTS, alerts.getReportType(), "alerts report should load");
+        assertTrue(!alerts.getColumns().isEmpty(), "alerts report should include columns");
+    }
+
+    private static int count(Connection conn, String sql) throws Exception {
+        try (Statement statement = conn.createStatement();
+             ResultSet rs = statement.executeQuery(sql)) {
+            rs.next();
+            return rs.getInt(1);
+        }
+    }
+
+    private static void assertTrue(boolean condition, String message) {
+        if (!condition) {
+            throw new AssertionError(message);
+        }
+    }
+
+    private static void assertFalse(boolean condition, String message) {
+        assertTrue(!condition, message);
+    }
+
+    private static void assertEquals(Object expected, Object actual, String message) {
+        if (expected == null ? actual != null : !expected.equals(actual)) {
+            throw new AssertionError(message + " expected=" + expected + " actual=" + actual);
+        }
+    }
+}

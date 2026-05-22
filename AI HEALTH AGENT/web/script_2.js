@@ -543,11 +543,23 @@ function updateSyncMeta(section, options = {}) {
         `${section.bloodPressureCount || 0} BP`,
         `${section.temperatureCount || 0} temp`
     ].join(' · ');
+    const heartRange = section.heartRateMin !== null && section.heartRateMin !== undefined &&
+        section.heartRateMax !== null && section.heartRateMax !== undefined
+        ? `Heart range: ${section.heartRateMin}-${section.heartRateMax} bpm`
+        : '';
+    const latestHeart = section.heartRateLatest !== null && section.heartRateLatest !== undefined
+        ? `latest ${section.heartRateLatest} bpm`
+        : '';
+    const averageHeart = section.heartRateAverage !== null && section.heartRateAverage !== undefined
+        ? `avg ${Number(section.heartRateAverage).toFixed(0)} bpm`
+        : '';
+    const heartSummary = [heartRange, latestHeart, averageHeart].filter(Boolean).join(' · ');
 
     element.innerHTML = [
         `<strong>${safe(section.source || 'APP_SYNC')}</strong>`,
         device ? safe(device) : 'Mobile app',
         windowEnd ? `Last section: ${safe(windowEnd)}` : '',
+        heartSummary ? safe(heartSummary) : '',
         safe(counts)
     ].filter(Boolean).join('<br>');
 }

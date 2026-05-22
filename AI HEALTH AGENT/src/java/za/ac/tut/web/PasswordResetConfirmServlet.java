@@ -8,6 +8,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import za.ac.tut.model.PasswordUtils;
 import za.ac.tut.util.Database;
+import za.ac.tut.util.PasswordPolicy;
 import za.ac.tut.util.PasswordResetService;
 
 public class PasswordResetConfirmServlet extends HttpServlet {
@@ -38,7 +39,7 @@ public class PasswordResetConfirmServlet extends HttpServlet {
             return;
         }
 
-        if (!isStrongPassword(password)) {
+        if (!PasswordPolicy.isStrongPassword(password)) {
             reject(request, response, "Password must be 8+ characters with 2 numbers, 1 uppercase letter, and 1 special character.");
             return;
         }
@@ -75,26 +76,6 @@ public class PasswordResetConfirmServlet extends HttpServlet {
             throws ServletException, IOException {
         request.setAttribute("error", message);
         request.getRequestDispatcher("reset_password.jsp").forward(request, response);
-    }
-
-    private boolean isStrongPassword(String password) {
-        if (password == null || password.length() < 8) {
-            return false;
-        }
-
-        int digits = 0;
-        boolean hasUppercase = false;
-        boolean hasSpecial = false;
-        for (char character : password.toCharArray()) {
-            if (Character.isDigit(character)) {
-                digits++;
-            } else if (Character.isUpperCase(character)) {
-                hasUppercase = true;
-            } else if (!Character.isLetterOrDigit(character)) {
-                hasSpecial = true;
-            }
-        }
-        return digits >= 2 && hasUppercase && hasSpecial;
     }
 
     private String trimToNull(String value) {

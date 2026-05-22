@@ -22,7 +22,7 @@ public final class VitalAlertEvaluator {
             Integer systolic,
             Integer diastolic) throws Exception {
 
-        AlertDecision decision = decide(heartRate, temperature, systolic, diastolic);
+        AlertDecision decision = assess(heartRate, temperature, systolic, diastolic);
         if (decision == null || hasRecentOpenAlert(conn, userId, decision.status)) {
             return;
         }
@@ -94,7 +94,7 @@ public final class VitalAlertEvaluator {
         return null;
     }
 
-    private static AlertDecision decide(
+    public static AlertDecision assess(
             Integer heartRate,
             BigDecimal temperature,
             Integer systolic,
@@ -131,7 +131,7 @@ public final class VitalAlertEvaluator {
         String sql = "SELECT alert_id FROM emergency_alerts "
                 + "WHERE user_id = ? AND alert_status = ? "
                 + "AND created_at >= ? "
-                + "LIMIT 1";
+                + limitOne(conn);
 
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, userId);
@@ -143,13 +143,29 @@ public final class VitalAlertEvaluator {
         }
     }
 
-    private static class AlertDecision {
+    private static String limitOne(Connection conn) throws Exception {
+        String productName = conn.getMetaData().getDatabaseProductName();
+        if (productName != null && productName.toLowerCase().contains("derby")) {
+            return "FETCH FIRST 1 ROW ONLY";
+        }
+        return "LIMIT 1";
+    }
+
+    public static class AlertDecision {
         private final String status;
         private final int countdownSeconds;
 
         private AlertDecision(String status, int countdownSeconds) {
             this.status = status;
             this.countdownSeconds = countdownSeconds;
+        }
+
+        public String getStatus() {
+            return status;
+        }
+
+        public int getCountdownSeconds() {
+            return countdownSeconds;
         }
     }
 }

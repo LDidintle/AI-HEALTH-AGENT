@@ -14,6 +14,7 @@ import za.ac.tut.model.PasswordUtils;
 import za.ac.tut.util.AuthUtil;
 import za.ac.tut.util.Database;
 import za.ac.tut.util.JsonUtil;
+import za.ac.tut.util.RateLimitService;
 
 public class MobileLoginServlet extends HttpServlet {
 
@@ -24,6 +25,12 @@ public class MobileLoginServlet extends HttpServlet {
 
         String email = trimToNull(request.getParameter("email"));
         String password = trimToNull(request.getParameter("password"));
+        if (!RateLimitService.allow(RateLimitService.key("mobile-login", request.getRemoteAddr(), email),
+                10, 15L * 60L * 1000L)) {
+            response.setStatus(429);
+            writeJson(response, "{\"success\":false,\"message\":\"Too many login attempts. Try again later.\"}");
+            return;
+        }
 
         if (email == null || password == null) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);

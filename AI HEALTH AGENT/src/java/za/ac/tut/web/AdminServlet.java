@@ -14,6 +14,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import za.ac.tut.util.AuthUtil;
+import za.ac.tut.util.RateLimitService;
 
 /**
  *
@@ -28,6 +29,11 @@ public class AdminServlet extends HttpServlet {
         String password = valueOrDefault(request.getParameter("password"), "");
         String staffUser = config("SMARTHEALTH_STAFF_USER");
         String staffPass = config("SMARTHEALTH_STAFF_PASSWORD");
+        if (!RateLimitService.allow(RateLimitService.key("admin-login", request.getRemoteAddr(), username),
+                10, 15L * 60L * 1000L)) {
+            response.sendRedirect(request.getContextPath() + "/admin?error=rate_limited");
+            return;
+        }
 
         if (staffUser != null && staffPass != null
                 && staffUser.equals(username) && staffPass.equals(password)) {

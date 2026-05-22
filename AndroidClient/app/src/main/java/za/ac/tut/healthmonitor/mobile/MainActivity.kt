@@ -1,12 +1,13 @@
 package za.ac.tut.healthmonitor.mobile
 
-import android.content.Intent
-import android.net.Uri
+import android.Manifest
 import android.os.Bundle
+import android.os.Build
 import androidx.compose.runtime.DisposableEffect
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -14,14 +15,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.health.connect.client.HealthConnectClient
-import androidx.health.connect.client.PermissionController
+import androidx.core.content.ContextCompat
+import android.content.pm.PackageManager
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import za.ac.tut.healthmonitor.mobile.health.HealthConnectManager
 import za.ac.tut.healthmonitor.mobile.health.SamsungHealthDataManager
+import za.ac.tut.healthmonitor.mobile.monitoring.WatchAlertMonitoringService
 import za.ac.tut.healthmonitor.mobile.ui.AppScreen
 import za.ac.tut.healthmonitor.mobile.ui.AppViewModel
 import za.ac.tut.healthmonitor.mobile.ui.theme.HealthMonitorTheme
@@ -36,41 +37,37 @@ class MainActivity : ComponentActivity() {
             val appViewModel: AppViewModel = viewModel()
             val uiState by appViewModel.uiState.collectAsState()
             val coroutineScope = rememberCoroutineScope()
-            val healthManager = remember { HealthConnectManager(applicationContext) }
             val samsungHealthDataManager = remember { SamsungHealthDataManager(applicationContext) }
-            var afterPermissionGranted by remember { mutableStateOf<(() -> Unit)?>(null) }
             var lastSamsungAutoSyncAt by remember { mutableStateOf(0L) }
+            var samsungPermissionPrompted by remember { mutableStateOf(false) }
+            val notificationPermissionLauncher = rememberLauncherForActivityResult(
+                ActivityResultContracts.RequestPermission()
+            ) { }
+
+            fun requestNotificationPermissionIfNeeded() {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                    ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }
 
             val autoSyncSamsungHealthIfAllowed = {
                 coroutineScope.launch {
                     val now = System.currentTimeMillis()
                     if (uiState.isLoggedIn && now - lastSamsungAutoSyncAt > AUTO_SYNC_COOLDOWN_MILLIS) {
                         try {
-                            if (samsungHealthDataManager.hasAnyRequiredPermission()) {
+                            val hasPermission = samsungHealthDataManager.hasAnyRequiredPermission() ||
+                                (!samsungPermissionPrompted && samsungHealthDataManager.requestRequiredPermissions(this@MainActivity))
+                            samsungPermissionPrompted = true
+                            if (hasPermission) {
                                 lastSamsungAutoSyncAt = now
                                 appViewModel.syncSamsungHealthSection(samsungHealthDataManager)
                             }
                         } catch (_: Exception) {
-                            // Manual sync still shows actionable Samsung Health setup errors.
+                            // Keep automatic sync quiet; the dashboard explains missing watch data.
                         }
                     }
-                }
-            }
-
-            val permissionLauncher = rememberLauncherForActivityResult(
-                PermissionController.createRequestPermissionResultContract()
-            ) { grantedPermissions ->
-                if (grantedPermissions.any { it in healthManager.requiredPermissions }) {
-                    val action = afterPermissionGranted
-                    afterPermissionGranted = null
-                    if (action == null) {
-                        appViewModel.syncLatestSection(healthManager)
-                    } else {
-                        action()
-                    }
-                } else {
-                    afterPermissionGranted = null
-                    appViewModel.setInfoMessage("Health Connect permissions were not granted.")
                 }
             }
 
@@ -79,10 +76,16 @@ class MainActivity : ComponentActivity() {
             }
 
             LaunchedEffect(uiState.isLoggedIn) {
-                autoSyncSamsungHealthIfAllowed()
-                while (uiState.isLoggedIn) {
-                    delay(FOREGROUND_SYNC_INTERVAL_MILLIS)
+                if (uiState.isLoggedIn) {
+                    requestNotificationPermissionIfNeeded()
+                    WatchAlertMonitoringService.start(applicationContext)
                     autoSyncSamsungHealthIfAllowed()
+                    while (uiState.isLoggedIn) {
+                        delay(FOREGROUND_SYNC_INTERVAL_MILLIS)
+                        autoSyncSamsungHealthIfAllowed()
+                    }
+                } else {
+                    WatchAlertMonitoringService.stop(applicationContext)
                 }
             }
 
@@ -112,54 +115,6 @@ class MainActivity : ComponentActivity() {
                     onSignupConfirmPasswordChanged = appViewModel::updateSignupConfirmPassword,
                     onLogin = appViewModel::login,
                     onRegister = appViewModel::register,
-                    onRefresh = appViewModel::refreshDashboard,
-                    onSyncLatestSection = {
-                        coroutineScope.launch {
-                            when (healthManager.availabilityStatus()) {
-                                HealthConnectClient.SDK_UNAVAILABLE -> {
-                                    appViewModel.setInfoMessage("Health Connect is not available on this phone.")
-                                }
-
-                                HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED -> {
-                                    openHealthConnectInPlayStore()
-                                }
-
-                                else -> {
-                                    if (healthManager.hasAnyPermission()) {
-                                        appViewModel.syncLatestSection(healthManager)
-                                    } else {
-                                        afterPermissionGranted = {
-                                            appViewModel.syncLatestSection(healthManager)
-                                        }
-                                        permissionLauncher.launch(healthManager.requiredPermissions)
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    onOpenHealthConnect = ::openHealthConnectSettings,
-                    onOpenSamsungHealth = {
-                        if (!openInstalledApp(SAMSUNG_HEALTH_PACKAGE)) {
-                            openPlayStore(SAMSUNG_HEALTH_PACKAGE)
-                        }
-                    },
-                    onSyncSamsungHealth = {
-                        coroutineScope.launch {
-                            try {
-                                if (samsungHealthDataManager.requestRequiredPermissions(this@MainActivity)) {
-                                    appViewModel.syncSamsungHealthSection(samsungHealthDataManager)
-                                } else {
-                                    appViewModel.setInfoMessage("Samsung Health permissions were not granted.")
-                                }
-                            } catch (e: Exception) {
-                                if (!samsungHealthDataManager.resolveIfPossible(e, this@MainActivity)) {
-                                    appViewModel.setInfoMessage(samsungHealthDataManager.toUserMessage(e))
-                                }
-                            }
-                        }
-                    },
-                    onStartDemoSync = appViewModel::startDemoSync,
-                    onStartEmergencyDemoSync = appViewModel::startEmergencyDemoSync,
                     onLogout = appViewModel::logout,
                     onSelectLanguage = appViewModel::selectLanguage,
                     onOpenProfile = appViewModel::openProfile,
@@ -183,54 +138,16 @@ class MainActivity : ComponentActivity() {
                     onCloseChat = appViewModel::closeChat,
                     onChatInputChanged = appViewModel::updateChatInput,
                     onSendChatMessage = appViewModel::sendChatMessage,
-                    onSendParamedicAlert = appViewModel::sendParamedicAlert
+                    onSendParamedicAlert = appViewModel::sendParamedicAlert,
+                    onReadingContextChanged = appViewModel::selectReadingContext,
+                    onSleepStartChanged = appViewModel::updateSleepStart,
+                    onSleepEndChanged = appViewModel::updateSleepEnd
                 )
             }
         }
     }
 
-    private fun openHealthConnectInPlayStore() {
-        val uriString = "market://details?id=$HEALTH_CONNECT_PACKAGE&url=healthconnect%3A%2F%2Fonboarding"
-        startActivity(
-            Intent(Intent.ACTION_VIEW).apply {
-                setPackage("com.android.vending")
-                data = Uri.parse(uriString)
-                putExtra("overlay", true)
-                putExtra("callerId", packageName)
-            }
-        )
-    }
-
-    private fun openHealthConnectSettings() {
-        val settingsIntent = Intent(HEALTH_CONNECT_SETTINGS_ACTION)
-        if (settingsIntent.resolveActivity(packageManager) != null) {
-            startActivity(settingsIntent)
-            return
-        }
-
-        if (!openInstalledApp(HEALTH_CONNECT_PACKAGE)) {
-            openHealthConnectInPlayStore()
-        }
-    }
-
-    private fun openInstalledApp(packageName: String): Boolean {
-        val launchIntent = packageManager.getLaunchIntentForPackage(packageName) ?: return false
-        startActivity(launchIntent)
-        return true
-    }
-
-    private fun openPlayStore(packageName: String) {
-        startActivity(
-            Intent(Intent.ACTION_VIEW).apply {
-                data = Uri.parse("market://details?id=$packageName")
-            }
-        )
-    }
-
     private companion object {
-        const val HEALTH_CONNECT_PACKAGE = "com.google.android.apps.healthdata"
-        const val SAMSUNG_HEALTH_PACKAGE = "com.sec.android.app.shealth"
-        const val HEALTH_CONNECT_SETTINGS_ACTION = "android.health.connect.action.HEALTH_CONNECT_SETTINGS"
         const val FOREGROUND_SYNC_INTERVAL_MILLIS = 2L * 60L * 1000L
         const val AUTO_SYNC_COOLDOWN_MILLIS = FOREGROUND_SYNC_INTERVAL_MILLIS
     }

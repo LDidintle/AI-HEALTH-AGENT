@@ -21,6 +21,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import za.ac.tut.util.JsonUtil;
+import za.ac.tut.util.RateLimitService;
 
 public class AIChatServlet extends HttpServlet {
 
@@ -41,6 +42,12 @@ public class AIChatServlet extends HttpServlet {
         String vitals = limit(valueOrDefault(request.getParameter("vitals"), "{}"), MAX_CONTEXT_LENGTH);
         String history = limit(valueOrDefault(request.getParameter("history"), ""), MAX_CONTEXT_LENGTH);
         String apiKey = openAiApiKey();
+        if (!RateLimitService.allow(RateLimitService.key("ai-chat", request.getRemoteAddr(), null),
+                30, 15L * 60L * 1000L)) {
+            response.setStatus(429);
+            writeReply(response, "Too many chat requests. Please wait a bit and try again.", "rate_limited");
+            return;
+        }
 
         if (message.isEmpty()) {
             writeReply(response, fallbackReply(message, history, vitals), "fallback_empty_message");

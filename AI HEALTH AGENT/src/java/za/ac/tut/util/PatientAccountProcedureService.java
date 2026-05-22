@@ -138,8 +138,10 @@ public final class PatientAccountProcedureService {
         String message = error.getMessage() == null ? "" : error.getMessage().toLowerCase();
         return "42883".equals(state)
                 || "42000".equals(state)
+                || "42Y03".equals(state)
                 || message.contains("does not exist")
                 || message.contains("unknown procedure")
+                || message.contains("not recognized as a function or procedure")
                 || message.contains("function sp_register_patient_account")
                 || message.contains("procedure sp_delete_patient_account");
     }

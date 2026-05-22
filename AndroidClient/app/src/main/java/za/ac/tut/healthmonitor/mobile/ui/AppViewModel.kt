@@ -30,11 +30,19 @@ import za.ac.tut.healthmonitor.mobile.health.HealthSection
 import za.ac.tut.healthmonitor.mobile.health.HealthSectionTrendPoint
 import za.ac.tut.healthmonitor.mobile.health.HealthConnectManager
 import za.ac.tut.healthmonitor.mobile.health.SamsungHealthDataManager
+import za.ac.tut.healthmonitor.mobile.insights.ActivityState
+import za.ac.tut.healthmonitor.mobile.insights.UserContextSettingsStorage
 
 class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = AppRepository(application.applicationContext)
-    private val _uiState = MutableStateFlow(AppUiState())
+    private val contextSettingsStorage = UserContextSettingsStorage(application.applicationContext)
+    private val _uiState = MutableStateFlow(
+        AppUiState(
+            sleepStart = contextSettingsStorage.sleepStart(),
+            sleepEnd = contextSettingsStorage.sleepEnd()
+        )
+    )
     val uiState: StateFlow<AppUiState> = _uiState.asStateFlow()
     private var demoTick = 0
 
@@ -97,7 +105,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             repository.login(currentState.email.trim(), currentState.password)
             val profile = repository.getProfile().user
             val verificationMessage = if (profile?.isVerified == true) {
-                "Signed in. Sync latest section to view readings."
+                "Signed in. SmartHealth will sync recent watch readings automatically."
             } else {
                 "Signed in. Your account is pending staff verification."
             }
@@ -108,6 +116,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     userProfile = profile,
                     isProfileOpen = profile?.isVerified == true && profile.isIncomplete(),
                     latestReadings = null,
+                    heartRateRange = null,
                     trendPoints = emptyList(),
                     lastSectionSyncAt = null,
                     lastSyncSummary = null,
@@ -134,7 +143,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                         isProfileOpen = false,
                         errorMessage = null,
                         infoMessage = if (profile?.isVerified == true) {
-                            "Session restored. Sync latest section to view readings."
+                            "Session restored. SmartHealth will sync recent watch readings automatically."
                         } else {
                             "Session restored. Your account is pending staff verification."
                         }
@@ -215,10 +224,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     isLoggedIn = true,
                     userProfile = profile,
                     latestReadings = null,
+                    heartRateRange = null,
                     trendPoints = emptyList(),
                     lastSectionSyncAt = null,
                     lastSyncSummary = null,
-                    infoMessage = "Dashboard cleared. Sync latest section to view readings.",
+                    infoMessage = "Dashboard cleared. SmartHealth will sync recent watch readings automatically.",
                     errorMessage = null
                 )
             }
@@ -253,6 +263,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                         it.copy(
                             isLoading = false,
                             latestReadings = null,
+                            heartRateRange = null,
                             trendPoints = emptyList(),
                             lastSectionSyncAt = null,
                             lastSyncSummary = null,
@@ -270,6 +281,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     it.copy(
                         isLoading = false,
                         latestReadings = readings,
+                        heartRateRange = section.payload.toHeartRateRangeSummary(),
                         trendPoints = section.trendPoints.toUiTrendPoints(),
                         lastSectionSyncAt = formattedNow(),
                         lastSyncSummary = sectionSummary(section.payload),
@@ -282,6 +294,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     it.copy(
                         isLoading = false,
                         latestReadings = null,
+                        heartRateRange = null,
                         trendPoints = emptyList(),
                         lastSyncSummary = null,
                         errorMessage = e.message ?: "Samsung Health sync failed.",
@@ -300,6 +313,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             _uiState.update {
                 it.copy(
                     latestReadings = readings,
+                    heartRateRange = section.payload.toHeartRateRangeSummary(),
                     trendPoints = section.trendPoints.toUiTrendPoints(),
                     lastSectionSyncAt = formattedNow(),
                     lastSyncSummary = sectionSummary(section.payload),
@@ -319,6 +333,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             _uiState.update {
                 it.copy(
                     latestReadings = readings,
+                    heartRateRange = section.payload.toHeartRateRangeSummary(),
                     trendPoints = section.trendPoints.toUiTrendPoints(),
                     lastSectionSyncAt = formattedNow(),
                     lastSyncSummary = sectionSummary(section.payload),
@@ -338,6 +353,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             repository.clearSession()
             _uiState.value = AppUiState(
                 email = _uiState.value.email,
+                sleepStart = contextSettingsStorage.sleepStart(),
+                sleepEnd = contextSettingsStorage.sleepEnd(),
                 infoMessage = "Signed out."
             )
         }
@@ -353,6 +370,20 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun selectLanguage(language: String) {
         _uiState.update { it.copy(selectedLanguage = language) }
+    }
+
+    fun selectReadingContext(context: ActivityState) {
+        _uiState.update { it.copy(readingContext = context) }
+    }
+
+    fun updateSleepStart(value: String) {
+        contextSettingsStorage.saveSleepStart(value)
+        _uiState.update { it.copy(sleepStart = value) }
+    }
+
+    fun updateSleepEnd(value: String) {
+        contextSettingsStorage.saveSleepEnd(value)
+        _uiState.update { it.copy(sleepEnd = value) }
     }
 
     fun openProfile() {
@@ -577,6 +608,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.update {
             it.copy(
                 latestReadings = null,
+                heartRateRange = null,
                 trendPoints = emptyList(),
                 lastSectionSyncAt = null,
                 lastSyncSummary = null,
@@ -607,6 +639,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                             it.copy(
                                 isLoading = false,
                                 latestReadings = savedReadings,
+                                heartRateRange = null,
                                 trendPoints = savedReadings.toUiTrendPoints(),
                                 lastSectionSyncAt = formattedNow(),
                                 lastSyncSummary = "Loaded latest saved readings from SmartHealth.",
@@ -621,6 +654,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                         it.copy(
                             isLoading = false,
                             latestReadings = null,
+                            heartRateRange = null,
                             trendPoints = emptyList(),
                             lastSectionSyncAt = null,
                             lastSyncSummary = null,
@@ -637,6 +671,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     it.copy(
                         isLoading = false,
                         latestReadings = readings,
+                        heartRateRange = section.payload.toHeartRateRangeSummary(),
                         trendPoints = section.trendPoints.toUiTrendPoints(),
                         lastSectionSyncAt = formattedNow(),
                         lastSyncSummary = sectionSummary(section.payload),
@@ -649,6 +684,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     it.copy(
                         isLoading = false,
                         latestReadings = null,
+                        heartRateRange = null,
                         trendPoints = emptyList(),
                         lastSyncSummary = null,
                         errorMessage = e.message ?: "Health section sync failed.",
@@ -862,10 +898,33 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun sectionSummary(payload: HealthSectionSyncPayload): String {
+        val heartText = payload.heartRateMin?.let { min ->
+            payload.heartRateMax?.let { max ->
+                val latest = payload.heartRateLatest?.let { ", latest $it BPM" }.orEmpty()
+                "Heart range $min-$max BPM$latest (${payload.heartRateCount})"
+            }
+        } ?: "Heart ${payload.heartRateLatest?.let { "$it BPM" } ?: "none"} (${payload.heartRateCount})"
+
         return "Section: " +
-                "Heart ${payload.heartRateLatest?.let { "$it BPM" } ?: "none"} (${payload.heartRateCount}), " +
+                "$heartText, " +
                 "BP ${formatBloodPressure(payload.systolicLatest, payload.diastolicLatest)} (${payload.bloodPressureCount}), " +
                 "Temp ${payload.temperatureLatest?.let { String.format(java.util.Locale.US, "%.2f °C", it) } ?: "none"} (${payload.temperatureCount})"
+    }
+
+    private fun HealthSectionSyncPayload.toHeartRateRangeSummary(): HeartRateRangeSummary? {
+        if (heartRateLatest == null && heartRateMin == null && heartRateMax == null && heartRateCount == 0) {
+            return null
+        }
+
+        return HeartRateRangeSummary(
+            latest = heartRateLatest,
+            min = heartRateMin,
+            max = heartRateMax,
+            average = heartRateAverage,
+            count = heartRateCount,
+            windowEnd = windowEnd,
+            source = source
+        )
     }
 
     private fun List<HealthSectionTrendPoint>.toUiTrendPoints(): List<VitalTrendPoint> {

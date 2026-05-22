@@ -23,12 +23,13 @@ This project is for educational and demonstration purposes only. It does not dia
 - Mobile API endpoints for registration, login, profile access, and health reading synchronization
 - Android client built with Kotlin and Jetpack Compose
 - Android Health Connect integration for reading heart rate, body temperature, and blood pressure records
-- Galaxy Watch 5 workflow through Samsung Health -> Health Connect -> Android app -> backend -> web dashboard
+- Galaxy Watch workflow through Samsung Health direct sync, with Health Connect as a fallback path
 - Section sync mode that imports the latest 60 minutes of approved Health Connect records
 - Demo section mode for emulator testing, with realistic section-style watch data
 - Live vital markers and trend graphs in the Android app and web patient dashboard
 - Device metadata capture for synced watch/phone readings
 - Doctor summary view with average vitals and rule-based prediction text
+- Backend rule-based screening prediction returned to Android and the patient web dashboard
 - Rule-based health insight engine in the Android client
 - AI chat servlet that can call the OpenAI Responses API when an API key is configured
 - Fallback wellness guidance when the AI service or API key is unavailable
@@ -73,7 +74,8 @@ Patient Web / Staff Web / Hospital Portal / Android App
       Stored readings and user data
 
 Optional:
-Galaxy Watch 5 -> Samsung Health -> Health Connect -> Android App -> Backend sync endpoint
+Galaxy Watch -> Samsung Health -> Android App -> Backend sync endpoint
+Galaxy Watch -> Samsung Health -> Health Connect -> Android App -> Backend sync endpoint
 Android Demo Feed -> Backend sync endpoint
 Backend AIChatServlet -> OpenAI Responses API -> Wellness guidance
 ```
@@ -202,8 +204,48 @@ cd AndroidClient
 
 The app supports section-based health sync:
 
-- Real watch path: pair Galaxy Watch 5 with a real Android phone, allow Samsung Health to share data with Health Connect, sign in to the SmartHealth Android app, then sync the latest 60-minute section.
+- Real watch path: pair the Galaxy Watch with a real Android phone, sign in to the SmartHealth Android app, grant Samsung Health permissions, then let automatic foreground sync run or tap Samsung sync manually. Blood pressure can sync when Samsung Health exposes it. Temperature may stay unavailable on watch/source combinations that do not expose a temperature option.
+- Fallback path: allow Samsung Health to share data with Health Connect, then use Health Connect section sync.
 - Demo path: use the emulator and load a demo section to generate presentation data through the same section-sync workflow.
+
+## What Works Now
+
+- Web patient, staff/admin, and hospital portal source is present and builds.
+- Android app builds, lints, stores session cookies with Android Keystore encryption, and uses HTTPS production backend config.
+- Mobile sync endpoints require an authenticated session.
+- Samsung Health section sync supports available watch vitals and reports unavailable temperature honestly.
+- Emergency alert evaluation, rule-based screening prediction, AI-chat fallback guidance, password hashing/reset helpers, validation, and report type behavior are covered by lightweight backend checks.
+
+## Demo Checklist
+
+1. Start the backend with `./scripts/deploy_local_glassfish.sh .env` or deploy the Docker/Render build with the required environment variables.
+2. Open the patient, staff/admin, and hospital portal pages listed above.
+3. Build/install the Android app from `AndroidClient`.
+4. Sign in as a patient and sync Samsung Health or load the demo section.
+5. Confirm the Android dashboard and patient web dashboard show the same latest vitals and rule-based screening prediction.
+6. Trigger the emergency demo flow only in a demo/test account.
+
+## Verification
+
+Run the local verification set:
+
+```sh
+scripts/run_backend_risk_checks.sh
+scripts/run_backend_integration_checks.sh
+scripts/check_mobile_session_auth.sh
+scripts/check_secret_patterns.sh
+cd AndroidClient
+./gradlew clean app:build app:lint --warning-mode all
+```
+
+The latest verification summary is in `docs/TEST_REPORT.md`.
+
+## Known Remaining Work
+
+- Add full servlet/integration tests with a test database for auth, CRUD, sync, alerts, reset, and reports.
+- Run a live Render/Supabase HTTPS smoke test with production environment variables.
+- Capture final screenshots for the landing page, dashboards, Android sync, emergency alert flow, and AI chat.
+- Migrate or reset any remaining legacy SHA-256 password hashes in real data.
 
 ### 6. Docker deployment test
 
