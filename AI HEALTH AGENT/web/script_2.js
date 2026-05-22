@@ -60,6 +60,7 @@ let isSignedOut = false;
 
 document.addEventListener('DOMContentLoaded', () => {
     applyLanguage('en');
+    initReadingContext();
     initChart();
     loadLatestReadings({ manual: false });
     setInterval(loadLatestReadings, LIVE_REFRESH_INTERVAL_MS);
@@ -214,6 +215,7 @@ function describeBloodPressure(systolic, diastolic) {
 
 function describeTemperature(value) {
     if (value === null) return "I do not have a temperature reading yet. Sync the phone app first.";
+    if (getReadingContext().effective === 'SLEEPING') return `Your latest watch temperature is ${value.toFixed(1)} C. On supported Galaxy Watches this is usually sleep temperature, so treat it as a trend and confirm with a normal thermometer if you feel feverish.`;
     if (value >= 38) return `Your latest temperature is ${value.toFixed(1)} C, which may indicate a fever. Rest, hydrate, and contact doctor/staff if it persists or you feel very unwell.`;
     if (value < 35.5) return `Your latest temperature is ${value.toFixed(1)} C, which is low. Warm up safely and seek help if you feel confused, very cold, or weak.`;
     return `Your latest temperature is ${value.toFixed(1)} C, which is within a common normal range. Keep monitoring if you have symptoms.`;
@@ -494,7 +496,8 @@ function updateAlertBanner(data) {
     const text = copy[activeLanguage] || copy.en;
 
     if (data.activeAlert) {
-        alertText.innerText = data.activeAlert.status === 'CRITICAL' ? text.criticalAlert : text.warningAlert;
+        const hospital = data.activeAlert.hospitalName ? ` - ${data.activeAlert.hospitalName}` : '';
+        alertText.innerText = (data.activeAlert.status === 'CRITICAL' ? text.criticalAlert : text.warningAlert) + hospital;
         banner.style.display = 'flex';
         return;
     }
@@ -504,8 +507,10 @@ function updateAlertBanner(data) {
     const bloodPressureMatch = String(data.bloodPressure || '').match(/(\d+)\s*\/\s*(\d+)/);
     const systolic = bloodPressureMatch ? Number(bloodPressureMatch[1]) : null;
     const diastolic = bloodPressureMatch ? Number(bloodPressureMatch[2]) : null;
+    const context = getReadingContext().effective;
+    const sleepTemperatureOnly = context === 'SLEEPING' && isSamsungSection(data.latestSection);
     const shouldWarn = (heartRate !== null && (heartRate < 50 || heartRate > 120)) ||
-        (temperature !== null && temperature > 38) ||
+        (temperature !== null && temperature > 38 && !sleepTemperatureOnly) ||
         (systolic !== null && diastolic !== null && (systolic >= 140 || diastolic >= 90));
 
     alertText.innerText = text.alert;
@@ -565,6 +570,8 @@ function updateSyncMeta(section, options = {}) {
 }
 
 function updateWellnessSuggestions(data) {
+    const context = getReadingContext();
+    const contextSuggestion = buildContextSuggestion(data, context);
     if (data.prediction) {
         const reasons = Array.isArray(data.prediction.reasons) ? data.prediction.reasons : [];
         setSuggestionText(
@@ -573,7 +580,7 @@ function updateWellnessSuggestions(data) {
         );
         const firstReason = reasons[0] || data.prediction.recommendedAction || 'Keep monitoring trends.';
         const disclaimer = data.prediction.diagnosticDisclaimer || 'This screening score does not diagnose illness.';
-        setSuggestionText('cause2', `${firstReason} ${disclaimer}`);
+        setSuggestionText('cause2', `${contextSuggestion || firstReason} ${disclaimer}`);
         return;
     }
 
@@ -583,9 +590,18 @@ function updateWellnessSuggestions(data) {
     const systolic = bloodPressureMatch ? Number(bloodPressureMatch[1]) : null;
     const diastolic = bloodPressureMatch ? Number(bloodPressureMatch[2]) : null;
     const suggestions = [];
+    if (contextSuggestion) {
+        suggestions.push(contextSuggestion);
+    }
 
     if (heartRate !== null) {
-        if (heartRate < 60) {
+        if (heartRate > 100 && context.effective === 'EXERCISING') {
+            suggestions.push(`Heart rate is ${heartRate} BPM during exercise context. Cool down, hydrate, and recheck after resting.`);
+        } else if (heartRate > 100 && (context.effective === 'RESTING' || context.effective === 'SLEEPING')) {
+            suggestions.push(`Heart rate is ${heartRate} BPM while marked ${context.effective.toLowerCase()}. Rest and contact staff if it stays high or symptoms appear.`);
+        } else if (heartRate < 60 && context.effective === 'SLEEPING') {
+            suggestions.push(`Heart rate is ${heartRate} BPM during sleep context. This can happen during sleep, but seek help if symptoms occur while awake.`);
+        } else if (heartRate < 60) {
             suggestions.push(`Heart rate is ${heartRate} BPM, which is low for many adults. Rest and contact staff if you feel dizzy, weak, faint, or short of breath.`);
         } else if (heartRate > 100) {
             suggestions.push(`Heart rate is ${heartRate} BPM, which is high for a resting reading. Sit quietly, recheck it, and contact staff if it stays high.`);
@@ -605,7 +621,9 @@ function updateWellnessSuggestions(data) {
     }
 
     if (temperature !== null) {
-        if (temperature >= 38) {
+        if (context.effective === 'SLEEPING' && isSamsungSection(data.latestSection)) {
+            suggestions.push(`Watch temperature is ${temperature.toFixed(1)} C during sleep context. Treat it as a sleep-temperature trend, not a direct fever reading.`);
+        } else if (temperature >= 38) {
             suggestions.push(`Temperature is ${temperature.toFixed(1)} C, which may indicate fever. Rest, hydrate, and contact staff if symptoms continue.`);
         } else if (temperature < 35.5) {
             suggestions.push(`Temperature is ${temperature.toFixed(1)} C, which is low. Warm up safely and seek help if you feel very cold or confused.`);
@@ -618,6 +636,88 @@ function updateWellnessSuggestions(data) {
 
     setSuggestionText('cause1', suggestions[0]);
     setSuggestionText('cause2', suggestions[1]);
+}
+
+function initReadingContext() {
+    const sleepStart = document.getElementById('sleepStart');
+    const sleepEnd = document.getElementById('sleepEnd');
+    const savedStart = localStorage.getItem('smarthealth.sleepStart');
+    const savedEnd = localStorage.getItem('smarthealth.sleepEnd');
+    const savedContext = localStorage.getItem('smarthealth.readingContext') || 'NOT_SURE';
+
+    if (sleepStart && savedStart) sleepStart.value = savedStart;
+    if (sleepEnd && savedEnd) sleepEnd.value = savedEnd;
+    setContextButton(savedContext);
+
+    sleepStart?.addEventListener('change', () => {
+        localStorage.setItem('smarthealth.sleepStart', sleepStart.value);
+        loadLatestReadings({ manual: false });
+    });
+    sleepEnd?.addEventListener('change', () => {
+        localStorage.setItem('smarthealth.sleepEnd', sleepEnd.value);
+        loadLatestReadings({ manual: false });
+    });
+    document.querySelectorAll('#readingContextTabs button').forEach(button => {
+        button.addEventListener('click', () => {
+            localStorage.setItem('smarthealth.readingContext', button.dataset.context || 'NOT_SURE');
+            setContextButton(button.dataset.context || 'NOT_SURE');
+            loadLatestReadings({ manual: false });
+        });
+    });
+}
+
+function setContextButton(context) {
+    document.querySelectorAll('#readingContextTabs button').forEach(button => {
+        button.classList.toggle('active', button.dataset.context === context);
+    });
+}
+
+function getReadingContext() {
+    const selected = localStorage.getItem('smarthealth.readingContext') || 'NOT_SURE';
+    const sleepStart = document.getElementById('sleepStart')?.value || '22:00';
+    const sleepEnd = document.getElementById('sleepEnd')?.value || '06:30';
+    const effective = selected === 'NOT_SURE' && isNowInSleepWindow(sleepStart, sleepEnd) ? 'SLEEPING' : selected;
+    return { selected, effective, sleepStart, sleepEnd };
+}
+
+function isNowInSleepWindow(start, end) {
+    const now = new Date();
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    const startMinutes = parseTimeToMinutes(start);
+    const endMinutes = parseTimeToMinutes(end);
+    if (startMinutes === null || endMinutes === null) return false;
+    return startMinutes <= endMinutes
+        ? nowMinutes >= startMinutes && nowMinutes <= endMinutes
+        : nowMinutes >= startMinutes || nowMinutes <= endMinutes;
+}
+
+function parseTimeToMinutes(value) {
+    const match = String(value || '').match(/^(\d{1,2}):(\d{2})$/);
+    if (!match) return null;
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+    return hours * 60 + minutes;
+}
+
+function buildContextSuggestion(data, context) {
+    if (context.selected === 'NOT_SURE' && context.effective === 'SLEEPING') {
+        return `Current time is inside your saved sleep schedule (${context.sleepStart}-${context.sleepEnd}), so SmartHealth is interpreting watch readings with sleep context.`;
+    }
+    if (context.effective === 'EXERCISING') {
+        return 'Exercise context is selected, so a higher pulse may be expected unless it stays high after resting or symptoms appear.';
+    }
+    if (context.effective === 'RESTING') {
+        return 'Resting context is selected, so a high pulse should be rechecked after sitting quietly.';
+    }
+    if (context.effective === 'SLEEPING') {
+        return 'Sleep context is selected. Watch temperature is treated as a sleep trend, not a direct fever reading.';
+    }
+    return null;
+}
+
+function isSamsungSection(section) {
+    return String(section?.source || '').toUpperCase().includes('SAMSUNG');
 }
 
 function setSuggestionText(key, value) {

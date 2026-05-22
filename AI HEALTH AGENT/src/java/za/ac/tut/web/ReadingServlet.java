@@ -234,10 +234,13 @@ public class ReadingServlet extends HttpServlet {
     }
 
     private String getActiveAlertJson(Connection conn, int userId) throws Exception {
-        String sql = "SELECT alert_id, bpm, alert_status, countdown_seconds, created_at "
-                + "FROM emergency_alerts "
-                + "WHERE user_id = ? AND created_at >= ? "
-                + "ORDER BY created_at DESC, alert_id DESC LIMIT 1";
+        String sql = "SELECT ea.alert_id, ea.bpm, ea.alert_status, ea.countdown_seconds, ea.created_at, "
+                + "h.name AS hospital_name, h.service_area, haa.status AS assignment_status "
+                + "FROM emergency_alerts ea "
+                + "LEFT JOIN hospital_alert_assignments haa ON haa.alert_id = ea.alert_id "
+                + "LEFT JOIN hospitals h ON h.hospital_id = haa.hospital_id "
+                + "WHERE ea.user_id = ? AND ea.created_at >= ? "
+                + "ORDER BY ea.created_at DESC, ea.alert_id DESC LIMIT 1";
 
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, userId);
@@ -251,7 +254,10 @@ public class ReadingServlet extends HttpServlet {
                             + "\"bpm\":" + (rs.getObject("bpm") == null ? "null" : rs.getInt("bpm")) + ","
                             + "\"status\":" + JsonUtil.quote(rs.getString("alert_status")) + ","
                             + "\"countdownSeconds\":" + rs.getInt("countdown_seconds") + ","
-                            + "\"createdAt\":" + JsonUtil.quote(createdAt == null ? null : createdAt.toInstant().toString())
+                            + "\"createdAt\":" + JsonUtil.quote(createdAt == null ? null : createdAt.toInstant().toString()) + ","
+                            + "\"hospitalName\":" + JsonUtil.quote(rs.getString("hospital_name")) + ","
+                            + "\"hospitalServiceArea\":" + JsonUtil.quote(rs.getString("service_area")) + ","
+                            + "\"assignmentStatus\":" + JsonUtil.quote(rs.getString("assignment_status"))
                             + "}";
                 }
             }

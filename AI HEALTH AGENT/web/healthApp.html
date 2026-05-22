@@ -102,6 +102,30 @@
                 </div>
             </div>
 
+            <div class="context-panel">
+                <div class="context-header">
+                    <strong>Reading context</strong>
+                    <span>Used for wellness suggestions</span>
+                </div>
+                <div class="sleep-row">
+                    <label>
+                        Sleep start
+                        <input type="time" id="sleepStart" value="22:00">
+                    </label>
+                    <label>
+                        Wake time
+                        <input type="time" id="sleepEnd" value="06:30">
+                    </label>
+                </div>
+                <div class="context-tabs" id="readingContextTabs">
+                    <button type="button" data-context="RESTING">Resting</button>
+                    <button type="button" data-context="EXERCISING">Exercising</button>
+                    <button type="button" data-context="SLEEPING">Sleeping</button>
+                    <button type="button" data-context="NOT_SURE" class="active">Not sure</button>
+                </div>
+                <p class="context-note">Galaxy Watch temperature is usually sleep temperature on supported watches, so SmartHealth treats it as a trend signal rather than a direct fever reading.</p>
+            </div>
+
             <button class="chat-btn top-chat" onclick="openChat()">
                 <i class="fas fa-microphone"></i>
                 <span id="chat_ai">Chat with AI</span>

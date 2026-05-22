@@ -94,6 +94,74 @@ body {
     color: var(--primary-dark);
 }
 
+.context-panel {
+    margin: 14px 0;
+    padding: 16px;
+    border-radius: 10px;
+    background: var(--panel);
+    box-shadow: 0 12px 30px rgba(3, 12, 24, 0.16);
+}
+
+.context-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    color: var(--ink);
+}
+
+.context-header span,
+.context-note {
+    color: var(--muted);
+    font-size: 0.82rem;
+}
+
+.sleep-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin: 12px 0;
+}
+
+.sleep-row label {
+    color: var(--muted);
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.sleep-row input {
+    width: 100%;
+    margin-top: 5px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px;
+    color: var(--ink);
+    font: inherit;
+}
+
+.context-tabs {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+}
+
+.context-tabs button {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 9px 6px;
+    color: var(--muted);
+    background: #f7fbf9;
+    font: inherit;
+    font-size: 0.72rem;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.context-tabs button.active {
+    border-color: rgba(0, 153, 93, 0.34);
+    color: var(--ink);
+    background: rgba(0, 204, 119, 0.16);
+}
+
 .phone-frame {
     position: relative;
     z-index: 1;

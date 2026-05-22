@@ -11,24 +11,27 @@ Run the matching seed script before the demo:
 
 Seeded hospital:
 
-- Email: `demo.hospital@smarthealth.local`
+- Name: `Arcadia Ridge Medical Centre`
+- Email: `arcadia.ridge@smarthealth.local`
 - Password: `Demo@12345`
 - Service area: `Pretoria`
+- Address: `421 Park Street, Arcadia, Pretoria, 0083`
 
 Seeded patient:
 
+- Name: `Naledi Mokoena`
 - Email: `demo.patient@smarthealth.local`
 - Password: `Patient@12345`
-- Address: `Pretoria CBD, Pretoria`
+- Address: `296 Pretorius Street, Pretoria Central, Pretoria, 0002`
 
-The patient address contains `Pretoria`, so abnormal readings are assigned to the demo hospital automatically.
+The patient address contains `Pretoria`, so abnormal readings are assigned to the demo hospital automatically. The seed also creates one assigned `CRITICAL` emergency alert so the hospital portal and reports have presentation data immediately.
 
 ## What To Show Sir
 
 1. Open the hospital portal from the web home page.
 2. Show that hospitals can register with a service area.
 3. Sign in as the demo hospital.
-4. Show the patient-alert portal. It may be empty before the emergency reading.
+4. Show the patient-alert portal. The seeded critical alert should already be visible.
 5. Open the Android app and sign in as the demo patient.
 6. Tap `Trigger Emergency Demo Alert`.
 7. Point out the phone emergency notification card:
@@ -52,7 +55,7 @@ If the Android UI is slow, sign in through the mobile login endpoint first so th
 Expected result after the emergency demo:
 
 - `hasAlert` is `true`
-- `hospitalName` is `SmartHealth Pretoria Demo Hospital`
+- `hospitalName` is `Arcadia Ridge Medical Centre`
 - `status` is `CRITICAL`
 
 ## Why This Satisfies The Feature
