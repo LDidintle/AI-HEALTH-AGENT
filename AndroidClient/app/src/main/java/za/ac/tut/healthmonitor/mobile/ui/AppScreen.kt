@@ -12,8 +12,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -377,6 +379,8 @@ private fun DashboardContent(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
+            .statusBarsPadding()
+            .navigationBarsPadding()
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -530,23 +534,16 @@ private fun WatchContextCard(
                     modifier = Modifier.weight(1f)
                 )
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                listOf(ActivityState.Resting, ActivityState.Exercising, ActivityState.Sleeping, ActivityState.NotSure)
-                    .forEach { context ->
-                        val selected = context == selectedContext
-                        TextButton(
-                            onClick = { onReadingContextChanged(context) },
-                            modifier = Modifier
-                                .weight(1f)
-                                .background(
-                                    if (selected) AccentBlue.copy(alpha = 0.18f) else Color(0xFFEFF5F2),
-                                    RoundedCornerShape(10.dp)
-                                )
-                        ) {
-                            Text(context.label, color = if (selected) Ink else Muted, fontSize = 12.sp)
-                        }
-                    }
-            }
+            ContextButtonRow(
+                contexts = listOf(ActivityState.Resting, ActivityState.Exercising),
+                selectedContext = selectedContext,
+                onReadingContextChanged = onReadingContextChanged
+            )
+            ContextButtonRow(
+                contexts = listOf(ActivityState.Sleeping, ActivityState.NotSure),
+                selectedContext = selectedContext,
+                onReadingContextChanged = onReadingContextChanged
+            )
             Text(
                 "Galaxy Watch temperature is usually sleep temperature on supported watches. SmartHealth treats it as a trend signal, not a direct fever reading.",
                 color = Muted,
@@ -562,6 +559,44 @@ private fun WatchContextCard(
                 Text("Logout")
             }
         }
+    }
+}
+
+@Composable
+private fun ContextButtonRow(
+    contexts: List<ActivityState>,
+    selectedContext: ActivityState,
+    onReadingContextChanged: (ActivityState) -> Unit
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+        contexts.forEach { context ->
+            val selected = context == selectedContext
+            TextButton(
+                onClick = { onReadingContextChanged(context) },
+                modifier = Modifier
+                    .weight(1f)
+                    .background(
+                        if (selected) AccentBlue.copy(alpha = 0.18f) else Color(0xFFEFF5F2),
+                        RoundedCornerShape(10.dp)
+                    )
+            ) {
+                Text(
+                    context.contextButtonLabel(),
+                    color = if (selected) Ink else Muted,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+private fun ActivityState.contextButtonLabel(): String {
+    return when (this) {
+        ActivityState.Resting -> "Resting"
+        ActivityState.Exercising -> "Exercise"
+        ActivityState.Sleeping -> "Sleep"
+        ActivityState.NotSure -> "Not sure"
     }
 }
 
@@ -1073,7 +1108,7 @@ private fun copyFor(language: String): DashboardCopy {
             blood = "Blood Pressure:",
             temp = "Temperature:",
             chat = "Chat with AI",
-            alert = "SHOW EMERGENCY ALERT",
+            alert = "EMERGENCY HELP",
             causes = "Wellness Suggestions"
         )
     }
