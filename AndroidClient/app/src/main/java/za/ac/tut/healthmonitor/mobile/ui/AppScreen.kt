@@ -34,6 +34,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -374,6 +378,7 @@ private fun DashboardContent(
     onSleepEndChanged: (String) -> Unit
 ) {
     val copy = copyFor(uiState.selectedLanguage)
+    var showEmergencyConfirm by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -381,8 +386,8 @@ private fun DashboardContent(
             .verticalScroll(rememberScrollState())
             .statusBarsPadding()
             .navigationBarsPadding()
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.weight(1f)) {
@@ -411,7 +416,30 @@ private fun DashboardContent(
         PredictionCard(uiState.latestReadings?.prediction)
         ChartCard(uiState.trendPoints)
         ActionButton(text = copy.chat, onClick = onOpenChat, colors = listOf(AccentBlue, Yellow), textColor = Ink)
-        ActionButton(text = copy.alert, onClick = onSendParamedicAlert, colors = listOf(Danger, Color(0xFF8F1B13)), textColor = Color.White)
+        ActionButton(text = copy.alert, onClick = { showEmergencyConfirm = true }, colors = listOf(Danger, Color(0xFF8F1B13)), textColor = Color.White)
+
+        if (showEmergencyConfirm) {
+            AlertDialog(
+                onDismissRequest = { showEmergencyConfirm = false },
+                title = { Text("Request emergency help?") },
+                text = {
+                    Text("This sends a SmartHealth demo alert to hospital staff in this project. It is not connected to real emergency dispatch. If this is a real emergency, call local emergency services now.")
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showEmergencyConfirm = false
+                        onSendParamedicAlert()
+                    }) {
+                        Text("Send demo alert")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showEmergencyConfirm = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
 
         EmergencyNotificationCard(uiState)
 
@@ -438,9 +466,9 @@ private fun HeartRateRangeCard(range: HeartRateRangeSummary?) {
         "${range.count} samples"
     )
 
-    Card(colors = CardDefaults.cardColors(containerColor = SoftPanel), shape = RoundedCornerShape(18.dp)) {
-        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("Latest heart-rate section", color = Ink, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
+    Card(colors = CardDefaults.cardColors(containerColor = SoftPanel), shape = RoundedCornerShape(14.dp)) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Latest heart-rate section", color = Ink, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
             Text(rangeText, color = AccentCoral, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.headlineSmall)
             range.latest?.let {
                 Text("Latest ${it} BPM", color = Ink, style = MaterialTheme.typography.bodyLarge)
@@ -454,7 +482,7 @@ private fun HeartRateRangeCard(range: HeartRateRangeSummary?) {
                 color = Muted,
                 fontSize = 12.sp
             )
-            Text("Updated when Samsung Health section sync runs.", color = Muted, fontSize = 12.sp)
+            Text("Automatic periodic Samsung Health sync.", color = Muted, fontSize = 12.sp)
         }
     }
 }
@@ -508,11 +536,11 @@ private fun WatchContextCard(
     onSleepEndChanged: (String) -> Unit,
     onLogout: () -> Unit
 ) {
-    Card(colors = CardDefaults.cardColors(containerColor = SoftPanel), shape = RoundedCornerShape(18.dp)) {
-        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Reading context", color = Ink, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
+    Card(colors = CardDefaults.cardColors(containerColor = SoftPanel), shape = RoundedCornerShape(14.dp)) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("Reading context", color = Ink, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
             Text(
-                "Choose what you were doing so suggestions can interpret pulse and watch temperature more carefully.",
+                "Choose what you were doing so suggestions can interpret pulse and sleep-temperature trends more carefully.",
                 color = Muted,
                 style = MaterialTheme.typography.bodyMedium
             )
@@ -550,7 +578,7 @@ private fun WatchContextCard(
                 style = MaterialTheme.typography.bodySmall
             )
             lastSectionSyncAt?.let {
-                Text("Last automatic sync: $it", color = Muted, style = MaterialTheme.typography.bodySmall)
+                StatusLine("Last automatic sync", it)
             }
             lastSyncSummary?.let {
                 Text(it, color = Muted, style = MaterialTheme.typography.bodySmall)
@@ -559,6 +587,21 @@ private fun WatchContextCard(
                 Text("Logout")
             }
         }
+    }
+}
+
+@Composable
+private fun StatusLine(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFFEFF5F2), RoundedCornerShape(10.dp))
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(label, color = Muted, fontSize = 12.sp)
+        Text(value, color = Ink, fontWeight = FontWeight.Bold, fontSize = 12.sp)
     }
 }
 
@@ -863,18 +906,18 @@ private fun ActionButton(text: String, onClick: () -> Unit, colors: List<Color>,
     Button(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        contentPadding = PaddingValues(vertical = 18.dp),
+        shape = RoundedCornerShape(14.dp),
+        contentPadding = PaddingValues(vertical = 8.dp),
         colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Brush.horizontalGradient(colors), RoundedCornerShape(16.dp))
-                .padding(vertical = 18.dp),
+                .background(Brush.horizontalGradient(colors), RoundedCornerShape(14.dp))
+                .padding(vertical = 14.dp),
             contentAlignment = Alignment.Center
         ) {
-            Text(text, color = textColor, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
+            Text(text, color = textColor, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
         }
     }
 }

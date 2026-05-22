@@ -283,6 +283,23 @@ CREATE TABLE `users` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `patient_context_settings`
+--
+
+DROP TABLE IF EXISTS `patient_context_settings`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `patient_context_settings` (
+  `user_id` int(11) NOT NULL,
+  `sleep_start` varchar(5) NOT NULL,
+  `sleep_end` varchar(5) NOT NULL,
+  `updated_at` timestamp NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`user_id`),
+  CONSTRAINT `fk_patient_context_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `devices`
 --
 

@@ -104,6 +104,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         launchLoadingTask {
             repository.login(currentState.email.trim(), currentState.password)
             val profile = repository.getProfile().user
+            loadContextSettingsFromBackend()
             val verificationMessage = if (profile?.isVerified == true) {
                 "Signed in. SmartHealth will sync recent watch readings automatically."
             } else {
@@ -136,6 +137,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val profile = repository.getProfile().user
+                loadContextSettingsFromBackend()
                 _uiState.update {
                     it.copy(
                         isLoggedIn = true,
@@ -379,11 +381,13 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun updateSleepStart(value: String) {
         contextSettingsStorage.saveSleepStart(value)
         _uiState.update { it.copy(sleepStart = value) }
+        saveContextSettingsIfComplete()
     }
 
     fun updateSleepEnd(value: String) {
         contextSettingsStorage.saveSleepEnd(value)
         _uiState.update { it.copy(sleepEnd = value) }
+        saveContextSettingsIfComplete()
     }
 
     fun openProfile() {
@@ -783,24 +787,75 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun persistSection(payload: HealthSectionSyncPayload) {
         viewModelScope.launch(Dispatchers.IO) {
+            var sectionError: Exception? = null
+            var fallbackError: Exception? = null
+            var refreshError: Exception? = null
             try {
                 try {
                     repository.syncHealthSection(payload)
-                } catch (sectionError: Exception) {
-                    repository.syncReadings(payload.toHealthSyncPayload())
+                } catch (e: Exception) {
+                    sectionError = e
+                    try {
+                        repository.syncReadings(payload.toHealthSyncPayload())
+                    } catch (e: Exception) {
+                        fallbackError = e
+                    }
                 }
-                val savedReadings = repository.getLatestReadings()
-                _uiState.update {
-                    it.copy(
-                        latestReadings = savedReadings,
-                        trendPoints = if (it.trendPoints.isEmpty()) savedReadings.toUiTrendPoints() else it.trendPoints
-                    )
+                if (fallbackError != null) {
+                    _uiState.update {
+                        it.copy(errorMessage = SyncFailureMessage.from(sectionError, fallbackError, null))
+                    }
+                    return@launch
+                }
+                try {
+                    val savedReadings = repository.getLatestReadings()
+                    _uiState.update {
+                        it.copy(
+                            latestReadings = savedReadings,
+                            trendPoints = if (it.trendPoints.isEmpty()) savedReadings.toUiTrendPoints() else it.trendPoints
+                        )
+                    }
+                } catch (e: Exception) {
+                    refreshError = e
+                }
+                if (refreshError != null || sectionError != null) {
+                    _uiState.update {
+                        it.copy(errorMessage = SyncFailureMessage.from(sectionError, null, refreshError))
+                    }
                 }
                 checkAlertNotification()
-            } catch (_: Exception) {
+            } catch (e: Exception) {
                 _uiState.update {
-                    it.copy(errorMessage = "Section displayed, but saving to the database failed.")
+                    it.copy(errorMessage = SyncFailureMessage.from(sectionError, fallbackError, e))
                 }
+            }
+        }
+    }
+
+    private fun loadContextSettingsFromBackend() {
+        try {
+            val settings = repository.getContextSettings()
+            val sleepStart = settings.sleepStart ?: return
+            val sleepEnd = settings.sleepEnd ?: return
+            contextSettingsStorage.saveSleepStart(sleepStart)
+            contextSettingsStorage.saveSleepEnd(sleepEnd)
+            _uiState.update { it.copy(sleepStart = sleepStart, sleepEnd = sleepEnd) }
+        } catch (_: Exception) {
+            // Local settings remain the offline fallback.
+        }
+    }
+
+    private fun saveContextSettingsIfComplete() {
+        val state = _uiState.value
+        if (!state.isLoggedIn || !state.sleepStart.matches(TIME_INPUT_REGEX) || !state.sleepEnd.matches(TIME_INPUT_REGEX)) {
+            return
+        }
+
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                repository.saveContextSettings(state.sleepStart, state.sleepEnd)
+            } catch (_: Exception) {
+                // Keep the local copy; the next signed-in edit can retry.
             }
         }
     }
@@ -1019,5 +1074,6 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         const val DEFAULT_SECTION_WINDOW_MINUTES = 30L * 24L * 60L
         const val MAX_TREND_POINTS = 12
         val TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
+        val TIME_INPUT_REGEX = Regex("[0-9]{2}:[0-9]{2}")
     }
 }

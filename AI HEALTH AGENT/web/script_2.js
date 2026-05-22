@@ -7,7 +7,7 @@ const copy = {
         chartBlood: "● Blood Pressure",
         chartTemp: "● Temperature",
         chat: "Chat with AI",
-        alert: "ALERT SENT TO PARAMEDICS!",
+        alert: "DEMO ALERT SHOWN TO HOSPITAL STAFF",
         causes: "Wellness Suggestions",
         cause1: "Review unusual readings with doctor/staff",
         cause2: "Keep monitoring symptoms and hydration",
@@ -23,7 +23,7 @@ const copy = {
         chartBlood: "● Umfutho wegazi",
         chartTemp: "● Izinga lokushisa",
         chat: "Xoxa ne-AI",
-        alert: "ISIXWAYISO SITHUNYELWE KUMAPHARAMEDIKI!",
+        alert: "ISIXWAYISO SEDemo SIBONISWE ABASEBENZI",
         causes: "Iziphakamiso Zempilo",
         cause1: "Xoxa nodokotela/abasebenzi ngezilinganiso ezingajwayelekile",
         cause2: "Qhubeka uqapha izimpawu nokuphuza amanzi",
@@ -39,7 +39,7 @@ const copy = {
         chartBlood: "● Bloeddruk",
         chartTemp: "● Temperatuur",
         chat: "Gesels met KI",
-        alert: "WAARSKUWING NA PARAMEDICI GESTUUR!",
+        alert: "DEMO-WAARSKUWING AAN PERSONEEL GETOON",
         causes: "Welstandvoorstelle",
         cause1: "Bespreek ongewone lesings met dokter/personeel",
         cause2: "Hou simptome en hidrasie dop",
@@ -371,8 +371,8 @@ function fetchLatestReadings() {
         });
 }
 
-function fetchJson(url) {
-    return fetch(url, { headers: { Accept: 'application/json' } })
+function fetchJson(url, options = {}) {
+    return fetch(url, { headers: { Accept: 'application/json', ...(options.headers || {}) }, ...options })
         .then(response => response.json().then(data => ({ status: response.status, data })));
 }
 
@@ -648,13 +648,16 @@ function initReadingContext() {
     if (sleepStart && savedStart) sleepStart.value = savedStart;
     if (sleepEnd && savedEnd) sleepEnd.value = savedEnd;
     setContextButton(savedContext);
+    loadContextSettings();
 
     sleepStart?.addEventListener('change', () => {
         localStorage.setItem('smarthealth.sleepStart', sleepStart.value);
+        saveContextSettings();
         loadLatestReadings({ manual: false });
     });
     sleepEnd?.addEventListener('change', () => {
         localStorage.setItem('smarthealth.sleepEnd', sleepEnd.value);
+        saveContextSettings();
         loadLatestReadings({ manual: false });
     });
     document.querySelectorAll('#readingContextTabs button').forEach(button => {
@@ -663,6 +666,40 @@ function initReadingContext() {
             setContextButton(button.dataset.context || 'NOT_SURE');
             loadLatestReadings({ manual: false });
         });
+    });
+}
+
+function loadContextSettings() {
+    fetchJson('api/mobile/context-settings')
+        .then(({ status, data }) => {
+            if (status !== 200 || !data.success) return;
+            const sleepStart = document.getElementById('sleepStart');
+            const sleepEnd = document.getElementById('sleepEnd');
+            if (sleepStart && data.sleepStart) {
+                sleepStart.value = data.sleepStart;
+                localStorage.setItem('smarthealth.sleepStart', data.sleepStart);
+            }
+            if (sleepEnd && data.sleepEnd) {
+                sleepEnd.value = data.sleepEnd;
+                localStorage.setItem('smarthealth.sleepEnd', data.sleepEnd);
+            }
+            loadLatestReadings({ manual: false });
+        })
+        .catch(() => {
+            // Local storage remains the browser fallback.
+        });
+}
+
+function saveContextSettings() {
+    const sleepStart = document.getElementById('sleepStart')?.value;
+    const sleepEnd = document.getElementById('sleepEnd')?.value;
+    if (!sleepStart || !sleepEnd) return;
+    fetchJson('api/mobile/context-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+        body: `sleepStart=${encodeURIComponent(sleepStart)}&sleepEnd=${encodeURIComponent(sleepEnd)}`
+    }).catch(() => {
+        // Keep local values if the session is offline or expired.
     });
 }
 

@@ -2,7 +2,7 @@
 
 ## Overview
 
-SmartHealth AI Health Agent is a student-built health monitoring application with a Java web backend, patient, staff, and hospital web portals, an Android client, database-backed health readings, live mobile sync, and AI-assisted wellness guidance.
+SmartHealth AI Health Agent is a student-built health monitoring application with a Java web backend, patient, staff, and hospital web portals, an Android client, database-backed health readings, automatic periodic mobile sync, and AI-assisted wellness guidance.
 
 The app is designed to collect patient information and health readings, store them in a relational database, show recent and average readings to users, staff, and hospital users, and provide non-diagnostic wellness suggestions based on rule checks and an optional OpenAI-powered chat assistant.
 
@@ -25,8 +25,9 @@ This project is for educational and demonstration purposes only. It does not dia
 - Android Health Connect integration for reading heart rate, body temperature, and blood pressure records
 - Galaxy Watch workflow through Samsung Health direct sync, with Health Connect as a fallback path
 - Section sync mode that imports the latest 60 minutes of approved Health Connect records
+- Patient sleep schedule context shared between Android and the web dashboard for safer wellness suggestions
 - Demo section mode for emulator testing, with realistic section-style watch data
-- Live vital markers and trend graphs in the Android app and web patient dashboard
+- Recent vital markers and trend graphs in the Android app and web patient dashboard
 - Device metadata capture for synced watch/phone readings
 - Doctor summary view with average vitals and rule-based prediction text
 - Backend rule-based screening prediction returned to Android and the patient web dashboard
@@ -204,7 +205,7 @@ cd AndroidClient
 
 The app supports section-based health sync:
 
-- Real watch path: pair the Galaxy Watch with a real Android phone, sign in to the SmartHealth Android app, grant Samsung Health permissions, then let automatic foreground sync run or tap Samsung sync manually. Blood pressure can sync when Samsung Health exposes it. Temperature may stay unavailable on watch/source combinations that do not expose a temperature option.
+- Real watch path: pair the Galaxy Watch with a real Android phone, sign in to the SmartHealth Android app, grant Samsung Health permissions, then let automatic periodic foreground sync run. Blood pressure can sync when Samsung Health exposes it and the watch has the required calibration/source support. Temperature is conditional and may only be available as sleep-temperature trend data on supported watch/source combinations.
 - Fallback path: allow Samsung Health to share data with Health Connect, then use Health Connect section sync.
 - Demo path: use the emulator and load a demo section to generate presentation data through the same section-sync workflow.
 
@@ -214,7 +215,9 @@ The app supports section-based health sync:
 - Android app builds, lints, stores session cookies with Android Keystore encryption, and uses HTTPS production backend config.
 - Mobile sync endpoints require an authenticated session.
 - Samsung Health section sync supports available watch vitals and reports unavailable temperature honestly.
+- Android and web sleep schedule context syncs through the backend, with local storage as an offline fallback.
 - Emergency alert evaluation, rule-based screening prediction, AI-chat fallback guidance, password hashing/reset helpers, validation, and report type behavior are covered by lightweight backend checks.
+- Prediction v1 is deterministic rule-based screening, not a trained ML model or diagnosis.
 
 ## Demo Checklist
 
@@ -223,7 +226,7 @@ The app supports section-based health sync:
 3. Build/install the Android app from `AndroidClient`.
 4. Sign in as a patient and sync Samsung Health or load the demo section.
 5. Confirm the Android dashboard and patient web dashboard show the same latest vitals and rule-based screening prediction.
-6. Trigger the emergency demo flow only in a demo/test account.
+6. Trigger the emergency demo flow only in a demo/test account. It demonstrates hospital assignment and alert display; it is not connected to real emergency dispatch.
 
 ## Verification
 
@@ -297,6 +300,8 @@ docs/REMOTE_DATABASE.md
 - The AI API key is read from environment variables.
 - New passwords are hashed with PBKDF2-SHA256 using a per-password salt. Legacy SHA-256 hashes are still accepted during login so older demo accounts can continue to sign in until their passwords are reset.
 - Health data is sensitive. A production version should add stronger authentication, access control, audit logging, HTTPS-only deployment, rate limiting, and privacy review.
+- Do not present the watch feature as continuous real-time medical monitoring. It is automatic periodic sync and can be limited by Android/Samsung battery and background restrictions.
+- Do not present emergency alerts as production dispatch. Users must contact local emergency services for real emergencies.
 
 ## Future Improvements
 

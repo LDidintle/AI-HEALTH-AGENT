@@ -17,6 +17,13 @@ data class SyncResponse(
     val message: String? = null
 )
 
+data class ContextSettingsResponse(
+    val success: Boolean,
+    val sleepStart: String? = null,
+    val sleepEnd: String? = null,
+    val message: String? = null
+)
+
 data class AiChatResponse(
     val reply: String? = null,
     val source: String? = null

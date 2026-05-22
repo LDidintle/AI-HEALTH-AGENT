@@ -9,6 +9,7 @@ import za.ac.tut.model.PasswordUtils;
 import za.ac.tut.model.ReportCriteria;
 import za.ac.tut.model.ReportResult;
 import za.ac.tut.util.PasswordResetService;
+import za.ac.tut.util.PatientContextSettingsService;
 import za.ac.tut.util.PatientAccountProcedureService;
 import za.ac.tut.util.ReportService;
 import za.ac.tut.util.VitalAlertEvaluator;
@@ -21,6 +22,7 @@ public class BackendIntegrationChecks {
             createSchema(conn);
             verifiesPatientCrud(conn);
             verifiesPasswordReset(conn);
+            verifiesPatientContextSettings(conn);
             verifiesEmergencyAlertPersistence(conn);
             verifiesReports(conn);
         }
@@ -43,6 +45,10 @@ public class BackendIntegrationChecks {
                     + "reset_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, "
                     + "user_id INTEGER NOT NULL, otp_hash VARCHAR(255) NOT NULL, expires_at TIMESTAMP NOT NULL, "
                     + "used_at TIMESTAMP, attempt_count INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+            statement.execute("CREATE TABLE patient_context_settings ("
+                    + "user_id INTEGER NOT NULL PRIMARY KEY, "
+                    + "sleep_start VARCHAR(5) NOT NULL, sleep_end VARCHAR(5) NOT NULL, "
+                    + "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
             statement.execute("CREATE TABLE devices ("
                     + "device_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, user_id INTEGER NOT NULL, "
                     + "device_type VARCHAR(40), manufacturer VARCHAR(80), device_model VARCHAR(80), "
@@ -61,7 +67,7 @@ public class BackendIntegrationChecks {
                     + "source_platform VARCHAR(80), sync_status VARCHAR(30), synced_for TIMESTAMP DEFAULT CURRENT_TIMESTAMP, device_id INTEGER)");
             statement.execute("CREATE TABLE health_sync_sections ("
                     + "section_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, user_id INTEGER NOT NULL, "
-                    + "source VARCHAR(80), window_start TIMESTAMP DEFAULT CURRENT_TIMESTAMP, window_end TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "
+                    + "device_id INTEGER, source VARCHAR(80), window_start TIMESTAMP DEFAULT CURRENT_TIMESTAMP, window_end TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "
                     + "heart_rate_latest INTEGER, heart_rate_min INTEGER, heart_rate_max INTEGER, heart_rate_average DECIMAL(6,2), heart_rate_count INTEGER DEFAULT 0, "
                     + "temperature_latest DECIMAL(5,2), temperature_min DECIMAL(5,2), temperature_max DECIMAL(5,2), temperature_average DECIMAL(5,2), temperature_count INTEGER DEFAULT 0, "
                     + "systolic_latest INTEGER, diastolic_latest INTEGER, blood_pressure_count INTEGER DEFAULT 0, "
@@ -106,6 +112,31 @@ public class BackendIntegrationChecks {
                 conn, "reset@example.com", request.getOtp(), PasswordUtils.hashPassword("NewPass22!"));
         assertTrue(right.isSuccess(), "correct OTP should reset password");
         assertEquals(1, count(conn, "SELECT COUNT(*) FROM password_reset_otps WHERE user_id = " + userId + " AND used_at IS NOT NULL"), "OTP should be marked used");
+    }
+
+    private static void verifiesPatientContextSettings(Connection conn) throws Exception {
+        int userId = PatientAccountProcedureService.createPatientAccount(
+                conn, "Ms", "Context", "Patient", Date.valueOf("2002-04-05"),
+                "context@example.com", PasswordUtils.hashPassword("Context22!"));
+        PatientContextSettingsService.ContextSettings defaults = PatientContextSettingsService.load(conn, userId);
+        assertEquals("22:00", defaults.getSleepStart(), "default sleep start should be stable");
+        assertEquals("06:00", defaults.getSleepEnd(), "default wake time should be stable");
+
+        PatientContextSettingsService.save(conn, userId, "00:00", "08:00");
+        PatientContextSettingsService.ContextSettings saved = PatientContextSettingsService.load(conn, userId);
+        assertEquals("00:00", saved.getSleepStart(), "saved sleep start should load");
+        assertEquals("08:00", saved.getSleepEnd(), "saved wake time should load");
+
+        PatientContextSettingsService.save(conn, userId, "23:30", "07:15");
+        assertEquals(1, count(conn, "SELECT COUNT(*) FROM patient_context_settings WHERE user_id = " + userId), "context settings should upsert one row");
+
+        boolean rejected = false;
+        try {
+            PatientContextSettingsService.save(conn, userId, "24:00", "08:00");
+        } catch (IllegalArgumentException expected) {
+            rejected = true;
+        }
+        assertTrue(rejected, "invalid sleep time should be rejected");
     }
 
     private static void verifiesEmergencyAlertPersistence(Connection conn) throws Exception {

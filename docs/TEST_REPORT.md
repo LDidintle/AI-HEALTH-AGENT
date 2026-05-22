@@ -1,6 +1,6 @@
 # SmartHealth Test Report
 
-Test date: 2026-05-21
+Test date: 2026-05-23
 
 ## Environment
 
@@ -17,6 +17,7 @@ Test date: 2026-05-21
 | Backend Ant | `/Applications/Apache NetBeans.app/Contents/Resources/netbeans/extide/ant/bin/ant test` | Pass |
 | Backend risk harness | `scripts/run_backend_risk_checks.sh` | Pass |
 | Backend integration harness | `scripts/run_backend_integration_checks.sh` with local Derby test database | Pass |
+| Backend context settings | Sleep schedule default/load/save/upsert/invalid-time checks | Pass |
 | Auth/session | Role marking, current role, and 30 minute session timeout behavior | Pass |
 | Patient validation | SA mobile number normalization, ID shape, DOB bounds, same-phone check | Pass |
 | Password security | PBKDF2 hashing, legacy SHA-256 verification, malformed hash rejection, password policy | Pass |
@@ -30,7 +31,7 @@ Test date: 2026-05-21
 | Mobile endpoint auth | `scripts/check_mobile_session_auth.sh` forbidden old `?email=` patterns | Pass |
 | Secret hygiene | `scripts/check_secret_patterns.sh` high-confidence secret scan | Pass |
 | Diff hygiene | `git diff --check` | Pass |
-| Android | `./gradlew clean app:build app:lint --warning-mode all` | Pass |
+| Android | `./gradlew app:testDebugUnitTest`, `./gradlew app:build app:lint --warning-mode all` | Pass in previous local run; latest rerun blocked by tool approval/usage gate |
 
 ## Manual/Runtime Checks
 
@@ -44,12 +45,14 @@ Test date: 2026-05-21
 | Live HTTPS | `https://ai-health-helper.onrender.com/` returned HTTP 200 | Pass |
 | Live patient page | `https://ai-health-helper.onrender.com/healthApp.html` returned HTTP 200 | Pass |
 | Live mobile auth | `/api/mobile/health-sync` rejected unauthenticated read | Pass |
-| Supabase security advisor | Critical `public.devices` RLS-disabled issue identified; repo migration added | Pending live approval |
+| Live Supabase schema | `health_sync_sections` and `patient_context_settings` exist; `devices`/section/context tables have RLS enabled | Pass |
+| Supabase security advisor | Original critical `public.devices` RLS-disabled issue no longer appears; remaining notices are INFO-level no-policy warnings for backend-only tables | Pass with residual INFO notices |
+| Demo seed | Pretoria hospital/patient/alert seed | Not applied: live SQL write was blocked by tool approval/usage gate |
 
 ## Remaining Gaps
 
 - Run full browser screenshots from a signed-in web session and Android Studio/device. Quick Look thumbnail generation was not reliable for JSP/runtime pages.
-- Apply `database/supabase_rls_hardening.sql` to the live Supabase project after confirming that blocking public `devices` access will not break any direct Supabase client usage.
 - Confirm OpenAI key behavior in production, or document the fallback-only demo mode.
 - Capture final screenshots for landing page, patient dashboard, staff dashboard, hospital portal, Android sync, emergency alert, and AI chat.
-- Run the real Galaxy Watch/phone smoke test for Samsung Health heart rate and blood pressure sync. Temperature may remain unavailable because the test watch/source does not expose a temperature option.
+- Run the real Galaxy Watch/phone smoke test with `adb/logcat` once the phone appears in `adb devices`. Temperature may remain unavailable because the test watch/source does not expose a temperature option outside supported sleep-temperature data.
+- Apply `database/demo_hospital_seed_postgresql.sql` to live Supabase when the SQL write gate is available.

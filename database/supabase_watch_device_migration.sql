@@ -64,4 +64,19 @@ CREATE TABLE IF NOT EXISTS health_sync_sections (
 CREATE INDEX IF NOT EXISTS idx_health_sync_sections_user_window
   ON health_sync_sections(user_id, window_end DESC, section_id DESC);
 
+CREATE TABLE IF NOT EXISTS patient_context_settings (
+  user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  sleep_start VARCHAR(5) NOT NULL,
+  sleep_end VARCHAR(5) NOT NULL,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE devices ENABLE ROW LEVEL SECURITY;
+ALTER TABLE health_sync_sections ENABLE ROW LEVEL SECURITY;
+ALTER TABLE patient_context_settings ENABLE ROW LEVEL SECURITY;
+
+REVOKE ALL ON TABLE devices FROM anon, authenticated;
+REVOKE ALL ON TABLE health_sync_sections FROM anon, authenticated;
+REVOKE ALL ON TABLE patient_context_settings FROM anon, authenticated;
+
 COMMIT;

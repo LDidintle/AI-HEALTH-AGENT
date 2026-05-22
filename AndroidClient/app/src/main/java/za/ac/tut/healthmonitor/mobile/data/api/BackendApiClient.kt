@@ -11,6 +11,7 @@ import java.util.Locale
 import za.ac.tut.healthmonitor.mobile.BuildConfig
 import za.ac.tut.healthmonitor.mobile.data.model.AiChatResponse
 import za.ac.tut.healthmonitor.mobile.data.model.AlertNotificationResponse
+import za.ac.tut.healthmonitor.mobile.data.model.ContextSettingsResponse
 import za.ac.tut.healthmonitor.mobile.data.model.HealthSectionSyncPayload
 import za.ac.tut.healthmonitor.mobile.data.model.HealthSyncPayload
 import za.ac.tut.healthmonitor.mobile.data.model.LatestReadingsResponse
@@ -68,6 +69,18 @@ class BackendApiClient(
 
     fun getAlertNotification(): AlertNotificationResponse {
         return get("api/mobile/alerts", AlertNotificationResponse::class.java)
+    }
+
+    fun getContextSettings(): ContextSettingsResponse {
+        return get("api/mobile/context-settings", ContextSettingsResponse::class.java)
+    }
+
+    fun saveContextSettings(sleepStart: String, sleepEnd: String): SyncResponse {
+        val body = FormBody.Builder()
+            .add("sleepStart", sleepStart)
+            .add("sleepEnd", sleepEnd)
+            .build()
+        return post("api/mobile/context-settings", body, SyncResponse::class.java)
     }
 
     fun syncReadings(payload: HealthSyncPayload): SyncResponse {

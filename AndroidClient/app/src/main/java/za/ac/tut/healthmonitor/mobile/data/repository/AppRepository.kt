@@ -3,6 +3,7 @@ package za.ac.tut.healthmonitor.mobile.data.repository
 import android.content.Context
 import za.ac.tut.healthmonitor.mobile.data.api.BackendApiClient
 import za.ac.tut.healthmonitor.mobile.data.model.AlertNotificationResponse
+import za.ac.tut.healthmonitor.mobile.data.model.ContextSettingsResponse
 import za.ac.tut.healthmonitor.mobile.data.model.HealthSectionSyncPayload
 import za.ac.tut.healthmonitor.mobile.data.model.HealthSyncPayload
 import za.ac.tut.healthmonitor.mobile.data.model.LatestReadingsResponse
@@ -46,6 +47,14 @@ class AppRepository(
 
     fun getAlertNotification(): AlertNotificationResponse {
         return backendApiClient.getAlertNotification()
+    }
+
+    fun getContextSettings(): ContextSettingsResponse {
+        return backendApiClient.getContextSettings()
+    }
+
+    fun saveContextSettings(sleepStart: String, sleepEnd: String): SyncResponse {
+        return backendApiClient.saveContextSettings(sleepStart, sleepEnd)
     }
 
     fun syncReadings(payload: HealthSyncPayload): SyncResponse {

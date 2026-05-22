@@ -24,6 +24,12 @@ If your Supabase database already existed before Galaxy Watch / Health Connect d
 database/supabase_watch_device_migration.sql
 ```
 
+If your Supabase database already existed before sleep-schedule context sync was added, run:
+
+```text
+database/patient_context_settings_migration_postgresql.sql
+```
+
 If account creation fails with `column "is_verified" of relation "users" does not exist`, your existing `users` table is older than the current registration code. Run this migration once in the Supabase SQL Editor:
 
 ```text
