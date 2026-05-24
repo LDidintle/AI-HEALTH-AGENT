@@ -8,11 +8,14 @@ import java.time.LocalDate;
 import za.ac.tut.model.PasswordUtils;
 import za.ac.tut.model.ReportCriteria;
 import za.ac.tut.model.ReportResult;
+import za.ac.tut.model.PatientSummary;
 import za.ac.tut.util.PasswordResetService;
 import za.ac.tut.util.PatientContextSettingsService;
 import za.ac.tut.util.PatientAccountProcedureService;
 import za.ac.tut.util.ReportService;
+import za.ac.tut.util.PatientSummaryService;
 import za.ac.tut.util.VitalAlertEvaluator;
+import za.ac.tut.util.HealthRiskPredictionService;
 
 public class BackendIntegrationChecks {
 
@@ -23,6 +26,8 @@ public class BackendIntegrationChecks {
             verifiesPatientCrud(conn);
             verifiesPasswordReset(conn);
             verifiesPatientContextSettings(conn);
+            verifiesSamsungSleepTemperaturePrediction(conn);
+            verifiesSamsungSleepTemperatureStaffSummary(conn);
             verifiesEmergencyAlertPersistence(conn);
             verifiesReports(conn);
         }
@@ -139,6 +144,23 @@ public class BackendIntegrationChecks {
         assertTrue(rejected, "invalid sleep time should be rejected");
     }
 
+    private static void verifiesSamsungSleepTemperaturePrediction(Connection conn) throws Exception {
+        int userId = PatientAccountProcedureService.createPatientAccount(
+                conn, "Ms", "Temperature", "Patient", Date.valueOf("2001-05-06"),
+                "temperature@example.com", PasswordUtils.hashPassword("Temperature22!"));
+        try (Statement statement = conn.createStatement()) {
+            statement.executeUpdate("INSERT INTO health_sync_sections "
+                    + "(user_id, source, heart_rate_latest, temperature_latest, systolic_latest, diastolic_latest) VALUES ("
+                    + userId + ", 'SAMSUNG_HEALTH_DATA', 82, 34.10, 99, 58)");
+        }
+        HealthRiskPredictionService.PredictionResult prediction =
+                HealthRiskPredictionService.predictForUser(conn, userId);
+        assertFalse(prediction.getReasons().contains("Temperature is dangerously low."),
+                "stored Samsung sleep temperature must not be classified as dangerous core temperature");
+        assertEquals(HealthRiskPredictionService.DataQuality.LIMITED_DATA, prediction.getDataQuality(),
+                "stored Samsung sleep temperature must keep screening data quality limited");
+    }
+
     private static void verifiesEmergencyAlertPersistence(Connection conn) throws Exception {
         int userId = PatientAccountProcedureService.createPatientAccount(
                 conn, "Dr", "Alert", "Patient", Date.valueOf("1999-03-04"),
@@ -151,6 +173,34 @@ public class BackendIntegrationChecks {
         VitalAlertEvaluator.evaluateAndStore(conn, userId, 132, null, null, null);
         assertEquals(1, count(conn, "SELECT COUNT(*) FROM emergency_alerts WHERE user_id = " + userId + " AND alert_status = 'CRITICAL'"), "critical alert should persist");
         assertEquals(1, count(conn, "SELECT COUNT(*) FROM hospital_alert_assignments"), "alert should be assigned to matching hospital");
+    }
+
+    private static void verifiesSamsungSleepTemperatureStaffSummary(Connection conn) throws Exception {
+        int userId = PatientAccountProcedureService.createPatientAccount(
+                conn, "Mr", "Staff", "Trend", Date.valueOf("1998-07-08"),
+                "staff-temperature@example.com", PasswordUtils.hashPassword("StaffTrend22!"));
+        try (Statement statement = conn.createStatement()) {
+            statement.executeUpdate("INSERT INTO pulse_readings (user_id, bpm, source) VALUES ("
+                    + userId + ", 76, 'SAMSUNG_HEALTH_DATA')");
+            statement.executeUpdate("INSERT INTO blood_pressure_readings (user_id, systolic, diastolic, source) VALUES ("
+                    + userId + ", 118, 76, 'SAMSUNG_HEALTH_DATA')");
+            statement.executeUpdate("INSERT INTO temperature_readings (user_id, temperature, source) VALUES ("
+                    + userId + ", 39.20, 'SAMSUNG_HEALTH_DATA')");
+        }
+
+        PatientSummary summary = PatientSummaryService.loadSummary(conn, userId);
+        assertFalse(summary.getPrediction().contains("temperature is raised"),
+                "staff patient summary must not interpret Samsung sleep-temperature trend as fever");
+
+        ReportCriteria criteria = new ReportCriteria();
+        criteria.setReportType(ReportService.REPORT_VITALS);
+        criteria.setStartDate(LocalDate.now().minusDays(1));
+        criteria.setEndDate(LocalDate.now().plusDays(1));
+        criteria.setSearch("staff-temperature@example.com");
+        ReportResult vitals = ReportService.loadReport(conn, criteria);
+        assertEquals(1, vitals.getRows().size(), "temperature trend test patient should appear in vitals report");
+        assertTrue(vitals.getRows().get(0).get("risk").startsWith("LOW"),
+                "vitals report screening note must not score Samsung sleep-temperature trend as fever");
     }
 
     private static void verifiesReports(Connection conn) throws Exception {

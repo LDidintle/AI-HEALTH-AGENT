@@ -116,12 +116,14 @@ public final class ReportService {
 
         String sql = "SELECT u.id, u.first_name, u.surname, u.email, "
                 + "COALESCE(pr.pulse_count, 0) AS pulse_count, pr.avg_pulse, pr.latest_pulse, "
-                + "COALESCE(tr.temp_count, 0) AS temp_count, tr.avg_temperature, tr.latest_temperature, "
+                + "COALESCE(tr.temp_count, 0) AS temp_count, tr.avg_temperature, tr.avg_scorable_temperature, tr.latest_temperature, "
                 + "COALESCE(bp.bp_count, 0) AS bp_count, bp.avg_systolic, bp.avg_diastolic, bp.latest_bp "
                 + "FROM users u "
                 + "LEFT JOIN (SELECT user_id, COUNT(*) AS pulse_count, AVG(bpm) AS avg_pulse, MAX(recorded_at) AS latest_pulse "
                 + "FROM pulse_readings WHERE recorded_at >= ? AND recorded_at < ? GROUP BY user_id) pr ON pr.user_id = u.id "
-                + "LEFT JOIN (SELECT user_id, COUNT(*) AS temp_count, AVG(temperature) AS avg_temperature, MAX(recorded_at) AS latest_temperature "
+                + "LEFT JOIN (SELECT user_id, COUNT(*) AS temp_count, AVG(temperature) AS avg_temperature, "
+                + "AVG(CASE WHEN UPPER(COALESCE(source, '')) <> 'SAMSUNG_HEALTH_DATA' THEN temperature ELSE NULL END) AS avg_scorable_temperature, "
+                + "MAX(recorded_at) AS latest_temperature "
                 + "FROM temperature_readings WHERE recorded_at >= ? AND recorded_at < ? GROUP BY user_id) tr ON tr.user_id = u.id "
                 + "LEFT JOIN (SELECT user_id, COUNT(*) AS bp_count, AVG(systolic) AS avg_systolic, AVG(diastolic) AS avg_diastolic, MAX(recorded_at) AS latest_bp "
                 + "FROM blood_pressure_readings WHERE recorded_at >= ? AND recorded_at < ? GROUP BY user_id) bp ON bp.user_id = u.id "
@@ -146,6 +148,7 @@ public final class ReportService {
                     int readingCount = rs.getInt("pulse_count") + rs.getInt("temp_count") + rs.getInt("bp_count");
                     BigDecimal avgPulse = getBigDecimal(rs, "avg_pulse");
                     BigDecimal avgTemperature = getBigDecimal(rs, "avg_temperature");
+                    BigDecimal avgScorableTemperature = getBigDecimal(rs, "avg_scorable_temperature");
                     BigDecimal avgSystolic = getBigDecimal(rs, "avg_systolic");
                     BigDecimal avgDiastolic = getBigDecimal(rs, "avg_diastolic");
 
@@ -163,7 +166,7 @@ public final class ReportService {
                     HealthRiskPredictionService.PredictionResult prediction = HealthRiskPredictionService.predict(
                             new HealthRiskPredictionService.VitalSnapshot(
                                     avgPulse == null ? null : avgPulse.setScale(0, java.math.RoundingMode.HALF_UP).intValue(),
-                                    avgTemperature,
+                                    avgScorableTemperature,
                                     avgSystolic == null ? null : avgSystolic.setScale(0, java.math.RoundingMode.HALF_UP).intValue(),
                                     avgDiastolic == null ? null : avgDiastolic.setScale(0, java.math.RoundingMode.HALF_UP).intValue()
                             ),

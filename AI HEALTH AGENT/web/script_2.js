@@ -57,6 +57,7 @@ const chartSeries = {
     temperature: []
 };
 let isSignedOut = false;
+let currentLiveReadings = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     applyLanguage('en');
@@ -194,7 +195,7 @@ function buildAssistantReply(message) {
     if (lower.includes('connect') || lower.includes('watch') || lower.includes('sync')) return "Pair the Galaxy Watch with Samsung Health, allow Samsung Health to share with Health Connect, then sync from the Android app.";
     if (lower.includes('heart') || lower.includes('pulse') || lower.includes('bpm')) return describeHeartRate(vitals.heartRate);
     if (lower.includes('blood') || lower.includes('pressure')) return describeBloodPressure(vitals.systolic, vitals.diastolic);
-    if (lower.includes('temp') || lower.includes('fever')) return describeTemperature(vitals.temperature);
+    if (lower.includes('temp') || lower.includes('fever')) return describeTemperature(vitals.temperature, vitals.temperatureTrendOnly);
     if (lower.includes('advice') || lower.includes('diagnose') || lower.includes('disease')) return "I can give wellness suggestions based on displayed readings, but I cannot diagnose disease or replace a clinician.";
     return "I can explain heart rate, blood pressure, temperature, watch connection, and displayed readings. These are wellness suggestions only.";
 }
@@ -213,9 +214,9 @@ function describeBloodPressure(systolic, diastolic) {
     return `Your latest blood pressure is ${systolic}/${diastolic} mmHg. It does not look severely abnormal from this single reading, but keep checking trends.`;
 }
 
-function describeTemperature(value) {
+function describeTemperature(value, temperatureTrendOnly) {
     if (value === null) return "I do not have a temperature reading yet. Sync the phone app first.";
-    if (getReadingContext().effective === 'SLEEPING') return `Your latest watch temperature is ${value.toFixed(1)} C. On supported Galaxy Watches this is usually sleep temperature, so treat it as a trend and confirm with a normal thermometer if you feel feverish.`;
+    if (temperatureTrendOnly) return `Your latest watch temperature is ${value.toFixed(1)} C. On supported Galaxy Watches this is usually sleep temperature, so treat it as a trend and confirm with a normal thermometer if you feel feverish.`;
     if (value >= 38) return `Your latest temperature is ${value.toFixed(1)} C, which may indicate a fever. Rest, hydrate, and contact doctor/staff if it persists or you feel very unwell.`;
     if (value < 35.5) return `Your latest temperature is ${value.toFixed(1)} C, which is low. Warm up safely and seek help if you feel confused, very cold, or weak.`;
     return `Your latest temperature is ${value.toFixed(1)} C, which is within a common normal range. Keep monitoring if you have symptoms.`;
@@ -226,6 +227,7 @@ function readCurrentVitals() {
     return {
         heartRate: parseNumberFromElement('heartRateValue'),
         temperature: parseNumberFromElement('temperatureValue'),
+        temperatureTrendOnly: currentLiveReadings !== null && isSamsungSection(currentLiveReadings.latestSection),
         systolic: bloodPressureMatch ? Number(bloodPressureMatch[1]) : null,
         diastolic: bloodPressureMatch ? Number(bloodPressureMatch[2]) : null
     };
@@ -332,11 +334,13 @@ function loadLatestReadings(options = {}) {
                 return updateSyncStatus('Sign in and sync a phone health section to see readings.');
             }
             if (!hasAnyReading(data)) {
+                currentLiveReadings = data;
                 clearLiveReadings();
                 updateSyncMeta(data.latestSection);
                 return updateSyncStatus('No synced app data found yet. Sync from the mobile app, then refresh this dashboard.');
             }
 
+            currentLiveReadings = data;
             setText('heartRateValue', data.heartRate === null ? '--' : data.heartRate);
             setText('bloodPressureValue', data.bloodPressure === null ? '--' : data.bloodPressure);
             setText('temperatureValue', data.temperature === null ? '--' : data.temperature);
@@ -479,6 +483,7 @@ function appendChartPoint(series, value) {
 }
 
 function clearLiveReadings() {
+    currentLiveReadings = null;
     setText('heartRateValue', '--');
     setText('bloodPressureValue', '--');
     setText('temperatureValue', '--');
@@ -507,8 +512,7 @@ function updateAlertBanner(data) {
     const bloodPressureMatch = String(data.bloodPressure || '').match(/(\d+)\s*\/\s*(\d+)/);
     const systolic = bloodPressureMatch ? Number(bloodPressureMatch[1]) : null;
     const diastolic = bloodPressureMatch ? Number(bloodPressureMatch[2]) : null;
-    const context = getReadingContext().effective;
-    const sleepTemperatureOnly = context === 'SLEEPING' && isSamsungSection(data.latestSection);
+    const sleepTemperatureOnly = isSamsungSection(data.latestSection);
     const shouldWarn = (heartRate !== null && (heartRate < 50 || heartRate > 120)) ||
         (temperature !== null && temperature > 38 && !sleepTemperatureOnly) ||
         (systolic !== null && diastolic !== null && (systolic >= 140 || diastolic >= 90));
@@ -621,7 +625,7 @@ function updateWellnessSuggestions(data) {
     }
 
     if (temperature !== null) {
-        if (context.effective === 'SLEEPING' && isSamsungSection(data.latestSection)) {
+        if (isSamsungSection(data.latestSection)) {
             suggestions.push(`Watch temperature is ${temperature.toFixed(1)} C during sleep context. Treat it as a sleep-temperature trend, not a direct fever reading.`);
         } else if (temperature >= 38) {
             suggestions.push(`Temperature is ${temperature.toFixed(1)} C, which may indicate fever. Rest, hydrate, and contact staff if symptoms continue.`);

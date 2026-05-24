@@ -14,6 +14,7 @@ javac -source 8 -target 8 \
   -cp "$APP_DIR/web/WEB-INF/lib/guava-31.1-jre.jar:$APP_DIR/web/WEB-INF/lib/mavenproject2-1.0-SNAPSHOT.jar:$APP_DIR/web/WEB-INF/lib/mariadb-java-client-2.7.2.jar:$APP_DIR/web/WEB-INF/lib/postgresql-42.7.11.jar:$SERVLET_API:$DERBY_JAR" \
   -d "$BUILD_DIR" \
   "$APP_DIR/src/java/za/ac/tut/model/PasswordUtils.java" \
+  "$APP_DIR/src/java/za/ac/tut/model/PatientSummary.java" \
   "$APP_DIR/src/java/za/ac/tut/model/ReportColumn.java" \
   "$APP_DIR/src/java/za/ac/tut/model/ReportCriteria.java" \
   "$APP_DIR/src/java/za/ac/tut/model/ReportResult.java" \
@@ -22,9 +23,11 @@ javac -source 8 -target 8 \
   "$APP_DIR/src/java/za/ac/tut/util/JsonUtil.java" \
   "$APP_DIR/src/java/za/ac/tut/util/PasswordResetService.java" \
   "$APP_DIR/src/java/za/ac/tut/util/PatientContextSettingsService.java" \
+  "$APP_DIR/src/java/za/ac/tut/util/PatientSummaryService.java" \
   "$APP_DIR/src/java/za/ac/tut/util/PatientAccountProcedureService.java" \
   "$APP_DIR/src/java/za/ac/tut/util/ReportService.java" \
   "$APP_DIR/src/java/za/ac/tut/util/VitalAlertEvaluator.java" \
+  "$APP_DIR/src/java/za/ac/tut/util/WatchTemperaturePolicy.java" \
   "$APP_DIR/test/BackendIntegrationChecks.java"
 
 java -DSMARTHEALTH_DB_URL=jdbc:mariadb://localhost/unused \

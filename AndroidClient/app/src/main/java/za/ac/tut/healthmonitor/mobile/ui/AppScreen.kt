@@ -759,7 +759,9 @@ private fun VitalsPanel(readings: LatestReadingsResponse?, copy: DashboardCopy) 
             DividerLine()
             VitalRow(
                 label = copy.temp,
-                value = readings?.temperature?.value?.let { "$it °C" } ?: "--",
+                value = readings?.temperature?.value?.let {
+                    String.format(java.util.Locale.US, "%.1f °C", it)
+                } ?: "--",
                 detail = readings?.temperature?.detailText(),
                 tint = Color(0xFFFF8A5C)
             )

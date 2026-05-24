@@ -19,6 +19,8 @@ import za.ac.tut.healthmonitor.mobile.data.model.LoginResponse
 import za.ac.tut.healthmonitor.mobile.data.model.ProfileResponse
 import za.ac.tut.healthmonitor.mobile.data.model.SyncResponse
 
+class BackendHttpException(val statusCode: Int, message: String) : IllegalStateException(message)
+
 class BackendApiClient(
     private val cookieJar: SessionCookieJar = SessionCookieJar(),
     private val gson: Gson = Gson()
@@ -189,7 +191,7 @@ class BackendApiClient(
         execute(request).use { response ->
             val body = response.body?.string().orEmpty()
             if (!response.isSuccessful) {
-                throw IllegalStateException(extractMessage(body, response.code))
+                throw BackendHttpException(response.code, extractMessage(body, response.code))
             }
             return parse(body, responseClass)
         }
@@ -204,7 +206,7 @@ class BackendApiClient(
         execute(request).use { response ->
             val responseBody = response.body?.string().orEmpty()
             if (!response.isSuccessful) {
-                throw IllegalStateException(extractMessage(responseBody, response.code))
+                throw BackendHttpException(response.code, extractMessage(responseBody, response.code))
             }
             return parse(responseBody, responseClass)
         }

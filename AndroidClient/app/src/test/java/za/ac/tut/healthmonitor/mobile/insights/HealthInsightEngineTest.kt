@@ -76,4 +76,25 @@ class HealthInsightEngineTest {
 
         assertTrue(insights.any { it.title.contains("sleep temperature", ignoreCase = true) })
     }
+
+    @Test
+    fun samsungSleepTemperatureRemainsTrendWhenReviewedDuringDay() {
+        val readings = LatestReadingsResponse(
+            success = true,
+            temperature = TemperatureValue(value = 34.1, source = "SAMSUNG_HEALTH_DATA")
+        )
+
+        val insights = HealthInsightEngine.buildInsights(
+            readings,
+            ReadingContext(
+                activityState = ActivityState.NotSure,
+                sleepStart = "00:00",
+                sleepEnd = "08:00",
+                now = LocalTime.of(14, 36)
+            )
+        )
+
+        assertTrue(insights.any { it.title.contains("sleep temperature", ignoreCase = true) })
+        assertFalse(insights.any { it.title.contains("low temperature", ignoreCase = true) })
+    }
 }

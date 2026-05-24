@@ -100,7 +100,7 @@ object HealthInsightEngine {
         }
 
         if (temperature != null) {
-            if (activityState == ActivityState.Sleeping && samsungTemperature) {
+            if (samsungTemperature) {
                 insights += HealthInsight(
                     title = "Sleep temperature trend available",
                     possibleConcern = "Galaxy Watch temperature is usually collected during sleep and is best treated as a trend signal.",
@@ -175,7 +175,7 @@ object HealthInsightEngine {
         }
 
         if (heartRate != null && temperature != null && heartRate > 100 && temperature >= 38.0
-            && !(activityState == ActivityState.Sleeping && samsungTemperature)
+            && !samsungTemperature
         ) {
             insights += HealthInsight(
                 title = "Fever with fast pulse pattern",

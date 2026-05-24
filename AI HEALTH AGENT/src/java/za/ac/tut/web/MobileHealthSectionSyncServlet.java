@@ -15,6 +15,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import za.ac.tut.util.Database;
 import za.ac.tut.util.VitalAlertEvaluator;
+import za.ac.tut.util.WatchTemperaturePolicy;
 
 public class MobileHealthSectionSyncServlet extends HttpServlet {
 
@@ -72,7 +73,7 @@ public class MobileHealthSectionSyncServlet extends HttpServlet {
                         conn,
                         userId,
                         payload.heartRateLatest,
-                        payload.temperatureLatest,
+                        WatchTemperaturePolicy.temperatureForAlertEvaluation(payload.source, payload.temperatureLatest),
                         payload.systolicLatest,
                         payload.diastolicLatest
                 );
@@ -175,7 +176,7 @@ public class MobileHealthSectionSyncServlet extends HttpServlet {
             ps.setInt(1, userId);
             setInteger(ps, 2, deviceId);
             ps.setBigDecimal(3, payload.temperatureLatest);
-            ps.setString(4, classifyTemperature(payload.temperatureLatest));
+            ps.setString(4, WatchTemperaturePolicy.statusFor(payload.source, payload.temperatureLatest));
             ps.setTimestamp(5, payload.windowEnd);
             ps.setTimestamp(6, payload.windowEnd);
             ps.setString(7, payload.source);
@@ -286,12 +287,6 @@ public class MobileHealthSectionSyncServlet extends HttpServlet {
     private String classifyHeartRate(int heartRate) {
         if (heartRate < 50) return "LOW";
         if (heartRate > 100) return "HIGH";
-        return "NORMAL";
-    }
-
-    private String classifyTemperature(BigDecimal temperature) {
-        if (temperature.compareTo(new BigDecimal("36.00")) < 0) return "LOW";
-        if (temperature.compareTo(new BigDecimal("37.50")) > 0) return "HIGH";
         return "NORMAL";
     }
 

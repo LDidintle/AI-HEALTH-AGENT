@@ -85,6 +85,8 @@ public class AIChatServlet extends HttpServlet {
                 + "Do not diagnose disease, prescribe treatment, or replace doctor/staff. For emergency warning signs "
                 + "such as chest pain, confusion, fainting, severe weakness, shortness of breath, stroke symptoms, "
                 + "or very abnormal vitals, tell the user to call emergency services or doctor/staff now. "
+                + "If temperatureTrendOnly is true, the temperature is a Galaxy Watch sleep-temperature trend; "
+                + "do not treat it as a core fever or hypothermia measurement. "
                 + "When you use web information, keep citations visible in the answer.";
         String input = "Conversation so far:\n" + history + "\n\nUser question: " + message + "\nCurrent displayed vitals JSON: " + vitals;
 
@@ -252,17 +254,22 @@ public class AIChatServlet extends HttpServlet {
 
     private static final class VitalSnapshot {
         private static final Pattern NUMBER_FIELD = Pattern.compile("\"([A-Za-z]+)\"\\s*:\\s*(-?\\d+(?:\\.\\d+)?)");
+        private static final Pattern TREND_ONLY_FIELD = Pattern.compile(
+                "\"temperatureTrendOnly\"\\s*:\\s*true", Pattern.CASE_INSENSITIVE);
 
         private final Double heartRate;
         private final Double temperature;
         private final Double systolic;
         private final Double diastolic;
+        private final boolean temperatureTrendOnly;
 
-        private VitalSnapshot(Double heartRate, Double temperature, Double systolic, Double diastolic) {
+        private VitalSnapshot(Double heartRate, Double temperature, Double systolic, Double diastolic,
+                boolean temperatureTrendOnly) {
             this.heartRate = heartRate;
             this.temperature = temperature;
             this.systolic = systolic;
             this.diastolic = diastolic;
+            this.temperatureTrendOnly = temperatureTrendOnly;
         }
 
         private static VitalSnapshot fromJson(String json) {
@@ -270,6 +277,7 @@ public class AIChatServlet extends HttpServlet {
             Double temperature = null;
             Double systolic = null;
             Double diastolic = null;
+            boolean temperatureTrendOnly = json != null && TREND_ONLY_FIELD.matcher(json).find();
 
             if (json != null) {
                 Matcher matcher = NUMBER_FIELD.matcher(json);
@@ -283,20 +291,20 @@ public class AIChatServlet extends HttpServlet {
                 }
             }
 
-            return new VitalSnapshot(heartRate, temperature, systolic, diastolic);
+            return new VitalSnapshot(heartRate, temperature, systolic, diastolic, temperatureTrendOnly);
         }
 
         private boolean hasCriticalReading() {
             return (heartRate != null && (heartRate < 45 || heartRate > 130))
-                    || (temperature != null && (temperature < 35.0 || temperature >= 39.0))
+                    || (temperature != null && !temperatureTrendOnly && (temperature < 35.0 || temperature >= 39.0))
                     || (systolic != null && diastolic != null && (systolic >= 180 || diastolic >= 120 || systolic < 80 || diastolic < 50));
         }
 
         private String alertSummary() {
             if (heartRate != null && heartRate < 45) return "heart rate is very low at " + rounded(heartRate) + " BPM.";
             if (heartRate != null && heartRate > 130) return "heart rate is very high at " + rounded(heartRate) + " BPM.";
-            if (temperature != null && temperature >= 39.0) return "temperature is high at " + oneDecimal(temperature) + " C.";
-            if (temperature != null && temperature < 35.0) return "temperature is low at " + oneDecimal(temperature) + " C.";
+            if (temperature != null && !temperatureTrendOnly && temperature >= 39.0) return "temperature is high at " + oneDecimal(temperature) + " C.";
+            if (temperature != null && !temperatureTrendOnly && temperature < 35.0) return "temperature is low at " + oneDecimal(temperature) + " C.";
             if (systolic != null && diastolic != null && (systolic >= 180 || diastolic >= 120)) return "blood pressure is very high at " + rounded(systolic) + "/" + rounded(diastolic) + " mmHg.";
             if (systolic != null && diastolic != null && (systolic < 80 || diastolic < 50)) return "blood pressure is very low at " + rounded(systolic) + "/" + rounded(diastolic) + " mmHg.";
             return "one or more readings may need attention.";
@@ -306,7 +314,8 @@ public class AIChatServlet extends HttpServlet {
             StringBuilder builder = new StringBuilder();
             if (heartRate != null) builder.append("heart rate ").append(rounded(heartRate)).append(" BPM");
             if (systolic != null && diastolic != null) appendWithComma(builder, "blood pressure " + rounded(systolic) + "/" + rounded(diastolic) + " mmHg");
-            if (temperature != null) appendWithComma(builder, "temperature " + oneDecimal(temperature) + " C");
+            if (temperature != null) appendWithComma(builder,
+                    (temperatureTrendOnly ? "sleep-temperature trend " : "temperature ") + oneDecimal(temperature) + " C");
             if (builder.length() == 0) return "I do not have synced section readings yet.";
             return "Your current displayed readings are " + builder + ".";
         }
@@ -327,6 +336,7 @@ public class AIChatServlet extends HttpServlet {
 
         private String temperatureAdvice() {
             if (temperature == null) return "I do not have a temperature reading yet. Sync the latest reading and watch for fever, chills, confusion, or worsening symptoms.";
+            if (temperatureTrendOnly) return "Your Galaxy Watch temperature is " + oneDecimal(temperature) + " C. It is a sleep-temperature trend, not a direct core body temperature or fever reading. Use a normal thermometer if you feel feverish or unwell.";
             if (temperature >= 38.0) return "Your temperature is " + oneDecimal(temperature) + " C, which may be a fever. Rest, hydrate, monitor symptoms, and contact doctor/staff if it persists or you feel very unwell.";
             if (temperature < 35.5) return "Your temperature is " + oneDecimal(temperature) + " C, which is low. Warm up safely and seek help if you feel confused, very cold, weak, or drowsy.";
             return "Your temperature is " + oneDecimal(temperature) + " C, which is within a common normal range. Keep monitoring if you have symptoms.";

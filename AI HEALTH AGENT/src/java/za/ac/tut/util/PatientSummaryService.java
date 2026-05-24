@@ -18,7 +18,10 @@ public final class PatientSummaryService {
         summary.setAverageSystolic(queryAverage(conn, "SELECT AVG(systolic) FROM blood_pressure_readings WHERE user_id = ?", userId));
         summary.setAverageDiastolic(queryAverage(conn, "SELECT AVG(diastolic) FROM blood_pressure_readings WHERE user_id = ?", userId));
         summary.setReadingCount(queryCount(conn, userId));
-        summary.setPrediction(predict(summary));
+        BigDecimal averageScorableTemperature = queryAverage(conn,
+                "SELECT AVG(temperature) FROM temperature_readings WHERE user_id = ? "
+                + "AND UPPER(COALESCE(source, '')) <> 'SAMSUNG_HEALTH_DATA'", userId);
+        summary.setPrediction(predict(summary, averageScorableTemperature));
         return summary;
     }
 
@@ -32,10 +35,11 @@ public final class PatientSummaryService {
     }
 
     private static int queryCount(Connection conn, int userId) throws Exception {
-        String sql = "SELECT "
-                + "(SELECT COUNT(*) FROM pulse_readings WHERE user_id = ?) + "
-                + "(SELECT COUNT(*) FROM temperature_readings WHERE user_id = ?) + "
-                + "(SELECT COUNT(*) FROM blood_pressure_readings WHERE user_id = ?)";
+        String sql = "SELECT COUNT(*) FROM ("
+                + "SELECT pulse_id FROM pulse_readings WHERE user_id = ? "
+                + "UNION ALL SELECT temp_id FROM temperature_readings WHERE user_id = ? "
+                + "UNION ALL SELECT bp_id FROM blood_pressure_readings WHERE user_id = ?"
+                + ") patient_readings";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, userId);
             ps.setInt(2, userId);
@@ -46,7 +50,7 @@ public final class PatientSummaryService {
         }
     }
 
-    private static String predict(PatientSummary summary) {
+    private static String predict(PatientSummary summary, BigDecimal averageScorableTemperature) {
         if (summary.getReadingCount() == 0) {
             return "No synced vitals yet. Ask the patient to sync from the mobile app before clinical review.";
         }
@@ -63,7 +67,7 @@ public final class PatientSummaryService {
             return "Average pulse is high. Recheck resting readings and review possible causes.";
         }
 
-        if (greaterThan(summary.getAverageTemperature(), new BigDecimal("37.5"))) {
+        if (greaterThan(averageScorableTemperature, new BigDecimal("37.5"))) {
             return "Average temperature is raised. Monitor fever symptoms and follow up if persistent.";
         }
 

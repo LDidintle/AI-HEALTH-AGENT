@@ -17,6 +17,7 @@ import za.ac.tut.util.Database;
 import za.ac.tut.util.HealthRiskPredictionService;
 import za.ac.tut.util.JsonUtil;
 import za.ac.tut.util.VitalAlertEvaluator;
+import za.ac.tut.util.WatchTemperaturePolicy;
 
 public class MobileHealthSyncServlet extends HttpServlet {
 
@@ -120,7 +121,9 @@ public class MobileHealthSyncServlet extends HttpServlet {
                     insertBloodPressure(conn, userId, deviceId, systolic, diastolic, recordedTimestamp, source, externalRecordId);
                 }
 
-                VitalAlertEvaluator.evaluateAndStore(conn, userId, heartRate, temperature, systolic, diastolic);
+                VitalAlertEvaluator.evaluateAndStore(conn, userId, heartRate,
+                        WatchTemperaturePolicy.temperatureForAlertEvaluation(source, temperature),
+                        systolic, diastolic);
                 insertSyncLog(conn, userId, deviceId, source, externalRecordId, recordedTimestamp);
                 conn.commit();
 
@@ -237,7 +240,7 @@ public class MobileHealthSyncServlet extends HttpServlet {
             ps.setInt(1, userId);
             setInteger(ps, 2, deviceId);
             ps.setBigDecimal(3, temperature);
-            ps.setString(4, classifyTemperature(temperature));
+            ps.setString(4, WatchTemperaturePolicy.statusFor(source, temperature));
             setTimestamp(ps, 5, recordedAt);
             setTimestamp(ps, 6, recordedAt);
             ps.setString(7, source == null ? "HEALTH_CONNECT" : source);
@@ -313,11 +316,14 @@ public class MobileHealthSyncServlet extends HttpServlet {
 
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
+                    String source = rs.getString("source");
+                    String status = WatchTemperaturePolicy.isSleepTemperatureTrend(source)
+                            ? "TREND" : rs.getString("status");
                     return "{"
                             + "\"value\":" + rs.getBigDecimal("temperature").toPlainString() + ","
-                            + "\"status\":" + JsonUtil.quote(rs.getString("status")) + ","
+                            + "\"status\":" + JsonUtil.quote(status) + ","
                             + "\"recordedAt\":" + JsonUtil.quote(String.valueOf(rs.getTimestamp("recorded_at"))) + ","
-                            + "\"source\":" + JsonUtil.quote(rs.getString("source"))
+                            + "\"source\":" + JsonUtil.quote(source)
                             + "}";
                 }
             }
@@ -354,16 +360,6 @@ public class MobileHealthSyncServlet extends HttpServlet {
             return "LOW";
         }
         if (heartRate > 100) {
-            return "HIGH";
-        }
-        return "NORMAL";
-    }
-
-    private String classifyTemperature(BigDecimal temperature) {
-        if (temperature.compareTo(new BigDecimal("36.00")) < 0) {
-            return "LOW";
-        }
-        if (temperature.compareTo(new BigDecimal("37.50")) > 0) {
             return "HIGH";
         }
         return "NORMAL";

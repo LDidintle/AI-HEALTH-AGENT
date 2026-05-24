@@ -8,6 +8,7 @@ import za.ac.tut.util.RateLimitService;
 import za.ac.tut.util.ReportService;
 import za.ac.tut.util.ResetOtpVisibility;
 import za.ac.tut.util.VitalAlertEvaluator;
+import za.ac.tut.util.WatchTemperaturePolicy;
 import java.math.BigDecimal;
 import java.lang.reflect.Proxy;
 import java.util.HashMap;
@@ -27,6 +28,8 @@ public class BackendRiskChecks {
         predictsUrgentRiskForEmergencyBloodPressure();
         predictsElevatedRiskForFastPulseWithFever();
         reportsLimitedDataWhenVitalsAreMissing();
+        treatsSamsungSleepTemperatureAsTrendNotCoreTemperature();
+        storesSamsungTemperatureAsTrendStatus();
         increasesScoreForRepeatedAbnormalSections();
         marksPredictionAsRuleBasedScreening();
         marksAuthRolesAndSessionTimeouts();
@@ -106,6 +109,29 @@ public class BackendRiskChecks {
                 0
         );
         assertEquals(HealthRiskPredictionService.DataQuality.LIMITED_DATA, result.getDataQuality(), "missing BP/temp should report limited data");
+    }
+
+    private static void treatsSamsungSleepTemperatureAsTrendNotCoreTemperature() {
+        HealthRiskPredictionService.PredictionResult result = HealthRiskPredictionService.predict(
+                new HealthRiskPredictionService.VitalSnapshot(82, new BigDecimal("34.10"), 99, 58, true),
+                0
+        );
+        assertFalse(result.getReasons().contains("Temperature is dangerously low."),
+                "Samsung sleep temperature must not be interpreted as dangerously low core temperature");
+        assertTrue(result.getReasons().contains("Samsung watch temperature is treated as a sleep-temperature trend and is not scored as core body temperature."),
+                "Samsung sleep temperature should be explained as trend-only context");
+        assertTrue(result.getScore() < 75, "sleep-temperature trend should not force an urgent score");
+        assertEquals(HealthRiskPredictionService.DataQuality.LIMITED_DATA, result.getDataQuality(),
+                "trend-only temperature should not count as a clinical body-temperature reading");
+    }
+
+    private static void storesSamsungTemperatureAsTrendStatus() {
+        assertEquals("TREND",
+                WatchTemperaturePolicy.statusFor("SAMSUNG_HEALTH_DATA", new BigDecimal("34.10")),
+                "Samsung sleep temperature should be stored as a trend rather than a low core reading");
+        assertTrue(WatchTemperaturePolicy.temperatureForAlertEvaluation(
+                "SAMSUNG_HEALTH_DATA", new BigDecimal("39.10")) == null,
+                "Samsung sleep temperature should not trigger core-temperature emergency alerts");
     }
 
     private static void increasesScoreForRepeatedAbnormalSections() {

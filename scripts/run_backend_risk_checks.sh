@@ -25,6 +25,7 @@ javac -source 8 -target 8 \
   "$APP_DIR/src/java/za/ac/tut/util/ReportService.java" \
   "$APP_DIR/src/java/za/ac/tut/util/ResetOtpVisibility.java" \
   "$APP_DIR/src/java/za/ac/tut/util/VitalAlertEvaluator.java" \
+  "$APP_DIR/src/java/za/ac/tut/util/WatchTemperaturePolicy.java" \
   "$APP_DIR/test/BackendRiskChecks.java"
 
 java -cp "$BUILD_DIR:$SERVLET_API" BackendRiskChecks

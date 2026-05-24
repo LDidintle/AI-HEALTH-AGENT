@@ -151,8 +151,16 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                         }
                     )
                 }
-            } catch (_: Exception) {
-                repository.clearSession()
+            } catch (error: Exception) {
+                if (SessionRestorePolicy.shouldClearSession(error)) {
+                    repository.clearSession()
+                } else {
+                    _uiState.update {
+                        it.copy(
+                            errorMessage = "Could not restore your session right now. Your sign-in has been kept; try again when connected."
+                        )
+                    }
+                }
             }
         }
     }
@@ -597,11 +605,13 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private fun vitalsJson(readings: LatestReadingsResponse?): String {
         val heartRate = readings?.heartRate?.value?.toString() ?: "null"
         val temperature = readings?.temperature?.value?.toString() ?: "null"
+        val temperatureTrendOnly = readings?.temperature?.source.equals("SAMSUNG_HEALTH_DATA", ignoreCase = true)
         val bloodPressure = readings?.bloodPressure?.let {
             "\"${it.systolic}/${it.diastolic}\""
         } ?: "null"
 
-        return "{\"heartRate\":$heartRate,\"temperature\":$temperature,\"bloodPressure\":$bloodPressure}"
+        return "{\"heartRate\":$heartRate,\"temperature\":$temperature," +
+                "\"temperatureTrendOnly\":$temperatureTrendOnly,\"bloodPressure\":$bloodPressure}"
     }
 
     override fun onCleared() {

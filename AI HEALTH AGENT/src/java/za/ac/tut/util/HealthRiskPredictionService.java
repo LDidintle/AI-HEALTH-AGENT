@@ -41,7 +41,8 @@ public final class HealthRiskPredictionService {
                 latest.heartRate,
                 latest.temperature,
                 latest.systolic,
-                latest.diastolic
+                latest.diastolic,
+                latest.temperatureTrendOnly
         );
         return predict(snapshot, countAbnormalSections(sections));
     }
@@ -79,6 +80,8 @@ public final class HealthRiskPredictionService {
 
         if (snapshot.temperature == null) {
             reasons.add("Temperature is missing.");
+        } else if (snapshot.temperatureTrendOnly) {
+            reasons.add("Samsung watch temperature is treated as a sleep-temperature trend and is not scored as core body temperature.");
         } else if (snapshot.temperature.compareTo(new BigDecimal("39.0")) >= 0) {
             score += 35;
             reasons.add("Temperature is very high.");
@@ -103,7 +106,7 @@ public final class HealthRiskPredictionService {
             reasons.add("Blood pressure is low.");
         }
 
-        if (snapshot.heartRate != null && snapshot.temperature != null
+        if (snapshot.heartRate != null && snapshot.temperature != null && !snapshot.temperatureTrendOnly
                 && snapshot.heartRate > 100
                 && snapshot.temperature.compareTo(new BigDecimal("38.0")) >= 0) {
             score += 18;
@@ -157,9 +160,9 @@ public final class HealthRiskPredictionService {
     }
 
     private static List<VitalSection> loadRecentSections(Connection conn, int userId) throws Exception {
-        String sql = "SELECT heart_rate_latest, temperature_latest, systolic_latest, diastolic_latest "
+        String sql = "SELECT source, heart_rate_latest, temperature_latest, systolic_latest, diastolic_latest "
                 + "FROM health_sync_sections WHERE user_id = ? "
-                + "ORDER BY window_end DESC, section_id DESC LIMIT 6";
+                + "ORDER BY window_end DESC, section_id DESC " + recentSectionLimit(conn);
         List<VitalSection> sections = new ArrayList<>();
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, userId);
@@ -169,12 +172,21 @@ public final class HealthRiskPredictionService {
                             nullableInteger(rs, "heart_rate_latest"),
                             rs.getBigDecimal("temperature_latest"),
                             nullableInteger(rs, "systolic_latest"),
-                            nullableInteger(rs, "diastolic_latest")
+                            nullableInteger(rs, "diastolic_latest"),
+                            WatchTemperaturePolicy.isSleepTemperatureTrend(rs.getString("source"))
                     ));
                 }
             }
         }
         return sections;
+    }
+
+    private static String recentSectionLimit(Connection conn) throws Exception {
+        String productName = conn.getMetaData().getDatabaseProductName();
+        if (productName != null && productName.toLowerCase().contains("derby")) {
+            return "FETCH FIRST 6 ROWS ONLY";
+        }
+        return "LIMIT 6";
     }
 
     private static int countAbnormalSections(List<VitalSection> sections) {
@@ -189,7 +201,7 @@ public final class HealthRiskPredictionService {
 
     private static boolean isAbnormal(VitalSection section) {
         return (section.heartRate != null && (section.heartRate < 60 || section.heartRate > 100))
-                || (section.temperature != null
+                || (section.temperature != null && !section.temperatureTrendOnly
                 && (section.temperature.compareTo(new BigDecimal("38.0")) >= 0
                 || section.temperature.compareTo(new BigDecimal("35.0")) < 0))
                 || (section.systolic != null && section.diastolic != null
@@ -207,7 +219,7 @@ public final class HealthRiskPredictionService {
         if (snapshot.heartRate != null) {
             present++;
         }
-        if (snapshot.temperature != null) {
+        if (snapshot.temperature != null && !snapshot.temperatureTrendOnly) {
             present++;
         }
         if (snapshot.systolic != null && snapshot.diastolic != null) {
@@ -269,12 +281,19 @@ public final class HealthRiskPredictionService {
         private final BigDecimal temperature;
         private final Integer systolic;
         private final Integer diastolic;
+        private final boolean temperatureTrendOnly;
 
         public VitalSnapshot(Integer heartRate, BigDecimal temperature, Integer systolic, Integer diastolic) {
+            this(heartRate, temperature, systolic, diastolic, false);
+        }
+
+        public VitalSnapshot(Integer heartRate, BigDecimal temperature, Integer systolic, Integer diastolic,
+                boolean temperatureTrendOnly) {
             this.heartRate = heartRate;
             this.temperature = temperature == null ? null : temperature.setScale(2, RoundingMode.HALF_UP);
             this.systolic = systolic;
             this.diastolic = diastolic;
+            this.temperatureTrendOnly = temperatureTrendOnly;
         }
 
         public static VitalSnapshot empty() {
@@ -334,12 +353,15 @@ public final class HealthRiskPredictionService {
         private final BigDecimal temperature;
         private final Integer systolic;
         private final Integer diastolic;
+        private final boolean temperatureTrendOnly;
 
-        private VitalSection(Integer heartRate, BigDecimal temperature, Integer systolic, Integer diastolic) {
+        private VitalSection(Integer heartRate, BigDecimal temperature, Integer systolic, Integer diastolic,
+                boolean temperatureTrendOnly) {
             this.heartRate = heartRate;
             this.temperature = temperature;
             this.systolic = systolic;
             this.diastolic = diastolic;
+            this.temperatureTrendOnly = temperatureTrendOnly;
         }
     }
 }
