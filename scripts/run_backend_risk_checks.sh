@@ -18,12 +18,15 @@ javac -source 8 -target 8 \
   "$APP_DIR/src/java/za/ac/tut/model/ReportResult.java" \
   "$APP_DIR/src/java/za/ac/tut/util/JsonUtil.java" \
   "$APP_DIR/src/java/za/ac/tut/util/AuthUtil.java" \
+  "$APP_DIR/src/java/za/ac/tut/util/AlertLifecycleService.java" \
+  "$APP_DIR/src/java/za/ac/tut/util/DeviceCapabilityService.java" \
   "$APP_DIR/src/java/za/ac/tut/util/HealthRiskPredictionService.java" \
   "$APP_DIR/src/java/za/ac/tut/util/PasswordPolicy.java" \
   "$APP_DIR/src/java/za/ac/tut/util/PatientValidation.java" \
   "$APP_DIR/src/java/za/ac/tut/util/RateLimitService.java" \
   "$APP_DIR/src/java/za/ac/tut/util/ReportService.java" \
   "$APP_DIR/src/java/za/ac/tut/util/ResetOtpVisibility.java" \
+  "$APP_DIR/src/java/za/ac/tut/util/RoleAccessPolicy.java" \
   "$APP_DIR/src/java/za/ac/tut/util/VitalAlertEvaluator.java" \
   "$APP_DIR/src/java/za/ac/tut/util/WatchTemperaturePolicy.java" \
   "$APP_DIR/test/BackendRiskChecks.java"

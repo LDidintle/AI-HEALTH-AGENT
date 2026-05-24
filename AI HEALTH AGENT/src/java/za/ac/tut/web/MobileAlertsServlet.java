@@ -13,6 +13,10 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import za.ac.tut.util.Database;
 import za.ac.tut.util.JsonUtil;
+import za.ac.tut.util.AlertLifecycleService;
+import za.ac.tut.util.AuditEventService;
+import za.ac.tut.util.RateLimitService;
+import za.ac.tut.util.VitalAlertEvaluator;
 
 public class MobileAlertsServlet extends HttpServlet {
 
@@ -37,8 +41,47 @@ public class MobileAlertsServlet extends HttpServlet {
         }
     }
 
+    @Override
+    protected void doPost(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        response.setContentType("application/json;charset=UTF-8");
+        Integer userId = resolveUserId(request);
+        if (userId == null) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            writeJson(response, "{\"success\":false,\"message\":\"Sign in before creating demo alerts.\"}");
+            return;
+        }
+
+        if (!RateLimitService.allow(RateLimitService.key("demo-alert", request.getRemoteAddr(), String.valueOf(userId)),
+                3, 15L * 60L * 1000L)) {
+            response.setStatus(429);
+            writeJson(response, "{\"success\":false,\"message\":\"Too many demo alerts. Please wait before trying again.\"}");
+            return;
+        }
+
+        try (Connection conn = Database.getConnection()) {
+            VitalAlertEvaluator.evaluateAndStore(conn, userId, 132, null, null, null);
+            AuditEventService.record(conn, userId, "PATIENT", "DEMO_ALERT_CREATED", "USER", String.valueOf(userId), "SUCCESS", "mobile emergency help demo", request.getRemoteAddr());
+            writeJson(response, "{\"success\":true,\"message\":\"Demo emergency alert recorded for hospital/staff review. This is not real emergency dispatch.\"}");
+        } catch (Exception e) {
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            writeJson(response, "{\"success\":false,\"message\":\"Unable to create demo emergency alert.\"}");
+        }
+    }
+
     private String buildLatestAlertJson(Connection conn, int userId) throws Exception {
+        try {
+            return buildLatestAlertJson(conn, userId, true);
+        } catch (Exception e) {
+            return buildLatestAlertJson(conn, userId, false);
+        }
+    }
+
+    private String buildLatestAlertJson(Connection conn, int userId, boolean includeLifecycleStatus) throws Exception {
         String sql = "SELECT ea.alert_id, ea.bpm, ea.alert_status, ea.countdown_seconds, ea.created_at, "
+                + (includeLifecycleStatus
+                ? "COALESCE(ea.lifecycle_status, 'CREATED') AS lifecycle_status, "
+                : "'CREATED' AS lifecycle_status, ")
                 + "h.name AS hospital_name, h.service_area, haa.status AS assignment_status "
                 + "FROM emergency_alerts ea "
                 + "LEFT JOIN hospital_alert_assignments haa ON haa.alert_id = ea.alert_id "
@@ -58,8 +101,8 @@ public class MobileAlertsServlet extends HttpServlet {
                 String status = rs.getString("alert_status");
                 String hospitalName = rs.getString("hospital_name");
                 String message = hospitalName == null || hospitalName.trim().isEmpty()
-                        ? "Emergency alert recorded. Staff should review this patient now."
-                        : "Emergency alert sent to " + hospitalName + ".";
+                        ? "SmartHealth demo alert recorded. Staff should review this patient now. This is not real emergency dispatch."
+                        : "SmartHealth demo alert assigned to " + hospitalName + ". This is not real emergency dispatch.";
 
                 return "{"
                         + "\"success\":true,"
@@ -67,6 +110,7 @@ public class MobileAlertsServlet extends HttpServlet {
                         + "\"alert\":{"
                         + "\"id\":" + rs.getInt("alert_id") + ","
                         + "\"status\":" + JsonUtil.quote(status) + ","
+                        + "\"lifecycleStatus\":" + JsonUtil.quote(rs.getString("lifecycle_status")) + ","
                         + "\"bpm\":" + (rs.getObject("bpm") == null ? "null" : rs.getInt("bpm")) + ","
                         + "\"countdownSeconds\":" + rs.getInt("countdown_seconds") + ","
                         + "\"createdAt\":" + JsonUtil.quote(createdAt == null ? null : createdAt.toInstant().toString()) + ","

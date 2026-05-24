@@ -16,6 +16,9 @@ import javax.servlet.http.HttpSession;
 import za.ac.tut.util.Database;
 import za.ac.tut.util.VitalAlertEvaluator;
 import za.ac.tut.util.WatchTemperaturePolicy;
+import za.ac.tut.util.AuditEventService;
+import za.ac.tut.util.PatientConsentService;
+import za.ac.tut.util.RateLimitService;
 
 public class MobileHealthSectionSyncServlet extends HttpServlet {
 
@@ -33,6 +36,12 @@ public class MobileHealthSectionSyncServlet extends HttpServlet {
 
         try {
             SectionPayload payload = parsePayload(request);
+            if (!RateLimitService.allow(RateLimitService.key("mobile-section-sync", request.getRemoteAddr(), email),
+                    60, 15L * 60L * 1000L)) {
+                response.setStatus(429);
+                writeJson(response, "{\"success\":false,\"message\":\"Too many sync attempts. Please wait and try again.\"}");
+                return;
+            }
             if (!payload.hasAnyReading()) {
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                 writeJson(response, "{\"success\":false,\"message\":\"Provide at least one section reading.\"}");
@@ -45,6 +54,9 @@ public class MobileHealthSectionSyncServlet extends HttpServlet {
                     response.setStatus(HttpServletResponse.SC_NOT_FOUND);
                     writeJson(response, "{\"success\":false,\"message\":\"User was not found.\"}");
                     return;
+                }
+                if (payload.consentAccepted) {
+                    PatientConsentService.recordHealthSyncConsent(conn, userId, payload.consentVersion);
                 }
 
                 conn.setAutoCommit(false);
@@ -78,6 +90,7 @@ public class MobileHealthSectionSyncServlet extends HttpServlet {
                         payload.diastolicLatest
                 );
                 insertSyncLog(conn, userId, deviceId, payload);
+                AuditEventService.record(conn, userId, "PATIENT", "MOBILE_SECTION_SYNC", "HEALTH_SYNC_SECTION", payload.source, "SUCCESS", "section sync", request.getRemoteAddr());
                 conn.commit();
             }
 
@@ -115,6 +128,8 @@ public class MobileHealthSectionSyncServlet extends HttpServlet {
         payload.deviceType = trimToNull(request.getParameter("deviceType"));
         payload.deviceManufacturer = trimToNull(request.getParameter("deviceManufacturer"));
         payload.deviceModel = trimToNull(request.getParameter("deviceModel"));
+        payload.consentAccepted = Boolean.parseBoolean(defaultString(trimToNull(request.getParameter("consentAccepted")), "false"));
+        payload.consentVersion = defaultString(trimToNull(request.getParameter("consentVersion")), "1.0");
         return payload;
     }
 
@@ -396,6 +411,8 @@ public class MobileHealthSectionSyncServlet extends HttpServlet {
         private String deviceType;
         private String deviceManufacturer;
         private String deviceModel;
+        private boolean consentAccepted;
+        private String consentVersion;
 
         private boolean hasAnyReading() {
             return heartRateLatest != null || temperatureLatest != null

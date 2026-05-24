@@ -9,6 +9,9 @@ import za.ac.tut.util.ReportService;
 import za.ac.tut.util.ResetOtpVisibility;
 import za.ac.tut.util.VitalAlertEvaluator;
 import za.ac.tut.util.WatchTemperaturePolicy;
+import za.ac.tut.util.AlertLifecycleService;
+import za.ac.tut.util.DeviceCapabilityService;
+import za.ac.tut.util.RoleAccessPolicy;
 import java.math.BigDecimal;
 import java.lang.reflect.Proxy;
 import java.util.HashMap;
@@ -38,6 +41,9 @@ public class BackendRiskChecks {
         rateLimitsRepeatedSensitiveActions();
         classifiesEmergencyAlertDecisions();
         normalizesReportTypesByRole();
+        enforcesRoleAccessMatrix();
+        validatesAlertLifecycleTransitions();
+        explainsSamsungDeviceCapabilities();
         System.out.println("Backend risk checks passed.");
     }
 
@@ -214,6 +220,32 @@ public class BackendRiskChecks {
         criteria.setHospital(true);
         criteria.setReportType(ReportService.REPORT_MANAGEMENT);
         assertEquals(ReportService.REPORT_ALERTS, ReportService.normalizeReportType(criteria.getReportType(), criteria.isHospital()), "hospital criteria should normalize to alerts");
+    }
+
+    private static void enforcesRoleAccessMatrix() {
+        assertTrue(RoleAccessPolicy.isAllowed(AuthUtil.ROLE_PATIENT, "/api/mobile/health-sync", "GET"), "patient mobile read should be allowed");
+        assertTrue(RoleAccessPolicy.isAllowed(AuthUtil.ROLE_PATIENT, "/api/mobile/health-section-sync", "POST"), "patient mobile sync should be allowed");
+        assertFalse(RoleAccessPolicy.isAllowed(AuthUtil.ROLE_PATIENT, "/ReportsServlet.do", "GET"), "patient must not access staff reports");
+        assertTrue(RoleAccessPolicy.isAllowed(AuthUtil.ROLE_ADMIN, "/ReportsServlet.do", "GET"), "admin should access reports");
+        assertTrue(RoleAccessPolicy.isAllowed(AuthUtil.ROLE_HOSPITAL, "/HospitalPatientsServlet.do", "GET"), "hospital should access hospital patients");
+        assertFalse(RoleAccessPolicy.isAllowed(AuthUtil.ROLE_HOSPITAL, "/ViewUsersServlet.do", "GET"), "hospital must not access staff CRUD");
+        assertTrue(RoleAccessPolicy.isPublic("/health"), "health check should be public");
+    }
+
+    private static void validatesAlertLifecycleTransitions() {
+        assertTrue(AlertLifecycleService.isValidStatus("CREATED"), "created should be a valid lifecycle status");
+        assertTrue(AlertLifecycleService.canTransition("CREATED", "ACKNOWLEDGED"), "created alert can be acknowledged");
+        assertTrue(AlertLifecycleService.canTransition("ACKNOWLEDGED", "RESOLVED"), "acknowledged alert can be resolved");
+        assertTrue(AlertLifecycleService.canTransition("CREATED", "CANCELLED"), "created alert can be cancelled");
+        assertFalse(AlertLifecycleService.canTransition("RESOLVED", "ACKNOWLEDGED"), "resolved alert must not reopen silently");
+    }
+
+    private static void explainsSamsungDeviceCapabilities() {
+        DeviceCapabilityService.Capabilities samsung = DeviceCapabilityService.forSource("SAMSUNG_HEALTH_DATA");
+        assertTrue(samsung.isHeartRateSupported(), "Samsung section should support heart rate when available");
+        assertTrue(samsung.isBloodPressureSupported(), "Samsung section should describe BP as supported when calibrated/source exposes it");
+        assertTrue(samsung.isSleepTemperatureTrendOnly(), "Samsung temperature should be sleep trend only");
+        assertTrue(samsung.toJson().contains("calibration/source dependent"), "BP caveat should be visible in JSON");
     }
 
     private static HttpSession session() {

@@ -31,6 +31,7 @@ This project is for educational and demonstration purposes only. It does not dia
 - Device metadata capture for synced watch/phone readings
 - Doctor summary view with average vitals and rule-based prediction text
 - Backend rule-based screening prediction returned to Android and the patient web dashboard
+- Production-leaning hardening layer for role-aware access checks, audit events, patient sync consent, device capability descriptions, alert lifecycle history, and a safe `/health` endpoint
 - Rule-based health insight engine in the Android client
 - AI chat servlet that can call the OpenAI Responses API when an API key is configured
 - Fallback wellness guidance when the AI service or API key is unavailable
@@ -166,6 +167,8 @@ For Supabase/PostgreSQL deployment, run:
 
 ```text
 database/supabase_schema.sql
+database/supabase_watch_device_migration.sql
+database/production_hardening_postgresql.sql
 ```
 
 inside the Supabase SQL editor, then configure the hosted database environment variables.
@@ -215,9 +218,22 @@ The app supports section-based health sync:
 - Android app builds, lints, stores session cookies with Android Keystore encryption, and uses HTTPS production backend config.
 - Mobile sync endpoints require an authenticated session.
 - Samsung Health section sync supports available watch vitals and reports unavailable temperature honestly.
+- Samsung Health temperature is treated as sleep-temperature trend data only. It is not used as direct core fever or hypothermia evidence.
+- Samsung Health blood pressure is shown as calibration/source dependent.
 - Android and web sleep schedule context syncs through the backend, with local storage as an offline fallback.
 - Emergency alert evaluation, rule-based screening prediction, AI-chat fallback guidance, password hashing/reset helpers, validation, and report type behavior are covered by lightweight backend checks.
 - Prediction v1 is deterministic rule-based screening, not a trained ML model or diagnosis.
+- Emergency help creates a clearly marked SmartHealth demo alert for staff/hospital review. It is not ambulance dispatch and it is not connected to real emergency services.
+
+## Production-Leaning Operations
+
+Before presenting a hosted deployment, apply the hardening migration for the selected database, configure HTTPS environment variables on Render, and run:
+
+```sh
+BASE_URL=https://your-render-service.onrender.com ./scripts/smoke_test_deployment.sh
+```
+
+Authenticated smoke checks can also be enabled with `SMARTHEALTH_SMOKE_EMAIL` and `SMARTHEALTH_SMOKE_PASSWORD`. Do not print or commit real credentials.
 
 ## Demo Checklist
 

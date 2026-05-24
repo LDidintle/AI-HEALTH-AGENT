@@ -48,10 +48,18 @@ Data tier:
 - Stores health readings in `pulse_readings`, `temperature_readings`, and `blood_pressure_readings`.
 - Stores imported Health Connect time-window summaries in `health_sync_sections`.
 - Stores the original Health Connect record id, measured time, sync time, and sync events in the reading tables and `device_sync_events`.
+- Stores production-leaning safety records in `audit_events`, `patient_consents`, `device_capabilities`, `alert_events`, and `schema_migrations` after the hardening migration is applied.
 
 Health sync note:
 - The Android app uses section-based Health Connect imports, not continuous watch streaming.
 - Direct Galaxy Watch sensor streaming is parked as a future Samsung Health Sensor SDK path after section sync is stable.
+- Samsung Health temperature is interpreted as sleep-temperature trend data only when the watch/source provides it. It is not treated as a direct core fever or hypothermia reading.
+- Samsung Health blood pressure is source and calibration dependent; the UI and prediction copy should keep that caveat visible.
+
+Security note:
+- Browser routes are protected by role-aware filtering and CSRF checks, while mobile API routes remain session-authenticated and exempt from browser CSRF tokens.
+- Sensitive production/demo events should be recorded through `AuditEventService`. The service is fail-soft so older classroom databases keep working until migrations are applied.
+- Demo emergency alerts have lifecycle status/history so staff and hospital users can distinguish created, acknowledged, resolved, and cancelled states.
 
 ## Professional Note
 

@@ -12,6 +12,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import za.ac.tut.model.PasswordUtils;
 import za.ac.tut.util.AuthUtil;
+import za.ac.tut.util.AuditEventService;
 import za.ac.tut.util.Database;
 import za.ac.tut.util.JsonUtil;
 import za.ac.tut.util.RateLimitService;
@@ -58,13 +59,23 @@ public class MobileLoginServlet extends HttpServlet {
                         String storedHash = rs.getString("password_hash");
 
                         if (!PasswordUtils.verifyPassword(password, storedHash)) {
+                            AuditEventService.record(conn, null, "PATIENT", "MOBILE_LOGIN", "USER", email, "FAILURE", "invalid password", request.getRemoteAddr());
                             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                             writeJson(response, "{\"success\":false,\"message\":\"Invalid email or password.\"}");
                             return;
                         }
 
+                        if (!PasswordUtils.isPbkdf2Hash(storedHash)) {
+                            rehashPassword(conn, rs.getInt("id"), password);
+                        }
+
+                        HttpSession oldSession = request.getSession(false);
+                        if (oldSession != null) {
+                            oldSession.invalidate();
+                        }
                         HttpSession session = request.getSession(true);
                         AuthUtil.markPatient(session, rs.getString("email"), rs.getInt("id"));
+                        AuditEventService.record(conn, rs.getInt("id"), "PATIENT", "MOBILE_LOGIN", "USER", String.valueOf(rs.getInt("id")), "SUCCESS", "mobile session started", request.getRemoteAddr());
 
                         String fullName = rs.getString("first_name") + " " + rs.getString("surname");
                         String json = "{"
@@ -95,6 +106,14 @@ public class MobileLoginServlet extends HttpServlet {
 
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private void rehashPassword(Connection conn, int userId, String password) throws Exception {
+        try (PreparedStatement ps = conn.prepareStatement("UPDATE user_auth SET password_hash = ? WHERE user_id = ?")) {
+            ps.setString(1, PasswordUtils.hashPassword(password));
+            ps.setInt(2, userId);
+            ps.executeUpdate();
+        }
     }
 
     private void writeJson(HttpServletResponse response, String json) throws IOException {

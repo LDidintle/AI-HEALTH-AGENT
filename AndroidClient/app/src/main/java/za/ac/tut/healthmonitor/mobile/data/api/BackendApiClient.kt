@@ -12,6 +12,7 @@ import za.ac.tut.healthmonitor.mobile.BuildConfig
 import za.ac.tut.healthmonitor.mobile.data.model.AiChatResponse
 import za.ac.tut.healthmonitor.mobile.data.model.AlertNotificationResponse
 import za.ac.tut.healthmonitor.mobile.data.model.ContextSettingsResponse
+import za.ac.tut.healthmonitor.mobile.data.model.DeviceCapabilitiesResponse
 import za.ac.tut.healthmonitor.mobile.data.model.HealthSectionSyncPayload
 import za.ac.tut.healthmonitor.mobile.data.model.HealthSyncPayload
 import za.ac.tut.healthmonitor.mobile.data.model.LatestReadingsResponse
@@ -73,6 +74,14 @@ class BackendApiClient(
         return get("api/mobile/alerts", AlertNotificationResponse::class.java)
     }
 
+    fun createDemoAlert(): SyncResponse {
+        return post("api/mobile/alerts/demo", FormBody.Builder().build(), SyncResponse::class.java)
+    }
+
+    fun getDeviceCapabilities(): DeviceCapabilitiesResponse {
+        return get("api/mobile/device-capabilities", DeviceCapabilitiesResponse::class.java)
+    }
+
     fun getContextSettings(): ContextSettingsResponse {
         return get("api/mobile/context-settings", ContextSettingsResponse::class.java)
     }
@@ -88,6 +97,8 @@ class BackendApiClient(
     fun syncReadings(payload: HealthSyncPayload): SyncResponse {
         val builder = FormBody.Builder()
             .add("source", payload.source ?: "HEALTH_CONNECT")
+            .add("consentAccepted", "true")
+            .add("consentVersion", "1.0")
 
         payload.heartRate?.let { builder.add("heartRate", it.toString()) }
         payload.temperature?.let { builder.add("temperature", String.format(Locale.US, "%.2f", it)) }
@@ -107,6 +118,8 @@ class BackendApiClient(
             .add("windowStart", payload.windowStart)
             .add("windowEnd", payload.windowEnd)
             .add("source", payload.source)
+            .add("consentAccepted", "true")
+            .add("consentVersion", "1.0")
             .add("heartRateCount", payload.heartRateCount.toString())
             .add("temperatureCount", payload.temperatureCount.toString())
             .add("bloodPressureCount", payload.bloodPressureCount.toString())

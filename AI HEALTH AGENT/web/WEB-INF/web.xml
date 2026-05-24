@@ -20,6 +20,14 @@
         <url-pattern>/*</url-pattern>
     </filter-mapping>
     <filter>
+        <filter-name>RoleAccessFilter</filter-name>
+        <filter-class>za.ac.tut.web.RoleAccessFilter</filter-class>
+    </filter>
+    <filter-mapping>
+        <filter-name>RoleAccessFilter</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+    <filter>
         <filter-name>AdminAuthFilter</filter-name>
         <filter-class>za.ac.tut.web.AdminAuthFilter</filter-class>
     </filter>
@@ -149,6 +157,14 @@
         <servlet-class>za.ac.tut.web.MobileAlertsServlet</servlet-class>
     </servlet>
     <servlet>
+        <servlet-name>MobileDeviceCapabilitiesServlet</servlet-name>
+        <servlet-class>za.ac.tut.web.MobileDeviceCapabilitiesServlet</servlet-class>
+    </servlet>
+    <servlet>
+        <servlet-name>HealthServlet</servlet-name>
+        <servlet-class>za.ac.tut.web.HealthServlet</servlet-class>
+    </servlet>
+    <servlet>
         <servlet-name>PasswordResetRequestServlet</servlet-name>
         <servlet-class>za.ac.tut.web.PasswordResetRequestServlet</servlet-class>
     </servlet>
@@ -268,6 +284,15 @@
     <servlet-mapping>
         <servlet-name>MobileAlertsServlet</servlet-name>
         <url-pattern>/api/mobile/alerts</url-pattern>
+        <url-pattern>/api/mobile/alerts/demo</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>MobileDeviceCapabilitiesServlet</servlet-name>
+        <url-pattern>/api/mobile/device-capabilities</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>HealthServlet</servlet-name>
+        <url-pattern>/health</url-pattern>
     </servlet-mapping>
     <servlet-mapping>
         <servlet-name>PasswordResetRequestServlet</servlet-name>

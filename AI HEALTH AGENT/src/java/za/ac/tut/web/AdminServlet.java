@@ -14,6 +14,8 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import za.ac.tut.util.AuthUtil;
+import za.ac.tut.util.AuditEventService;
+import za.ac.tut.util.Database;
 import za.ac.tut.util.RateLimitService;
 
 /**
@@ -37,11 +39,17 @@ public class AdminServlet extends HttpServlet {
 
         if (staffUser != null && staffPass != null
                 && staffUser.equals(username) && staffPass.equals(password)) {
+            HttpSession oldSession = request.getSession(false);
+            if (oldSession != null) {
+                oldSession.invalidate();
+            }
             HttpSession session = request.getSession();
             AuthUtil.markAdmin(session);
+            audit(username, "SUCCESS", request.getRemoteAddr());
 
             response.sendRedirect(request.getContextPath() + "/admin_dashboard.jsp");
         } else {
+            audit(username, "FAILURE", request.getRemoteAddr());
             response.sendRedirect(request.getContextPath() + "/admin?error=invalid");
         }
         
@@ -62,6 +70,14 @@ public class AdminServlet extends HttpServlet {
     private static String config(String name) {
         String property = trimToNull(System.getProperty(name));
         return property != null ? property : trimToNull(System.getenv(name));
+    }
+
+    private void audit(String username, String outcome, String ipAddress) {
+        try (java.sql.Connection conn = Database.getConnection()) {
+            AuditEventService.record(conn, null, "ADMIN", "ADMIN_LOGIN", "ADMIN", username, outcome, null, ipAddress);
+        } catch (Exception ignored) {
+            // Login flow must not fail because audit storage is unavailable.
+        }
     }
 
 }

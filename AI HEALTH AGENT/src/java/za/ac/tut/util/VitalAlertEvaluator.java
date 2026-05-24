@@ -43,9 +43,22 @@ public final class VitalAlertEvaluator {
 
             try (ResultSet rs = ps.getGeneratedKeys()) {
                 if (rs.next()) {
-                    assignAlertToHospital(conn, rs.getInt(1), userId);
+                    int alertId = rs.getInt(1);
+                    markCreatedIfSupported(conn, alertId);
+                    assignAlertToHospital(conn, alertId, userId);
                 }
             }
+        }
+    }
+
+    private static void markCreatedIfSupported(Connection conn, int alertId) {
+        try (PreparedStatement ps = conn.prepareStatement(
+                "UPDATE emergency_alerts SET lifecycle_status = ? WHERE alert_id = ?")) {
+            ps.setString(1, AlertLifecycleService.CREATED);
+            ps.setInt(2, alertId);
+            ps.executeUpdate();
+        } catch (Exception ignored) {
+            // Older demo schemas do not yet have lifecycle_status; migrations add it.
         }
     }
 

@@ -18,6 +18,9 @@ import za.ac.tut.util.HealthRiskPredictionService;
 import za.ac.tut.util.JsonUtil;
 import za.ac.tut.util.VitalAlertEvaluator;
 import za.ac.tut.util.WatchTemperaturePolicy;
+import za.ac.tut.util.AuditEventService;
+import za.ac.tut.util.PatientConsentService;
+import za.ac.tut.util.RateLimitService;
 
 public class MobileHealthSyncServlet extends HttpServlet {
 
@@ -77,6 +80,8 @@ public class MobileHealthSyncServlet extends HttpServlet {
         String deviceType = trimToNull(request.getParameter("deviceType"));
         String deviceManufacturer = trimToNull(request.getParameter("deviceManufacturer"));
         String deviceModel = trimToNull(request.getParameter("deviceModel"));
+        boolean consentAccepted = Boolean.parseBoolean(valueOrDefault(trimToNull(request.getParameter("consentAccepted")), "false"));
+        String consentVersion = valueOrDefault(trimToNull(request.getParameter("consentVersion")), "1.0");
 
         if (email == null) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
@@ -88,6 +93,12 @@ public class MobileHealthSyncServlet extends HttpServlet {
                 && (systolicValue == null || diastolicValue == null)) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             writeJson(response, "{\"success\":false,\"message\":\"Provide heartRate, temperature, or systolic and diastolic.\"}");
+            return;
+        }
+        if (!RateLimitService.allow(RateLimitService.key("mobile-health-sync", request.getRemoteAddr(), email),
+                60, 15L * 60L * 1000L)) {
+            response.setStatus(429);
+            writeJson(response, "{\"success\":false,\"message\":\"Too many sync attempts. Please wait and try again.\"}");
             return;
         }
 
@@ -105,6 +116,9 @@ public class MobileHealthSyncServlet extends HttpServlet {
                     response.setStatus(HttpServletResponse.SC_NOT_FOUND);
                     writeJson(response, "{\"success\":false,\"message\":\"User was not found.\"}");
                     return;
+                }
+                if (consentAccepted) {
+                    PatientConsentService.recordHealthSyncConsent(conn, userId, consentVersion);
                 }
 
                 conn.setAutoCommit(false);
@@ -125,6 +139,7 @@ public class MobileHealthSyncServlet extends HttpServlet {
                         WatchTemperaturePolicy.temperatureForAlertEvaluation(source, temperature),
                         systolic, diastolic);
                 insertSyncLog(conn, userId, deviceId, source, externalRecordId, recordedTimestamp);
+                AuditEventService.record(conn, userId, "PATIENT", "MOBILE_READING_SYNC", "HEALTH_READING", source, "SUCCESS", "single reading sync", request.getRemoteAddr());
                 conn.commit();
 
                 String json = "{"
@@ -415,6 +430,10 @@ public class MobileHealthSyncServlet extends HttpServlet {
 
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private String valueOrDefault(String value, String fallback) {
+        return value == null ? fallback : value;
     }
 
     private String resolveEmail(HttpServletRequest request) {

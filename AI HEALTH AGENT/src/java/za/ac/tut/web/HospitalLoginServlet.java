@@ -11,6 +11,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import za.ac.tut.model.PasswordUtils;
 import za.ac.tut.util.AuthUtil;
+import za.ac.tut.util.AuditEventService;
 import za.ac.tut.util.Database;
 
 public class HospitalLoginServlet extends HttpServlet {
@@ -30,6 +31,10 @@ public class HospitalLoginServlet extends HttpServlet {
 
         if (hospitalUser != null && hospitalPass != null
                 && hospitalUser.equals(username) && hospitalPass.equals(password)) {
+            HttpSession oldSession = request.getSession(false);
+            if (oldSession != null) {
+                oldSession.invalidate();
+            }
             HttpSession session = request.getSession();
             AuthUtil.markHospital(session);
             session.setAttribute("hospitalLegacy", "true");
@@ -61,11 +66,16 @@ public class HospitalLoginServlet extends HttpServlet {
                     return false;
                 }
 
+                HttpSession oldSession = request.getSession(false);
+                if (oldSession != null) {
+                    oldSession.invalidate();
+                }
                 HttpSession session = request.getSession();
                 AuthUtil.markHospital(session);
                 session.setAttribute("hospitalId", rs.getInt("hospital_id"));
                 session.setAttribute("hospitalName", rs.getString("name"));
                 session.setAttribute("hospitalServiceArea", rs.getString("service_area"));
+                AuditEventService.record(conn, null, "HOSPITAL", "HOSPITAL_LOGIN", "HOSPITAL", String.valueOf(rs.getInt("hospital_id")), "SUCCESS", "registered hospital", request.getRemoteAddr());
                 response.sendRedirect("HospitalPatientsServlet.do");
                 return true;
             }

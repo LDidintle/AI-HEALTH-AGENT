@@ -49,6 +49,10 @@ class AppRepository(
         return backendApiClient.getAlertNotification()
     }
 
+    fun createDemoAlert(): SyncResponse {
+        return backendApiClient.createDemoAlert()
+    }
+
     fun getContextSettings(): ContextSettingsResponse {
         return backendApiClient.getContextSettings()
     }

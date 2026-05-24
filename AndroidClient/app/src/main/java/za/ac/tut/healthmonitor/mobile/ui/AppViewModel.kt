@@ -581,12 +581,31 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun sendParamedicAlert() {
-        _uiState.update {
-            it.copy(
-                alertSent = true,
-                infoMessage = "Emergency alert shown. If this is serious, call emergency services now.",
-                errorMessage = null
-            )
+        viewModelScope.launch {
+            try {
+                val response = withContext(Dispatchers.IO) {
+                    repository.createDemoAlert()
+                }
+                _uiState.update {
+                    it.copy(
+                        alertSent = true,
+                        infoMessage = response.message
+                            ?: "Demo emergency alert recorded for hospital/staff review. This is not real emergency dispatch.",
+                        errorMessage = null
+                    )
+                }
+                withContext(Dispatchers.IO) {
+                    checkAlertNotification()
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        alertSent = true,
+                        infoMessage = null,
+                        errorMessage = "Unable to create the demo alert right now. If this is serious, call local emergency services."
+                    )
+                }
+            }
         }
     }
 
@@ -894,7 +913,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private fun EmergencyAlertNotification.toNotificationText(): String {
         val hospital = hospitalName?.takeIf { it.isNotBlank() } ?: "hospital staff"
         val statusText = status?.takeIf { it.isNotBlank() } ?: "alert"
-        return "$statusText emergency alert sent to $hospital."
+        val lifecycle = lifecycleStatus?.takeIf { it.isNotBlank() } ?: "CREATED"
+        return "$statusText demo alert for $hospital. Lifecycle: $lifecycle. Not real emergency dispatch."
     }
 
     private fun HealthSectionSyncPayload.toHealthSyncPayload(): HealthSyncPayload {

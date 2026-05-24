@@ -1,6 +1,6 @@
 # SmartHealth Test Report
 
-Test date: 2026-05-23
+Test date: 2026-05-24
 
 ## Environment
 
@@ -28,9 +28,12 @@ Test date: 2026-05-23
 | Integration reports | Alert report loads against test database | Pass |
 | Prediction | Normal, high BP, urgent BP, fever plus pulse, missing data, repeated abnormal sections | Pass |
 | Prediction safety | API identifies `RULE_BASED_SCREENING_V1` and includes non-diagnostic/non-ML disclaimer | Pass |
+| Production hardening helpers | Role matrix, alert lifecycle transitions, Samsung capability caveats, audit events, and patient sync consent checks | Pass in latest local harness run |
 | Mobile endpoint auth | `scripts/check_mobile_session_auth.sh` forbidden old `?email=` patterns | Pass |
 | Secret hygiene | `scripts/check_secret_patterns.sh` high-confidence secret scan | Pass |
 | Diff hygiene | `git diff --check` | Pass |
+| Deployment smoke script syntax | `bash -n scripts/smoke_test_deployment.sh` | Pass |
+| Web JS syntax | `node --check AI HEALTH AGENT/web/script_2.js` | Pass |
 | Android | `./gradlew app:testDebugUnitTest`, `./gradlew app:build app:lint --warning-mode all` | Pass in previous local run; latest rerun blocked by tool approval/usage gate |
 
 ## Manual/Runtime Checks
@@ -40,6 +43,7 @@ Test date: 2026-05-23
 | Web deployment | WAR deployed to local GlassFish foreground run | Pass |
 | Web smoke | Landing page, patient sign-in, and patient dashboard returned HTTP 200 during foreground run | Pass |
 | Android device | Install/run on real phone with Galaxy Watch | Not run in this environment |
+| ADB availability | `adb devices -l` | Not run: `adb` was not available on this shell PATH |
 | Docker | Build/run local Docker image | Not run: Docker daemon was not running |
 | Live deployment | Render/Supabase HTTPS smoke test | Not run: requires live deployment access and configured environment |
 | Live HTTPS | `https://ai-health-helper.onrender.com/` returned HTTP 200 | Pass |
@@ -56,3 +60,4 @@ Test date: 2026-05-23
 - Capture final screenshots for landing page, patient dashboard, staff dashboard, hospital portal, Android sync, emergency alert, and AI chat.
 - Run the real Galaxy Watch/phone smoke test with `adb/logcat` once the phone appears in `adb devices`. Temperature may remain unavailable because the test watch/source does not expose a temperature option outside supported sleep-temperature data.
 - Apply `database/demo_hospital_seed_postgresql.sql` to live Supabase when the SQL write gate is available.
+- Run `scripts/smoke_test_deployment.sh` against the final Render URL after production environment variables and hardening migrations are applied.

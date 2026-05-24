@@ -65,6 +65,10 @@ public class PasswordUtils {
         }
     }
 
+    public static boolean isPbkdf2Hash(String storedHash) {
+        return storedHash != null && storedHash.trim().startsWith(HASH_PREFIX + "$");
+    }
+
     private static byte[] pbkdf2(String password, byte[] salt, int iterations, int keyBits) {
         try {
             PBEKeySpec spec = new PBEKeySpec(password.toCharArray(), salt, iterations, keyBits);

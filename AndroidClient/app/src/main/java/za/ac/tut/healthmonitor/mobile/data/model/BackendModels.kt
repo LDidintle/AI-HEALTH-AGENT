@@ -66,7 +66,24 @@ data class EmergencyAlertNotification(
     val hospitalName: String? = null,
     val hospitalServiceArea: String? = null,
     val assignmentStatus: String? = null,
+    val lifecycleStatus: String? = null,
     val message: String? = null
+)
+
+data class DeviceCapabilitiesResponse(
+    val success: Boolean,
+    val source: String? = null,
+    val capabilities: DeviceCapabilities? = null,
+    val message: String? = null
+)
+
+data class DeviceCapabilities(
+    val heartRateSupported: Boolean = false,
+    val bloodPressureSupported: Boolean = false,
+    val sleepTemperatureSupported: Boolean = false,
+    val sleepTemperatureTrendOnly: Boolean = false,
+    val activitySupported: Boolean = false,
+    val caveat: String? = null
 )
 
 data class BackendUser(

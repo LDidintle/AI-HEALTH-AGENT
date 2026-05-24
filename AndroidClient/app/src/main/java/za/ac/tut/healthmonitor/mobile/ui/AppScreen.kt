@@ -577,6 +577,11 @@ private fun WatchContextCard(
                 color = Muted,
                 style = MaterialTheme.typography.bodySmall
             )
+            Text(
+                "By keeping sync enabled, you agree that SmartHealth stores available watch vitals for this demo and uses them for non-diagnostic screening suggestions.",
+                color = Muted,
+                style = MaterialTheme.typography.bodySmall
+            )
             lastSectionSyncAt?.let {
                 StatusLine("Last automatic sync", it)
             }
@@ -802,7 +807,13 @@ private fun TemperatureValue.detailText(): String? {
 }
 
 private fun BloodPressureValue.detailText(): String? {
-    return readingDetail(source, recordedAt)
+    val detail = readingDetail(source, recordedAt)
+    val caveat = if (source.equals("SAMSUNG_HEALTH_DATA", ignoreCase = true)) {
+        "calibration/source dependent"
+    } else {
+        null
+    }
+    return listOfNotNull(detail, caveat).joinToString(" · ").takeIf { it.isNotBlank() }
 }
 
 private fun readingDetail(source: String?, recordedAt: String?): String? {
@@ -933,9 +944,9 @@ private fun EmergencyNotificationCard(uiState: AppUiState) {
 
     Card(colors = CardDefaults.cardColors(containerColor = Danger), shape = RoundedCornerShape(18.dp)) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Emergency Alert Notification", color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
+            Text("SmartHealth Demo Alert", color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
             Text(
-                text = alert?.message ?: "Emergency alert shown. If this is serious, call emergency services now.",
+                text = alert?.message ?: "Demo emergency alert recorded for hospital/staff review. This is not real emergency dispatch.",
                 color = Color.White,
                 style = MaterialTheme.typography.bodyLarge
             )

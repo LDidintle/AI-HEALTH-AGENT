@@ -33,7 +33,7 @@ The patient address contains `Pretoria`, so abnormal readings are assigned to th
 3. Sign in as the demo hospital.
 4. Show the patient-alert portal. The seeded critical alert should already be visible.
 5. Open the Android app and sign in as the demo patient.
-6. Tap `Trigger Emergency Demo Alert`.
+6. Tap `EMERGENCY HELP`, read the confirmation copy, then confirm the SmartHealth demo alert.
 7. Point out the phone emergency notification card:
    - alert status
    - assigned hospital
@@ -57,6 +57,7 @@ Expected result after the emergency demo:
 - `hasAlert` is `true`
 - `hospitalName` is `Arcadia Ridge Medical Centre`
 - `status` is `CRITICAL`
+- `lifecycleStatus` starts as `CREATED`
 
 ## Why This Satisfies The Feature
 
@@ -66,3 +67,5 @@ Expected result after the emergency demo:
 - The alert is assigned to a hospital by matching patient address to hospital service area.
 - The phone checks `/api/mobile/alerts` and shows the latest alert notification.
 - The hospital portal and emergency report show the same database-backed alert.
+- Alert lifecycle history can record staff/hospital acknowledgement and resolution after the production hardening migration is applied.
+- This is a SmartHealth demo alert only. It is not connected to real ambulance dispatch, EMS, 112, 10177, or a hospital call centre.

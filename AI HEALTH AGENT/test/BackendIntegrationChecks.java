@@ -16,6 +16,9 @@ import za.ac.tut.util.ReportService;
 import za.ac.tut.util.PatientSummaryService;
 import za.ac.tut.util.VitalAlertEvaluator;
 import za.ac.tut.util.HealthRiskPredictionService;
+import za.ac.tut.util.AuditEventService;
+import za.ac.tut.util.AlertLifecycleService;
+import za.ac.tut.util.PatientConsentService;
 
 public class BackendIntegrationChecks {
 
@@ -29,6 +32,7 @@ public class BackendIntegrationChecks {
             verifiesSamsungSleepTemperaturePrediction(conn);
             verifiesSamsungSleepTemperatureStaffSummary(conn);
             verifiesEmergencyAlertPersistence(conn);
+            verifiesAuditConsentAndAlertLifecycle(conn);
             verifiesReports(conn);
         }
         System.out.println("Backend integration checks passed.");
@@ -79,7 +83,16 @@ public class BackendIntegrationChecks {
                     + "device_type VARCHAR(40), device_manufacturer VARCHAR(80), device_model VARCHAR(80), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
             statement.execute("CREATE TABLE emergency_alerts ("
                     + "alert_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, user_id INTEGER NOT NULL, bpm INTEGER, "
-                    + "alert_status VARCHAR(30), countdown_seconds INTEGER, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+                    + "alert_status VARCHAR(30), lifecycle_status VARCHAR(30), countdown_seconds INTEGER, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+            statement.execute("CREATE TABLE alert_events ("
+                    + "event_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, alert_id INTEGER NOT NULL, "
+                    + "from_status VARCHAR(30), to_status VARCHAR(30), actor_role VARCHAR(30), actor_id VARCHAR(80), note CLOB, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+            statement.execute("CREATE TABLE audit_events ("
+                    + "audit_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, actor_user_id INTEGER, actor_role VARCHAR(30), "
+                    + "action VARCHAR(80), target_type VARCHAR(80), target_id VARCHAR(80), outcome VARCHAR(30), detail CLOB, ip_address VARCHAR(80), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+            statement.execute("CREATE TABLE patient_consents ("
+                    + "consent_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, user_id INTEGER NOT NULL, consent_type VARCHAR(60), "
+                    + "consent_version VARCHAR(30), accepted BOOLEAN DEFAULT TRUE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
             statement.execute("CREATE TABLE hospitals ("
                     + "hospital_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, name VARCHAR(100), email VARCHAR(160), "
                     + "phone VARCHAR(40), service_area VARCHAR(100), address CLOB, active BOOLEAN DEFAULT TRUE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
@@ -173,6 +186,27 @@ public class BackendIntegrationChecks {
         VitalAlertEvaluator.evaluateAndStore(conn, userId, 132, null, null, null);
         assertEquals(1, count(conn, "SELECT COUNT(*) FROM emergency_alerts WHERE user_id = " + userId + " AND alert_status = 'CRITICAL'"), "critical alert should persist");
         assertEquals(1, count(conn, "SELECT COUNT(*) FROM hospital_alert_assignments"), "alert should be assigned to matching hospital");
+    }
+
+    private static void verifiesAuditConsentAndAlertLifecycle(Connection conn) throws Exception {
+        int userId = PatientAccountProcedureService.createPatientAccount(
+                conn, "Ms", "Audit", "Patient", Date.valueOf("2000-08-09"),
+                "audit@example.com", PasswordUtils.hashPassword("Audit22!"));
+
+        AuditEventService.record(conn, userId, "PATIENT", "MOBILE_LOGIN", "USER", String.valueOf(userId), "SUCCESS", "session started", "127.0.0.1");
+        assertEquals(1, count(conn, "SELECT COUNT(*) FROM audit_events WHERE action = 'MOBILE_LOGIN' AND actor_user_id = " + userId), "audit event should persist");
+
+        PatientConsentService.recordHealthSyncConsent(conn, userId, "1.0");
+        assertTrue(PatientConsentService.hasAcceptedHealthSyncConsent(conn, userId), "health sync consent should be persisted");
+
+        try (Statement statement = conn.createStatement()) {
+            statement.executeUpdate("INSERT INTO emergency_alerts (user_id, bpm, alert_status, lifecycle_status, countdown_seconds) VALUES ("
+                    + userId + ", 132, 'CRITICAL', 'CREATED', 30)");
+        }
+        int alertId = count(conn, "SELECT MAX(alert_id) FROM emergency_alerts WHERE user_id = " + userId);
+        AlertLifecycleService.transition(conn, alertId, "ACKNOWLEDGED", "HOSPITAL", "1", "staff opened demo alert");
+        assertEquals(1, count(conn, "SELECT COUNT(*) FROM alert_events WHERE alert_id = " + alertId + " AND to_status = 'ACKNOWLEDGED'"), "alert lifecycle event should persist");
+        assertEquals(1, count(conn, "SELECT COUNT(*) FROM emergency_alerts WHERE alert_id = " + alertId + " AND lifecycle_status = 'ACKNOWLEDGED'"), "alert status should update");
     }
 
     private static void verifiesSamsungSleepTemperatureStaffSummary(Connection conn) throws Exception {

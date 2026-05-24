@@ -11,6 +11,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import za.ac.tut.model.PasswordUtils;
 import za.ac.tut.util.AuthUtil;
+import za.ac.tut.util.AuditEventService;
 import za.ac.tut.util.Database;
 
 public class UserConfirmServlet extends HttpServlet {
@@ -46,9 +47,20 @@ public class UserConfirmServlet extends HttpServlet {
                     String dbPasswordHash = rs.getString("password_hash");
 
                     if (PasswordUtils.verifyPassword(password, dbPasswordHash)) {
-                        // Password correct
+                        if (!PasswordUtils.isPbkdf2Hash(dbPasswordHash)) {
+                            try (PreparedStatement update = conn.prepareStatement("UPDATE user_auth SET password_hash = ? WHERE user_id = ?")) {
+                                update.setString(1, PasswordUtils.hashPassword(password));
+                                update.setInt(2, rs.getInt("id"));
+                                update.executeUpdate();
+                            }
+                        }
+                        HttpSession oldSession = request.getSession(false);
+                        if (oldSession != null) {
+                            oldSession.invalidate();
+                        }
                         HttpSession session = request.getSession();
                         AuthUtil.markPatient(session, rs.getString("email"), rs.getInt("id"));
+                        AuditEventService.record(conn, rs.getInt("id"), "PATIENT", "WEB_LOGIN", "USER", String.valueOf(rs.getInt("id")), "SUCCESS", "web session started", request.getRemoteAddr());
 
                         if (rs.getBoolean("is_verified") && CompleteProfileServlet.isProfileIncomplete(rs)) {
                             response.sendRedirect("CompleteProfileServlet.do");
@@ -57,7 +69,7 @@ public class UserConfirmServlet extends HttpServlet {
 
                         response.sendRedirect("healthApp.html");
                     } else {
-                        // Password wrong
+                        AuditEventService.record(conn, null, "PATIENT", "WEB_LOGIN", "USER", email, "FAILURE", "invalid password", request.getRemoteAddr());
                         request.setAttribute("passwordError", "Incorrect password!");
                         request.getRequestDispatcher("error_user.jsp").forward(request, response);
                     }

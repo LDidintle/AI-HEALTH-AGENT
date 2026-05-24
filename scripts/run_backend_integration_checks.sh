@@ -19,8 +19,11 @@ javac -source 8 -target 8 \
   "$APP_DIR/src/java/za/ac/tut/model/ReportCriteria.java" \
   "$APP_DIR/src/java/za/ac/tut/model/ReportResult.java" \
   "$APP_DIR/src/java/za/ac/tut/util/DatabaseConfig.java" \
+  "$APP_DIR/src/java/za/ac/tut/util/AlertLifecycleService.java" \
+  "$APP_DIR/src/java/za/ac/tut/util/AuditEventService.java" \
   "$APP_DIR/src/java/za/ac/tut/util/HealthRiskPredictionService.java" \
   "$APP_DIR/src/java/za/ac/tut/util/JsonUtil.java" \
+  "$APP_DIR/src/java/za/ac/tut/util/PatientConsentService.java" \
   "$APP_DIR/src/java/za/ac/tut/util/PasswordResetService.java" \
   "$APP_DIR/src/java/za/ac/tut/util/PatientContextSettingsService.java" \
   "$APP_DIR/src/java/za/ac/tut/util/PatientSummaryService.java" \
