@@ -25,7 +25,7 @@ public class CsrfFilter implements Filter {
         HttpServletRequest httpRequest = (HttpServletRequest) request;
         HttpServletResponse httpResponse = (HttpServletResponse) response;
 
-        if (isSafeMethod(httpRequest) || isApiRequest(httpRequest)
+        if (isSafeMethod(httpRequest) || isApiRequest(httpRequest) || isPublicLoginPost(httpRequest)
                 || CsrfUtil.hasValidToken(httpRequest) || isSameOrigin(httpRequest)) {
             chain.doFilter(request, response);
             return;
@@ -41,6 +41,16 @@ public class CsrfFilter implements Filter {
 
     private boolean isApiRequest(HttpServletRequest request) {
         return request.getRequestURI() != null && request.getRequestURI().contains("/api/mobile/");
+    }
+
+    private boolean isPublicLoginPost(HttpServletRequest request) {
+        if (!"POST".equalsIgnoreCase(request.getMethod()) || request.getRequestURI() == null) {
+            return false;
+        }
+        String path = request.getRequestURI();
+        return path.endsWith("/UserConfirmServlet.do")
+                || path.endsWith("/AdminServlet.do")
+                || path.endsWith("/HospitalLoginServlet.do");
     }
 
     private boolean isSameOrigin(HttpServletRequest request) {
