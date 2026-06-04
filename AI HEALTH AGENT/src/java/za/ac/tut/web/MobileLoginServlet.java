@@ -15,6 +15,7 @@ import za.ac.tut.util.AuthUtil;
 import za.ac.tut.util.AuditEventService;
 import za.ac.tut.util.Database;
 import za.ac.tut.util.JsonUtil;
+import za.ac.tut.util.MobileSessionPolicy;
 import za.ac.tut.util.RateLimitService;
 
 public class MobileLoginServlet extends HttpServlet {
@@ -75,6 +76,7 @@ public class MobileLoginServlet extends HttpServlet {
                         }
                         HttpSession session = request.getSession(true);
                         AuthUtil.markPatient(session, rs.getString("email"), rs.getInt("id"));
+                        MobileSessionPolicy.apply(session);
                         AuditEventService.record(conn, rs.getInt("id"), "PATIENT", "MOBILE_LOGIN", "USER", String.valueOf(rs.getInt("id")), "SUCCESS", "mobile session started", request.getRemoteAddr());
 
                         String fullName = rs.getString("first_name") + " " + rs.getString("surname");

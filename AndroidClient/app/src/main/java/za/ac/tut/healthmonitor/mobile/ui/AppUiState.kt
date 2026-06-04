@@ -43,6 +43,7 @@ data class AppUiState(
     val signupConfirmPassword: String = "",
     val authScreen: AuthScreen = AuthScreen.Login,
     val isLoading: Boolean = false,
+    val isRestoringSession: Boolean = true,
     val isLoggedIn: Boolean = false,
     val userProfile: BackendProfile? = null,
     val latestReadings: LatestReadingsResponse? = null,

@@ -12,6 +12,7 @@ import za.ac.tut.util.WatchTemperaturePolicy;
 import za.ac.tut.util.AlertLifecycleService;
 import za.ac.tut.util.DeviceCapabilityService;
 import za.ac.tut.util.RoleAccessPolicy;
+import za.ac.tut.util.MobileSessionPolicy;
 import java.math.BigDecimal;
 import java.lang.reflect.Proxy;
 import java.util.HashMap;
@@ -36,6 +37,7 @@ public class BackendRiskChecks {
         increasesScoreForRepeatedAbnormalSections();
         marksPredictionAsRuleBasedScreening();
         marksAuthRolesAndSessionTimeouts();
+        marksMobileSessionAsLongLivedDemoSession();
         validatesPatientPhoneIdAndBirthDate();
         enforcesPasswordPolicy();
         rateLimitsRepeatedSensitiveActions();
@@ -173,6 +175,13 @@ public class BackendRiskChecks {
         AuthUtil.markAdmin(adminSession);
         assertTrue(AuthUtil.isAdmin(adminSession), "admin session should be recognized");
         assertEquals(AuthUtil.ROLE_ADMIN, AuthUtil.currentRole(adminSession), "admin role should be current");
+    }
+
+    private static void marksMobileSessionAsLongLivedDemoSession() {
+        HttpSession session = session();
+        MobileSessionPolicy.apply(session);
+        assertEquals(30 * 24 * 60 * 60, session.getMaxInactiveInterval(),
+                "mobile app session should survive normal foreground/background demo use");
     }
 
     private static void validatesPatientPhoneIdAndBirthDate() {

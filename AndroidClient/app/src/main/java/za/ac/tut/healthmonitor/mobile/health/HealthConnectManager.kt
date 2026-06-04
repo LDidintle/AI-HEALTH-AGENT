@@ -41,11 +41,11 @@ class HealthConnectManager(
         return grantedPermissions.any { it in requiredPermissions }
     }
 
-    suspend fun readLatestSection(windowMinutes: Long = DEFAULT_SECTION_WINDOW_MINUTES): HealthSection {
+    suspend fun readLatestSection(): HealthSection {
         val client = getClientOrThrow()
         val grantedPermissions = client.permissionController.getGrantedPermissions()
         val end = Instant.now()
-        val start = end.minus(windowMinutes, ChronoUnit.MINUTES)
+        val start = currentSectionStart(end)
 
         val heartRateSamples = readHeartRateSamples(client, grantedPermissions, start, end)
         val temperatureRecords = readTemperatureRecords(client, grantedPermissions, start, end)
@@ -235,39 +235,14 @@ class HealthConnectManager(
         temperatureRecords: List<BodyTemperatureRecord>,
         bloodPressureRecords: List<BloodPressureRecord>
     ): List<HealthSectionTrendPoint> {
-        val heartRatePoints = heartRateSamples
-            .sortedBy { it.measuredAt }
-            .takeLast(MAX_TREND_POINTS)
-            .map { HealthSectionTrendPoint(heartRate = it.value) }
-
-        if (heartRatePoints.isNotEmpty()) {
-            val latestTemperature = temperatureRecords.maxByOrNull { it.time }?.temperature?.inCelsius
-            val latestBloodPressure = bloodPressureRecords.maxByOrNull { it.time }
-            return heartRatePoints.mapIndexed { index, point ->
-                if (index == heartRatePoints.lastIndex) {
-                    point.copy(
-                        temperature = latestTemperature,
-                        systolic = latestBloodPressure?.systolic?.inMillimetersOfMercury?.toInt()
-                    )
-                } else {
-                    point
-                }
-            }
-        }
-
-        val temperaturePoints = temperatureRecords
-            .sortedBy { it.time }
-            .takeLast(MAX_TREND_POINTS)
-            .map { HealthSectionTrendPoint(temperature = it.temperature.inCelsius) }
-
-        if (temperaturePoints.isNotEmpty()) {
-            return temperaturePoints
-        }
-
-        return bloodPressureRecords
-            .sortedBy { it.time }
-            .takeLast(MAX_TREND_POINTS)
-            .map { HealthSectionTrendPoint(systolic = it.systolic.inMillimetersOfMercury.toInt()) }
+        return buildAlignedTrendPoints(
+            heartRates = heartRateSamples.sortedBy { it.measuredAt }.map { it.value },
+            systolics = bloodPressureRecords.sortedBy { it.time }
+                .map { it.systolic.inMillimetersOfMercury.toInt() },
+            temperatures = temperatureRecords.sortedBy { it.time }
+                .map { it.temperature.inCelsius },
+            maxPoints = MAX_TREND_POINTS
+        )
     }
 
     private fun getClientOrNull(): HealthConnectClient? {
@@ -337,7 +312,6 @@ class HealthConnectManager(
     }
 
     private companion object {
-        const val DEFAULT_SECTION_WINDOW_MINUTES = 30L * 24L * 60L
         const val MAX_TREND_POINTS = 12
     }
 }

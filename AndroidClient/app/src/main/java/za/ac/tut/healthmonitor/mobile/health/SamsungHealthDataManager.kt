@@ -65,11 +65,9 @@ class SamsungHealthDataManager(
             .toList()
     }
 
-    suspend fun readLatestSection(
-        windowMinutes: Long = DEFAULT_SECTION_WINDOW_MINUTES
-    ): HealthSection {
+    suspend fun readLatestSection(): HealthSection {
         val end = Instant.now()
-        val start = end.minus(windowMinutes, ChronoUnit.MINUTES)
+        val start = currentSectionStart(end)
         val grantedPermissions = store.getGrantedPermissions(requiredPermissions)
         val heartRateSamples = readIfPermitted(grantedPermissions, heartRatePermission) {
             readSamsungDataPoints(DataTypes.HEART_RATE.readDataRequestBuilder, start, end)
@@ -180,36 +178,12 @@ class SamsungHealthDataManager(
         bloodPressureSamples: List<SamsungBloodPressureSample>,
         temperatureSamples: List<SamsungTemperatureSample>
     ): List<HealthSectionTrendPoint> {
-        val heartRatePoints = heartRateSamples
-            .takeLast(MAX_TREND_POINTS)
-            .map { HealthSectionTrendPoint(heartRate = it.value) }
-
-        if (heartRatePoints.isNotEmpty()) {
-            val latestBloodPressure = bloodPressureSamples.lastOrNull()
-            val latestTemperature = temperatureSamples.lastOrNull()
-            return heartRatePoints.mapIndexed { index, point ->
-                if (index == heartRatePoints.lastIndex) {
-                    point.copy(
-                        systolic = latestBloodPressure?.systolic,
-                        temperature = latestTemperature?.value
-                    )
-                } else {
-                    point
-                }
-            }
-        }
-
-        val bloodPressurePoints = bloodPressureSamples
-            .takeLast(MAX_TREND_POINTS)
-            .map { HealthSectionTrendPoint(systolic = it.systolic) }
-
-        if (bloodPressurePoints.isNotEmpty()) {
-            return bloodPressurePoints
-        }
-
-        return temperatureSamples
-                .takeLast(MAX_TREND_POINTS)
-            .map { HealthSectionTrendPoint(temperature = it.value) }
+        return buildAlignedTrendPoints(
+            heartRates = heartRateSamples.sortedBy { it.measuredAt }.map { it.value },
+            systolics = bloodPressureSamples.sortedBy { it.measuredAt }.map { it.systolic },
+            temperatures = temperatureSamples.sortedBy { it.measuredAt }.map { it.value },
+            maxPoints = MAX_TREND_POINTS
+        )
     }
 
     fun resolveIfPossible(error: Exception, activity: Activity): Boolean {
@@ -323,7 +297,6 @@ class SamsungHealthDataManager(
     )
 
     private companion object {
-        const val DEFAULT_SECTION_WINDOW_MINUTES = 30L * 24L * 60L
         const val MAX_RECORDS = 200
         const val MAX_TREND_POINTS = 12
         const val SAMSUNG_HEALTH_SOURCE = "SAMSUNG_HEALTH_DATA"

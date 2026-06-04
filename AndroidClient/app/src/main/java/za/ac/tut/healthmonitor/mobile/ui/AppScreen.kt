@@ -123,7 +123,12 @@ fun AppScreen(
                 .fillMaxSize()
                 .background(Brush.verticalGradient(listOf(DeepNavy, Color(0xFF052415), AccentBlue)))
         ) {
-            if (uiState.isLoggedIn) {
+            if (uiState.isRestoringSession) {
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center),
+                    color = Color.White
+                )
+            } else if (uiState.isLoggedIn) {
                 DashboardContent(
                     uiState = uiState,
                     onLogout = onLogout,

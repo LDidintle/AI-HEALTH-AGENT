@@ -30,6 +30,8 @@ import za.ac.tut.healthmonitor.mobile.health.HealthSection
 import za.ac.tut.healthmonitor.mobile.health.HealthSectionTrendPoint
 import za.ac.tut.healthmonitor.mobile.health.HealthConnectManager
 import za.ac.tut.healthmonitor.mobile.health.SamsungHealthDataManager
+import za.ac.tut.healthmonitor.mobile.health.currentSectionStart
+import za.ac.tut.healthmonitor.mobile.health.isCurrentDaySection
 import za.ac.tut.healthmonitor.mobile.insights.ActivityState
 import za.ac.tut.healthmonitor.mobile.insights.UserContextSettingsStorage
 
@@ -141,6 +143,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 _uiState.update {
                     it.copy(
                         isLoggedIn = true,
+                        isRestoringSession = false,
                         userProfile = profile,
                         isProfileOpen = false,
                         errorMessage = null,
@@ -161,6 +164,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                         )
                     }
                 }
+                _uiState.update { it.copy(isRestoringSession = false) }
             }
         }
     }
@@ -232,6 +236,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             _uiState.update {
                 it.copy(
                     isLoggedIn = true,
+                    isRestoringSession = false,
                     userProfile = profile,
                     latestReadings = null,
                     heartRateRange = null,
@@ -257,7 +262,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     if (!manager.hasAnyRequiredPermission()) {
                         throw SecurityException("Samsung Health permissions are required.")
                     }
-                    manager.readLatestSection(DEFAULT_SECTION_WINDOW_MINUTES)
+                    manager.readLatestSection()
                 }
 
                 if (section.isEmpty()) {
@@ -279,6 +284,22 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                             lastSyncSummary = null,
                             errorMessage = null,
                             infoMessage = reason
+                        )
+                    }
+                    return@launch
+                }
+
+                if (!section.payload.isCurrentDaySection()) {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            latestReadings = null,
+                            heartRateRange = null,
+                            trendPoints = emptyList(),
+                            lastSectionSyncAt = null,
+                            lastSyncSummary = null,
+                            errorMessage = null,
+                            infoMessage = "Samsung Health did not provide a section for today, so the old heart-rate range was not reused."
                         )
                     }
                     return@launch
@@ -363,6 +384,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             repository.clearSession()
             _uiState.value = AppUiState(
                 email = _uiState.value.email,
+                isRestoringSession = false,
                 sleepStart = contextSettingsStorage.sleepStart(),
                 sleepEnd = contextSettingsStorage.sleepEnd(),
                 infoMessage = "Signed out."
@@ -659,7 +681,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     if (!manager.hasAnyPermission()) {
                         throw SecurityException("Health Connect permissions are required to sync a section.")
                     }
-                    manager.readLatestSection(DEFAULT_SECTION_WINDOW_MINUTES)
+                    manager.readLatestSection()
                 }
 
                 if (section.isEmpty()) {
@@ -698,6 +720,22 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     return@launch
                 }
 
+                if (!section.payload.isCurrentDaySection()) {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            latestReadings = null,
+                            heartRateRange = null,
+                            trendPoints = emptyList(),
+                            lastSectionSyncAt = null,
+                            lastSyncSummary = null,
+                            errorMessage = null,
+                            infoMessage = "Health Connect did not provide a section for today, so the old heart-rate range was not reused."
+                        )
+                    }
+                    return@launch
+                }
+
                 val readings = section.payload.toLatestReadings()
                 persistSection(section.payload)
                 _uiState.update {
@@ -730,7 +768,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun buildDemoSection(): HealthSection {
         val end = Instant.now()
-        val start = end.minusSeconds(60 * DEFAULT_SECTION_WINDOW_MINUTES)
+        val start = currentSectionStart(end)
         val trendPoints = (0 until MAX_TREND_POINTS).map { index ->
             val wave = sin((demoTick + index) / 2.0)
             val smallWave = sin((demoTick + index) / 3.0)
@@ -774,7 +812,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun buildEmergencyDemoSection(): HealthSection {
         val end = Instant.now()
-        val start = end.minusSeconds(60 * DEFAULT_SECTION_WINDOW_MINUTES)
+        val start = currentSectionStart(end)
         val trendPoints = (0 until MAX_TREND_POINTS).map { index ->
             HealthSectionTrendPoint(
                 heartRate = (118 + index * 2).coerceAtMost(142),
@@ -830,6 +868,19 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                         fallbackError = e
                     }
                 }
+                if (SyncFailureMessage.isAuthFailure(sectionError) || SyncFailureMessage.isAuthFailure(fallbackError)) {
+                    repository.clearSession()
+                    _uiState.update {
+                        AppUiState(
+                            email = it.email,
+                            isRestoringSession = false,
+                            sleepStart = contextSettingsStorage.sleepStart(),
+                            sleepEnd = contextSettingsStorage.sleepEnd(),
+                            errorMessage = SyncFailureMessage.expiredSessionMessage()
+                        )
+                    }
+                    return@launch
+                }
                 if (fallbackError != null) {
                     _uiState.update {
                         it.copy(errorMessage = SyncFailureMessage.from(sectionError, fallbackError, null))
@@ -846,6 +897,19 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 } catch (e: Exception) {
                     refreshError = e
+                }
+                if (SyncFailureMessage.isAuthFailure(refreshError)) {
+                    repository.clearSession()
+                    _uiState.update {
+                        AppUiState(
+                            email = it.email,
+                            isRestoringSession = false,
+                            sleepStart = contextSettingsStorage.sleepStart(),
+                            sleepEnd = contextSettingsStorage.sleepEnd(),
+                            errorMessage = SyncFailureMessage.expiredSessionMessage()
+                        )
+                    }
+                    return@launch
                 }
                 if (refreshError != null || sectionError != null) {
                     _uiState.update {
@@ -1101,7 +1165,6 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private companion object {
-        const val DEFAULT_SECTION_WINDOW_MINUTES = 30L * 24L * 60L
         const val MAX_TREND_POINTS = 12
         val TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
         val TIME_INPUT_REGEX = Regex("[0-9]{2}:[0-9]{2}")

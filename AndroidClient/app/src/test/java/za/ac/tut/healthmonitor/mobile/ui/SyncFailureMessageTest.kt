@@ -2,6 +2,7 @@ package za.ac.tut.healthmonitor.mobile.ui
 
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import za.ac.tut.healthmonitor.mobile.data.api.BackendHttpException
 
 class SyncFailureMessageTest {
 
@@ -27,5 +28,17 @@ class SyncFailureMessageTest {
 
         assertTrue(message.contains("saved"))
         assertTrue(message.contains("latest refresh failed"))
+    }
+
+    @Test
+    fun explainsExpiredSessionWithoutPretendingLocalSectionWasSaved() {
+        val message = SyncFailureMessage.from(
+            sectionError = BackendHttpException(401, "Sign in before synchronizing health sections."),
+            fallbackError = BackendHttpException(401, "Sign in before synchronizing health readings."),
+            refreshError = null
+        )
+
+        assertTrue(message.contains("session expired", ignoreCase = true))
+        assertTrue(message.contains("sign in", ignoreCase = true))
     }
 }

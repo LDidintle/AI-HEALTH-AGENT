@@ -11,8 +11,10 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
+import za.ac.tut.util.AuthUtil;
 import za.ac.tut.util.Database;
 import za.ac.tut.util.JsonUtil;
+import za.ac.tut.util.MobileSessionPolicy;
 import za.ac.tut.util.PatientValidation;
 
 public class MobileProfileServlet extends HttpServlet {
@@ -28,6 +30,7 @@ public class MobileProfileServlet extends HttpServlet {
             writeJson(response, "{\"success\":false,\"message\":\"No active user session.\"}");
             return;
         }
+        MobileSessionPolicy.apply(session);
 
         String email = String.valueOf(session.getAttribute("user"));
 
@@ -48,6 +51,8 @@ public class MobileProfileServlet extends HttpServlet {
                             writeJson(response, "{\"success\":false,\"message\":\"User was not found.\"}");
                             return;
                         }
+                        AuthUtil.markPatient(session, email, rs.getInt("id"));
+                        MobileSessionPolicy.apply(session);
 
                         String json = "{"
                                 + "\"success\":true,"
