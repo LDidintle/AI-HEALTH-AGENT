@@ -11,6 +11,7 @@ import za.ac.tut.util.VitalAlertEvaluator;
 import za.ac.tut.util.WatchTemperaturePolicy;
 import za.ac.tut.util.AlertLifecycleService;
 import za.ac.tut.util.DeviceCapabilityService;
+import za.ac.tut.util.HospitalAlertStatusService;
 import za.ac.tut.util.RoleAccessPolicy;
 import za.ac.tut.util.MobileSessionPolicy;
 import java.math.BigDecimal;
@@ -45,6 +46,7 @@ public class BackendRiskChecks {
         normalizesReportTypesByRole();
         enforcesRoleAccessMatrix();
         validatesAlertLifecycleTransitions();
+        validatesHospitalAlertAssignmentStatuses();
         explainsSamsungDeviceCapabilities();
         System.out.println("Backend risk checks passed.");
     }
@@ -244,6 +246,7 @@ public class BackendRiskChecks {
         assertFalse(RoleAccessPolicy.isAllowed(AuthUtil.ROLE_PATIENT, "/ReportsServlet.do", "GET"), "patient must not access staff reports");
         assertTrue(RoleAccessPolicy.isAllowed(AuthUtil.ROLE_ADMIN, "/ReportsServlet.do", "GET"), "admin should access reports");
         assertTrue(RoleAccessPolicy.isAllowed(AuthUtil.ROLE_HOSPITAL, "/HospitalPatientsServlet.do", "GET"), "hospital should access hospital patients");
+        assertTrue(RoleAccessPolicy.isAllowed(AuthUtil.ROLE_HOSPITAL, "/HospitalAlertStatusServlet.do", "POST"), "hospital should update assigned alert status");
         assertFalse(RoleAccessPolicy.isAllowed(AuthUtil.ROLE_HOSPITAL, "/ViewUsersServlet.do", "GET"), "hospital must not access staff CRUD");
         assertTrue(RoleAccessPolicy.isPublic("/health"), "health check should be public");
     }
@@ -254,6 +257,16 @@ public class BackendRiskChecks {
         assertTrue(AlertLifecycleService.canTransition("ACKNOWLEDGED", "RESOLVED"), "acknowledged alert can be resolved");
         assertTrue(AlertLifecycleService.canTransition("CREATED", "CANCELLED"), "created alert can be cancelled");
         assertFalse(AlertLifecycleService.canTransition("RESOLVED", "ACKNOWLEDGED"), "resolved alert must not reopen silently");
+    }
+
+    private static void validatesHospitalAlertAssignmentStatuses() {
+        assertEquals("ASSIGNED", HospitalAlertStatusService.statusForAction("not_solved"), "not solved should map to assigned");
+        assertEquals("ONGOING", HospitalAlertStatusService.statusForAction("ongoing"), "ongoing should be an allowed hospital status");
+        assertEquals("RESOLVED", HospitalAlertStatusService.statusForAction("resolved"), "resolved should be an allowed hospital status");
+        assertEquals("REMOVED", HospitalAlertStatusService.statusForAction("remove"), "remove should hide the assignment from active lists");
+        assertTrue(HospitalAlertStatusService.isVisibleInHospitalPortal(null), "blank existing assignments should remain visible");
+        assertFalse(HospitalAlertStatusService.isVisibleInHospitalPortal("REMOVED"), "removed assignments should be hidden");
+        assertFalse(HospitalAlertStatusService.statusForAction("delete") != null, "unsupported destructive actions must not be accepted");
     }
 
     private static void explainsSamsungDeviceCapabilities() {

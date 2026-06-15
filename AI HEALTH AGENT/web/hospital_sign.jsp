@@ -1,3 +1,4 @@
+<%@page import="za.ac.tut.util.CsrfUtil"%>
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
 <%
     boolean showRegister = request.getAttribute("registerError") != null;
@@ -29,6 +30,8 @@
         <section id="loginPanel" class="portal-panel <%= showRegister ? "hidden" : "" %>">
             <h2>Hospital Login</h2>
             <form action="HospitalLoginServlet.do" method="post">
+                <input type="hidden" name="<%= CsrfUtil.PARAMETER %>" value="<%= CsrfUtil.token(request) %>">
+
                 <label for="username">Hospital Email or Username:</label>
                 <input type="text" id="username" name="username" required>
 
@@ -46,6 +49,8 @@
                 <div class="error"><%= request.getAttribute("registerError") %></div>
             <% } %>
             <form action="HospitalRegisterServlet.do" method="post">
+                <input type="hidden" name="<%= CsrfUtil.PARAMETER %>" value="<%= CsrfUtil.token(request) %>">
+
                 <label for="name">Hospital Name:</label>
                 <input type="text" id="name" name="name" required>
 

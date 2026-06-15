@@ -137,6 +137,10 @@
         <servlet-class>za.ac.tut.web.HospitalPatientsServlet</servlet-class>
     </servlet>
     <servlet>
+        <servlet-name>HospitalAlertStatusServlet</servlet-name>
+        <servlet-class>za.ac.tut.web.HospitalAlertStatusServlet</servlet-class>
+    </servlet>
+    <servlet>
         <servlet-name>HospitalPatientDetailsServlet</servlet-name>
         <servlet-class>za.ac.tut.web.HospitalPatientDetailsServlet</servlet-class>
     </servlet>
@@ -263,6 +267,10 @@
     <servlet-mapping>
         <servlet-name>HospitalPatientsServlet</servlet-name>
         <url-pattern>/HospitalPatientsServlet.do</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>HospitalAlertStatusServlet</servlet-name>
+        <url-pattern>/HospitalAlertStatusServlet.do</url-pattern>
     </servlet-mapping>
     <servlet-mapping>
         <servlet-name>HospitalPatientDetailsServlet</servlet-name>

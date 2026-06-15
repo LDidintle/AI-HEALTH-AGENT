@@ -1,3 +1,4 @@
+<%@page import="za.ac.tut.util.CsrfUtil"%>
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
 <%!
     private String value(Object value) {
@@ -36,6 +37,8 @@
         <% } %>
 
         <form action="CompleteProfileServlet.do" method="post">
+            <input type="hidden" name="<%= CsrfUtil.PARAMETER %>" value="<%= CsrfUtil.token(request) %>">
+
             <label>Account</label>
             <input type="text" value="<%= value(request.getAttribute("first_name")) %> <%= value(request.getAttribute("surname")) %> - <%= value(request.getAttribute("email")) %>" disabled>
 

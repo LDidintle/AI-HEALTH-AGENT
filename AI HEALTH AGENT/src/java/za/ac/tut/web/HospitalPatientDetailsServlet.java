@@ -11,6 +11,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import za.ac.tut.model.User;
 import za.ac.tut.util.Database;
+import za.ac.tut.util.HospitalAlertStatusService;
 import za.ac.tut.util.PatientMapper;
 import za.ac.tut.util.PatientSummaryService;
 
@@ -88,11 +89,13 @@ public class HospitalPatientDetailsServlet extends HttpServlet {
 
         String sql = "SELECT 1 FROM emergency_alerts ea "
                 + "JOIN hospital_alert_assignments haa ON haa.alert_id = ea.alert_id "
-                + "WHERE haa.hospital_id = ? AND ea.user_id = ? LIMIT 1";
+                + "WHERE haa.hospital_id = ? AND ea.user_id = ? "
+                + "AND COALESCE(haa.status, 'ASSIGNED') <> ? LIMIT 1";
 
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, hospitalId);
             ps.setInt(2, userId);
+            ps.setString(3, HospitalAlertStatusService.REMOVED);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next();
             }

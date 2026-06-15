@@ -1,3 +1,4 @@
+<%@page import="za.ac.tut.util.CsrfUtil"%>
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
 <%!
     private String value(Object value) {
@@ -42,6 +43,8 @@
     <% } %>
 
     <form action="PasswordResetRequestServlet.do" method="post">
+        <input type="hidden" name="<%= CsrfUtil.PARAMETER %>" value="<%= CsrfUtil.token(request) %>">
+
         <label for="email">Account Email</label>
         <input type="email" id="email" name="email" value="<%= value(request.getAttribute("email")) %>" required>
         <button type="submit">Send OTP</button>
@@ -49,6 +52,7 @@
 
     <% if (otpRequested) { %>
         <form action="PasswordResetConfirmServlet.do" method="post" onsubmit="return validateResetPassword()">
+            <input type="hidden" name="<%= CsrfUtil.PARAMETER %>" value="<%= CsrfUtil.token(request) %>">
             <input type="hidden" name="email" value="<%= value(request.getAttribute("email")) %>">
 
             <label for="otp">OTP Code</label>

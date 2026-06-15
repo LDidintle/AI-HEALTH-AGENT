@@ -45,6 +45,7 @@ public final class RoleAccessPolicy {
 
     private static final Set<String> HOSPITAL_PATHS = new HashSet<>(Arrays.asList(
             "/HospitalPatientsServlet.do",
+            "/HospitalAlertStatusServlet.do",
             "/HospitalPatientDetailsServlet.do",
             "/ReportsServlet.do",
             "/read_user_result.jsp"

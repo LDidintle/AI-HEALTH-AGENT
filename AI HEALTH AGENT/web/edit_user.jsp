@@ -1,3 +1,4 @@
+<%@page import="za.ac.tut.util.CsrfUtil"%>
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
 <%!
     private String value(Object value) {
@@ -31,6 +32,7 @@
         <p class="lead">Update the saved patient account details.</p>
 
         <form action="UpdateUserServlet.do" method="post">
+            <input type="hidden" name="<%= CsrfUtil.PARAMETER %>" value="<%= CsrfUtil.token(request) %>">
             <input type="hidden" name="id" value="${id}">
 
             <label for="title">Title</label>

@@ -21,6 +21,7 @@ javac -source 8 -target 8 \
   "$APP_DIR/src/java/za/ac/tut/util/AlertLifecycleService.java" \
   "$APP_DIR/src/java/za/ac/tut/util/DeviceCapabilityService.java" \
   "$APP_DIR/src/java/za/ac/tut/util/HealthRiskPredictionService.java" \
+  "$APP_DIR/src/java/za/ac/tut/util/HospitalAlertStatusService.java" \
   "$APP_DIR/src/java/za/ac/tut/util/MobileSessionPolicy.java" \
   "$APP_DIR/src/java/za/ac/tut/util/PasswordPolicy.java" \
   "$APP_DIR/src/java/za/ac/tut/util/PatientValidation.java" \

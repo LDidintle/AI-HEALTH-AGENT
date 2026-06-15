@@ -1,3 +1,4 @@
+<%@page import="za.ac.tut.util.CsrfUtil"%>
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
 <!DOCTYPE html>
 <html lang="en">
@@ -30,6 +31,8 @@
         <% } %>
 
         <form action="ReadUserServlet.do" method="post">
+            <input type="hidden" name="<%= CsrfUtil.PARAMETER %>" value="<%= CsrfUtil.token(request) %>">
+
             <label for="patient_id">Patient System ID</label>
             <input type="number" id="patient_id" name="patient_id" value="<%= searchedId %>" inputmode="numeric">
 

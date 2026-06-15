@@ -1,5 +1,6 @@
 <%@page import="java.util.List"%>
 <%@page import="za.ac.tut.model.User"%>
+<%@page import="za.ac.tut.util.CsrfUtil"%>
 <%
     List<User> users = (List<User>) session.getAttribute("users");
 %>
@@ -71,6 +72,7 @@
                         <div class="actions">
                             <a class="btn primary" href="EditUserServlet.do?id=<%= u.getId() %>">Edit</a>
                             <form action="DeleteUserServlet.do" method="post">
+                                <input type="hidden" name="<%= CsrfUtil.PARAMETER %>" value="<%= CsrfUtil.token(request) %>">
                                 <input type="hidden" name="id" value="<%= u.getId() %>">
                                 <button class="btn secondary" type="submit" onclick="return confirm('Delete this user?');">Delete</button>
                             </form>

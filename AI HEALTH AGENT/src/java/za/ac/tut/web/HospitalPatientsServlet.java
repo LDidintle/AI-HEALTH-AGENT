@@ -14,6 +14,7 @@ import javax.servlet.http.HttpSession;
 import za.ac.tut.model.HospitalAlertPatientRow;
 import za.ac.tut.model.User;
 import za.ac.tut.util.Database;
+import za.ac.tut.util.HospitalAlertStatusService;
 import za.ac.tut.util.PatientMapper;
 import za.ac.tut.util.PatientSummaryService;
 
@@ -38,6 +39,7 @@ public class HospitalPatientsServlet extends HttpServlet {
                     + "JOIN emergency_alerts ea ON ea.user_id = u.id "
                     + "JOIN hospital_alert_assignments haa ON haa.alert_id = ea.alert_id "
                     + "WHERE haa.hospital_id = ? "
+                    + "AND COALESCE(haa.status, 'ASSIGNED') <> '" + HospitalAlertStatusService.REMOVED + "' "
                     + "ORDER BY u.surname, u.first_name";
 
         try (Connection conn = Database.getConnection();
@@ -80,17 +82,22 @@ public class HospitalPatientsServlet extends HttpServlet {
     }
 
     private void loadLatestAlert(Connection conn, int hospitalId, HospitalAlertPatientRow row) throws Exception {
-        String sql = "SELECT ea.alert_status, ea.created_at FROM emergency_alerts ea "
+        String sql = "SELECT ea.alert_id, ea.alert_status, ea.created_at, haa.status AS assignment_status "
+                + "FROM emergency_alerts ea "
                 + "JOIN hospital_alert_assignments haa ON haa.alert_id = ea.alert_id "
                 + "WHERE haa.hospital_id = ? AND ea.user_id = ? "
+                + "AND COALESCE(haa.status, 'ASSIGNED') <> ? "
                 + "ORDER BY ea.created_at DESC, ea.alert_id DESC LIMIT 1";
 
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, hospitalId);
             ps.setInt(2, row.getUser().getId());
+            ps.setString(3, HospitalAlertStatusService.REMOVED);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
+                    row.setLatestAlertId(rs.getInt("alert_id"));
                     row.setLatestAlertStatus(rs.getString("alert_status"));
+                    row.setAssignmentStatus(rs.getString("assignment_status"));
                     row.setLatestAlertCreatedAt(rs.getTimestamp("created_at"));
                 }
             }

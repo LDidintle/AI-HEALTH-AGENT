@@ -2,9 +2,13 @@
 <%@page import="java.math.BigDecimal"%>
 <%@page import="java.sql.Timestamp"%>
 <%@page import="za.ac.tut.model.HospitalAlertPatientRow"%>
+<%@page import="za.ac.tut.util.CsrfUtil"%>
+<%@page import="za.ac.tut.util.HospitalAlertStatusService"%>
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
 <%
     List<HospitalAlertPatientRow> patients = (List<HospitalAlertPatientRow>) request.getAttribute("patients");
+    String csrfToken = CsrfUtil.token(request);
+    String updateStatus = request.getParameter("status");
 %>
 <!DOCTYPE html>
 <html lang="en">
@@ -18,7 +22,15 @@
     <main class="shell wide">
         <p class="eyebrow">Hospital portal</p>
         <h1><%= request.getAttribute("hospitalName") == null ? "Patient Alerts" : request.getAttribute("hospitalName") %></h1>
-        <p class="lead">Review patients previously assigned to this hospital from emergency alerts<%= request.getAttribute("hospitalServiceArea") == null ? "." : " in " + request.getAttribute("hospitalServiceArea") + "." %> This portal cannot add, edit, or remove patients.</p>
+        <p class="lead">Review patients assigned to this hospital from demo emergency alerts<%= request.getAttribute("hospitalServiceArea") == null ? "." : " in " + request.getAttribute("hospitalServiceArea") + "." %> Mark alert progress or remove attended alerts from this active list without deleting patient records.</p>
+
+        <% if ("updated".equals(updateStatus)) { %>
+            <p class="message success">Alert status updated.</p>
+        <% } else if ("not_found".equals(updateStatus)) { %>
+            <p class="message error">That alert was not found for this hospital.</p>
+        <% } else if ("invalid".equals(updateStatus)) { %>
+            <p class="message error">Choose a valid alert action.</p>
+        <% } %>
 
         <div class="actions">
             <a class="btn primary" href="ReportsServlet.do?type=alerts">Emergency Report</a>
@@ -47,7 +59,7 @@
                     <th>Blood Group</th>
                     <th>Average Vitals</th>
                     <th>Prediction</th>
-                    <th>Details</th>
+                    <th>Actions</th>
                 </tr>
                 <% if (patients != null && !patients.isEmpty()) {
                     for (HospitalAlertPatientRow row : patients) { %>
@@ -56,6 +68,7 @@
                         <td><%= row.getUser().getFirstName() %> <%= row.getUser().getSurname() %><br><%= row.getUser().getEmail() %></td>
                         <td>
                             <span class="status-pill <%= "CRITICAL".equals(row.getLatestAlertStatus()) ? "pending" : "verified" %>"><%= safe(row.getLatestAlertStatus()) %></span><br>
+                            <span class="status-pill <%= assignmentClass(row.getAssignmentStatus()) %>"><%= displayAssignmentStatus(row.getAssignmentStatus()) %></span><br>
                             <%= formatTimestamp(row.getLatestAlertCreatedAt()) %>
                         </td>
                         <td><%= safe(row.getUser().getIdNumber()) %></td>
@@ -68,11 +81,37 @@
                             BP: <%= formatDecimal(row.getSummary().getAverageSystolic()) %>/<%= formatDecimal(row.getSummary().getAverageDiastolic()) %>
                         </td>
                         <td><%= row.getSummary().getPrediction() %></td>
-                        <td><a class="btn primary" href="HospitalPatientDetailsServlet.do?id=<%= row.getUser().getId() %>">View</a></td>
+                        <td>
+                            <div class="row-actions">
+                                <a class="btn primary compact" href="HospitalPatientDetailsServlet.do?id=<%= row.getUser().getId() %>">View</a>
+                                <% if (row.getLatestAlertId() != null) { %>
+                                    <form action="HospitalAlertStatusServlet.do" method="post" class="inline-form">
+                                        <input type="hidden" name="<%= CsrfUtil.PARAMETER %>" value="<%= csrfToken %>">
+                                        <input type="hidden" name="alertId" value="<%= row.getLatestAlertId() %>">
+                                        <button class="btn secondary compact" type="submit" name="action" value="not_solved">Not solved</button>
+                                    </form>
+                                    <form action="HospitalAlertStatusServlet.do" method="post" class="inline-form">
+                                        <input type="hidden" name="<%= CsrfUtil.PARAMETER %>" value="<%= csrfToken %>">
+                                        <input type="hidden" name="alertId" value="<%= row.getLatestAlertId() %>">
+                                        <button class="btn secondary compact" type="submit" name="action" value="ongoing">Ongoing</button>
+                                    </form>
+                                    <form action="HospitalAlertStatusServlet.do" method="post" class="inline-form">
+                                        <input type="hidden" name="<%= CsrfUtil.PARAMETER %>" value="<%= csrfToken %>">
+                                        <input type="hidden" name="alertId" value="<%= row.getLatestAlertId() %>">
+                                        <button class="btn secondary compact" type="submit" name="action" value="resolved">Resolved</button>
+                                    </form>
+                                    <form action="HospitalAlertStatusServlet.do" method="post" class="inline-form">
+                                        <input type="hidden" name="<%= CsrfUtil.PARAMETER %>" value="<%= csrfToken %>">
+                                        <input type="hidden" name="alertId" value="<%= row.getLatestAlertId() %>">
+                                        <button class="btn danger compact" type="submit" name="action" value="remove">Remove</button>
+                                    </form>
+                                <% } %>
+                            </div>
+                        </td>
                     </tr>
                 <%  }
                 } else { %>
-                    <tr><td colspan="10" class="empty">No emergency-alert patients assigned to this hospital yet</td></tr>
+                    <tr><td colspan="10" class="empty">No active emergency-alert patients assigned to this hospital yet</td></tr>
                 <% } %>
                 <tr id="noSearchResults" class="hidden">
                     <td colspan="10" class="empty">No matching alert patients found</td>
@@ -121,5 +160,20 @@
 
     private String formatTimestamp(Timestamp value) {
         return value == null ? "No alert date" : value.toString();
+    }
+
+    private String displayAssignmentStatus(String value) {
+        return HospitalAlertStatusService.displayStatus(value);
+    }
+
+    private String assignmentClass(String value) {
+        String status = value == null ? "" : value.trim();
+        if (HospitalAlertStatusService.RESOLVED.equalsIgnoreCase(status)) {
+            return "verified";
+        }
+        if (HospitalAlertStatusService.ONGOING.equalsIgnoreCase(status)) {
+            return "in-progress";
+        }
+        return "pending";
     }
 %>
