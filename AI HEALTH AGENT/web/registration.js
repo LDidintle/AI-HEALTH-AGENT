@@ -138,6 +138,14 @@ document.querySelector('form').addEventListener('submit', event => {
         );
     }
 
+    if (idNumberInput && idNumber && !dateFromSouthAfricanId(idNumber)) {
+
+        return stopSubmit(
+            event,
+            'South African ID number must contain a real past birth date.'
+        );
+    }
+
     /* PHONE NUMBERS */
     const personalPhone = normalizePhone(personalPhoneInput?.value || '');
     const emergencyPhone = normalizePhone(emergencyPhoneInput?.value || '');
@@ -203,6 +211,15 @@ document.querySelector('form').addEventListener('submit', event => {
                 'Date of Birth must be before today.'
             );
         }
+
+        const idDate = idNumber ? dateFromSouthAfricanId(idNumber) : null;
+        if (idNumberInput && idDate && idDate.getTime() !== dob.getTime()) {
+
+            return stopSubmit(
+                event,
+                'South African ID number must match the selected date of birth.'
+            );
+        }
     }
 
     /* ADDRESS */
@@ -249,4 +266,34 @@ function normalizePhone(value) {
 function isValidPhone(value) {
 
     return /^0[6-8][0-9]{8}$/.test(value);
+}
+
+function dateFromSouthAfricanId(idNumber) {
+
+    if (!/^[0-9]{13}$/.test(idNumber)) {
+        return null;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const currentCentury = Math.floor(today.getFullYear() / 100) * 100;
+    const year = Number(idNumber.slice(0, 2));
+    const month = Number(idNumber.slice(2, 4));
+    const day = Number(idNumber.slice(4, 6));
+    let date = new Date(currentCentury + year, month - 1, day);
+
+    if (date >= today) {
+        date = new Date(currentCentury - 100 + year, month - 1, day);
+    }
+
+    if (
+        date.getFullYear() % 100 !== year ||
+        date.getMonth() !== month - 1 ||
+        date.getDate() !== day ||
+        date >= today
+    ) {
+        return null;
+    }
+
+    return date;
 }

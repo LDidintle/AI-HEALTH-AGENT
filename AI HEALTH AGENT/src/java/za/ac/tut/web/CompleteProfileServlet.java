@@ -64,13 +64,18 @@ public class CompleteProfileServlet extends HttpServlet {
         }
 
         if (!isBlank(idNumber) && !PatientValidation.isValidIdNumber(idNumber)) {
-            reject(request, response, userId, "Please enter a valid 13 digit South African ID number.");
+            reject(request, response, userId, "Please enter a valid 13 digit South African ID number with a real birth date.");
             return;
         }
 
         Date dob = PatientValidation.parseDateOfBirth(request.getParameter("dob"));
         if (!isBlank(request.getParameter("dob")) && dob == null) {
             reject(request, response, userId, "Date of birth must be a real past date.");
+            return;
+        }
+        if (!isBlank(idNumber) && !isBlank(request.getParameter("dob"))
+                && !PatientValidation.idNumberMatchesDateOfBirth(idNumber, request.getParameter("dob"))) {
+            reject(request, response, userId, "South African ID number must match the selected date of birth.");
             return;
         }
 

@@ -42,7 +42,12 @@ public class UpdateUserServlet extends HttpServlet {
             }
 
             if (idNumber != null && !PatientValidation.isValidIdNumber(idNumber)) {
-                throw new ServletException("South African ID number must be 13 digits.");
+                throw new ServletException("South African ID number must be 13 digits with a valid birth date.");
+            }
+
+            if (idNumber != null && dobText != null
+                    && !PatientValidation.idNumberMatchesDateOfBirth(idNumber, dobText)) {
+                throw new ServletException("South African ID number must match the selected date of birth.");
             }
 
             String sql = "UPDATE users SET title=?, first_name=?, surname=?, dob=?, gender=?, marital_status=?, "

@@ -147,7 +147,14 @@ public class MobileProfileServlet extends HttpServlet {
 
         if (idNumber != null && !PatientValidation.isValidIdNumber(idNumber)) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            writeJson(response, "{\"success\":false,\"message\":\"South African ID number must be 13 digits.\"}");
+            writeJson(response, "{\"success\":false,\"message\":\"South African ID number must be 13 digits with a valid birth date.\"}");
+            return;
+        }
+
+        if (idNumber != null && dobText != null
+                && !PatientValidation.idNumberMatchesDateOfBirth(idNumber, dobText)) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            writeJson(response, "{\"success\":false,\"message\":\"South African ID number must match the selected date of birth.\"}");
             return;
         }
 

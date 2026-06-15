@@ -229,6 +229,39 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private fun isValidSouthAfricanIdNumber(value: String): Boolean {
+        return value.matches(Regex("[0-9]{13}")) && dateFromSouthAfricanId(value) != null
+    }
+
+    private fun idNumberMatchesDateOfBirth(idNumber: String, dateOfBirth: String): Boolean {
+        return try {
+            dateFromSouthAfricanId(idNumber) == LocalDate.parse(dateOfBirth)
+        } catch (exception: Exception) {
+            false
+        }
+    }
+
+    private fun dateFromSouthAfricanId(value: String): LocalDate? {
+        if (!value.matches(Regex("[0-9]{13}"))) {
+            return null
+        }
+
+        return try {
+            val today = LocalDate.now()
+            val currentCentury = (today.year / 100) * 100
+            val year = value.substring(0, 2).toInt()
+            val month = value.substring(2, 4).toInt()
+            val day = value.substring(4, 6).toInt()
+            var date = LocalDate.of(currentCentury + year, month, day)
+            if (!date.isBefore(today)) {
+                date = LocalDate.of(currentCentury - 100 + year, month, day)
+            }
+            if (date.isBefore(today) && !date.isBefore(today.minusYears(120))) date else null
+        } catch (exception: Exception) {
+            null
+        }
+    }
+
     fun refreshDashboard() {
         launchLoadingTask {
             val profile = repository.getProfile().user
@@ -514,6 +547,18 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
         if (state.editDob.isNotBlank() && !isValidDateOfBirth(state.editDob.trim())) {
             _uiState.update { it.copy(errorMessage = "Date of birth must be before today. Use YYYY-MM-DD.") }
+            return
+        }
+
+        if (state.editIdNumber.isNotBlank() && !isValidSouthAfricanIdNumber(state.editIdNumber.trim())) {
+            _uiState.update { it.copy(errorMessage = "South African ID number must be 13 digits with a real birth date.") }
+            return
+        }
+
+        if (state.editDob.isNotBlank() && state.editIdNumber.isNotBlank()
+            && !idNumberMatchesDateOfBirth(state.editIdNumber.trim(), state.editDob.trim())
+        ) {
+            _uiState.update { it.copy(errorMessage = "South African ID number must match the selected date of birth.") }
             return
         }
 

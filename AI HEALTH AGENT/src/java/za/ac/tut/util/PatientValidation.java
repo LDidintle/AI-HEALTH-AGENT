@@ -45,7 +45,13 @@ public final class PatientValidation {
 
     public static boolean isValidIdNumber(String value) {
         String trimmed = trimToNull(value);
-        return trimmed != null && trimmed.matches("[0-9]{13}");
+        return trimmed != null && trimmed.matches("[0-9]{13}") && dateFromIdNumber(trimmed) != null;
+    }
+
+    public static boolean idNumberMatchesDateOfBirth(String idNumber, String dateOfBirth) {
+        LocalDate idDate = dateFromIdNumber(idNumber);
+        Date parsedDate = parseDateOfBirth(dateOfBirth);
+        return idDate != null && parsedDate != null && idDate.equals(parsedDate.toLocalDate());
     }
 
     public static Date parseDateOfBirth(String value) {
@@ -69,5 +75,30 @@ public final class PatientValidation {
 
     public static boolean isValidDateOfBirth(String value) {
         return parseDateOfBirth(value) != null;
+    }
+
+    private static LocalDate dateFromIdNumber(String value) {
+        String trimmed = trimToNull(value);
+        if (trimmed == null || !trimmed.matches("[0-9]{13}")) {
+            return null;
+        }
+
+        try {
+            int year = Integer.parseInt(trimmed.substring(0, 2));
+            int month = Integer.parseInt(trimmed.substring(2, 4));
+            int day = Integer.parseInt(trimmed.substring(4, 6));
+            LocalDate today = LocalDate.now();
+            int currentCentury = (today.getYear() / 100) * 100;
+            LocalDate candidate = LocalDate.of(currentCentury + year, month, day);
+            if (!candidate.isBefore(today)) {
+                candidate = LocalDate.of(currentCentury - 100 + year, month, day);
+            }
+            if (!candidate.isBefore(today) || candidate.isBefore(today.minusYears(MAX_PATIENT_AGE_YEARS))) {
+                return null;
+            }
+            return candidate;
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

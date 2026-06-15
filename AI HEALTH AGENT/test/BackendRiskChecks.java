@@ -190,6 +190,13 @@ public class BackendRiskChecks {
         assertTrue(PatientValidation.samePhone("0721234567", "+27 72 123 4567"), "same phone should compare after normalization");
         assertTrue(PatientValidation.isValidIdNumber("9901015009087"), "13 digit SA ID shape should validate");
         assertFalse(PatientValidation.isValidIdNumber("990101500908X"), "non-numeric SA ID should fail");
+        assertFalse(PatientValidation.isValidIdNumber("9913325009087"), "invalid SA ID birth date should fail");
+        assertTrue(PatientValidation.idNumberMatchesDateOfBirth("0105150000000", "2001-05-15"),
+                "SA ID birth-date prefix should match selected date of birth");
+        assertFalse(PatientValidation.idNumberMatchesDateOfBirth("0105150000000", "2002-05-15"),
+                "SA ID birth-date prefix must not allow a different selected date of birth");
+        assertFalse(PatientValidation.idNumberMatchesDateOfBirth("9913325009087", "1999-01-01"),
+                "invalid SA ID birth-date prefix must not match any selected date of birth");
         assertTrue(PatientValidation.isValidDateOfBirth("2000-01-01"), "past date of birth should validate");
         assertFalse(PatientValidation.isValidDateOfBirth("2999-01-01"), "future date of birth should fail");
     }
