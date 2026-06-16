@@ -41,7 +41,7 @@ body.app-page {
 }
 
 .shell.wide {
-    width: min(1120px, 100%);
+    width: min(1180px, 100%);
 }
 
 .eyebrow {
@@ -62,6 +62,8 @@ h2 {
 .lead {
     margin: 0 0 22px;
     color: var(--muted);
+    max-width: 920px;
+    line-height: 1.45;
 }
 
 label {
@@ -212,6 +214,27 @@ button.btn {
     background: rgba(255,255,255,0.12);
 }
 
+.stage-guide {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin: 22px 0 6px;
+}
+
+.stage-guide div {
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 10px;
+    padding: 12px;
+    background: rgba(255,255,255,0.1);
+}
+
+.stage-guide p {
+    margin: 8px 0 0;
+    color: var(--muted);
+    font-size: 0.88rem;
+    line-height: 1.35;
+}
+
 .table-wrap {
     overflow-x: auto;
     border: 1px solid rgba(255,255,255,0.14);
@@ -223,20 +246,33 @@ button.btn {
     width: 100%;
     border-collapse: collapse;
     color: var(--ink-dark);
+    table-layout: fixed;
 }
 
 .data-table th {
-    padding: 14px;
+    padding: 13px 16px;
     color: #06130e;
     text-align: left;
     background: linear-gradient(45deg, var(--primary), var(--primary-dark));
+    font-size: 0.9rem;
+    line-height: 1.15;
 }
 
 .data-table td {
-    padding: 12px;
+    padding: 18px 16px;
     border-bottom: 1px solid var(--line);
-    font-size: 0.92rem;
+    font-size: 0.9rem;
+    line-height: 1.28;
+    vertical-align: middle;
+    overflow-wrap: anywhere;
 }
+
+.data-table th:nth-child(1) { width: 24%; }
+.data-table th:nth-child(2) { width: 20%; }
+.data-table th:nth-child(3) { width: 16%; }
+.data-table th:nth-child(4) { width: 13%; }
+.data-table th:nth-child(5) { width: 20%; }
+.data-table th:nth-child(6) { width: 7%; }
 
 .status-pill {
     display: inline-flex;
@@ -276,19 +312,21 @@ button.btn {
 .alert-status-form {
     display: grid;
     gap: 8px;
-    margin-top: 10px;
-    min-width: 190px;
+    margin-top: 12px;
+    max-width: 250px;
+    min-width: 0;
 }
 
 .alert-status-form label {
-    color: #344054;
+    color: #475467;
     font-size: 0.78rem;
     font-weight: 800;
+    margin: 0;
 }
 
 .status-control {
     display: grid;
-    grid-template-columns: minmax(110px, 1fr) auto;
+    grid-template-columns: minmax(108px, 1fr) auto;
     gap: 8px;
     align-items: center;
 }
@@ -300,6 +338,35 @@ button.btn {
     border-radius: 8px;
     font: inherit;
     font-size: 0.86rem;
+}
+
+.pill-stack {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 6px;
+}
+
+.muted-line,
+.patient-cell span,
+.vitals-list span {
+    color: #475467;
+}
+
+.patient-cell,
+.vitals-list {
+    display: grid;
+    gap: 5px;
+}
+
+.patient-cell strong,
+.vitals-list strong {
+    color: var(--ink-dark);
+}
+
+.screening-note {
+    color: #26364d;
+    max-width: 22rem;
 }
 
 .data-table tr:hover {
@@ -396,5 +463,13 @@ button.btn {
     .filter-grid,
     .readonly-list div {
         grid-template-columns: 1fr;
+    }
+
+    .stage-guide {
+        grid-template-columns: 1fr;
+    }
+
+    .data-table {
+        min-width: 900px;
     }
 }

@@ -37,6 +37,21 @@
             <a class="btn secondary" href="SignOutServlet.do">Logout</a>
         </div>
 
+        <section class="stage-guide" aria-label="Alert stage guide">
+            <div>
+                <span class="status-pill pending">Not solved</span>
+                <p>New alert. Staff have not started reviewing it yet.</p>
+            </div>
+            <div>
+                <span class="status-pill in-progress">Ongoing</span>
+                <p>Staff are reviewing the patient and coordinating next steps.</p>
+            </div>
+            <div>
+                <span class="status-pill verified">Resolved</span>
+                <p>Alert has been attended. Remove it when it should leave the active queue.</p>
+            </div>
+        </section>
+
         <div class="toolbar">
             <div>
                 <label for="patientSearch">Search alert patients</label>
@@ -50,26 +65,22 @@
         <div class="table-wrap">
             <table class="data-table" id="patientsTable">
                 <tr>
-                    <th>System ID</th>
-                    <th>Alert Patient</th>
-                    <th>Latest Alert</th>
-                    <th>ID Number</th>
-                    <th>Personal Number</th>
-                    <th>Emergency Contact</th>
-                    <th>Blood Group</th>
-                    <th>Average Vitals</th>
-                    <th>Prediction</th>
-                    <th>Actions</th>
+                    <th>Alert</th>
+                    <th>Patient</th>
+                    <th>Contact</th>
+                    <th>Vitals</th>
+                    <th>Screening Note</th>
+                    <th>Details</th>
                 </tr>
                 <% if (patients != null && !patients.isEmpty()) {
                     for (HospitalAlertPatientRow row : patients) { %>
                     <tr data-patient-row>
-                        <td><%= row.getUser().getId() %></td>
-                        <td><%= row.getUser().getFirstName() %> <%= row.getUser().getSurname() %><br><%= row.getUser().getEmail() %></td>
-                        <td>
-                            <span class="status-pill <%= "CRITICAL".equals(row.getLatestAlertStatus()) ? "pending" : "verified" %>"><%= safe(row.getLatestAlertStatus()) %></span><br>
-                            <span class="status-pill <%= assignmentClass(row.getAssignmentStatus()) %>"><%= displayAssignmentStatus(row.getAssignmentStatus()) %></span><br>
-                            <%= formatTimestamp(row.getLatestAlertCreatedAt()) %>
+                        <td class="alert-cell">
+                            <div class="pill-stack">
+                                <span class="status-pill <%= "CRITICAL".equals(row.getLatestAlertStatus()) ? "pending" : "verified" %>"><%= safe(row.getLatestAlertStatus()) %></span>
+                                <span class="status-pill <%= assignmentClass(row.getAssignmentStatus()) %>"><%= displayAssignmentStatus(row.getAssignmentStatus()) %></span>
+                            </div>
+                            <div class="muted-line"><%= formatTimestamp(row.getLatestAlertCreatedAt()) %></div>
                             <% if (row.getLatestAlertId() != null) { %>
                                 <form action="HospitalAlertStatusServlet.do" method="post" class="alert-status-form">
                                     <input type="hidden" name="<%= CsrfUtil.PARAMETER %>" value="<%= csrfToken %>">
@@ -87,16 +98,26 @@
                                 </form>
                             <% } %>
                         </td>
-                        <td><%= safe(row.getUser().getIdNumber()) %></td>
-                        <td><%= safe(row.getUser().getCellNumber()) %></td>
-                        <td><%= safe(row.getUser().getEmergencyContactName()) %><br><%= safe(row.getUser().getEmergencyContactNumber()) %></td>
-                        <td><%= safe(row.getUser().getBloodGroup()) %></td>
-                        <td>
-                            HR: <%= formatDecimal(row.getSummary().getAveragePulse()) %> BPM<br>
-                            Temp: <%= formatDecimal(row.getSummary().getAverageTemperature()) %> °C<br>
-                            BP: <%= formatDecimal(row.getSummary().getAverageSystolic()) %>/<%= formatDecimal(row.getSummary().getAverageDiastolic()) %>
+                        <td class="patient-cell">
+                            <strong><%= row.getUser().getFirstName() %> <%= row.getUser().getSurname() %></strong>
+                            <span><%= row.getUser().getEmail() %></span>
+                            <span>System ID <%= row.getUser().getId() %></span>
+                            <span>ID <%= safe(row.getUser().getIdNumber()) %></span>
                         </td>
-                        <td><%= row.getSummary().getPrediction() %></td>
+                        <td class="patient-cell">
+                            <strong><%= safe(row.getUser().getCellNumber()) %></strong>
+                            <span><%= safe(row.getUser().getEmergencyContactName()) %></span>
+                            <span><%= safe(row.getUser().getEmergencyContactNumber()) %></span>
+                            <span>Blood group <%= safe(row.getUser().getBloodGroup()) %></span>
+                        </td>
+                        <td class="vitals-list">
+                            <span><strong>HR</strong> <%= formatDecimal(row.getSummary().getAveragePulse()) %> BPM</span>
+                            <span><strong>Temp</strong> <%= formatDecimal(row.getSummary().getAverageTemperature()) %> °C</span>
+                            <span><strong>BP</strong> <%= formatDecimal(row.getSummary().getAverageSystolic()) %>/<%= formatDecimal(row.getSummary().getAverageDiastolic()) %></span>
+                        </td>
+                        <td class="screening-note">
+                            <%= row.getSummary().getPrediction() %>
+                        </td>
                         <td>
                             <div class="row-actions">
                                 <a class="btn primary compact" href="HospitalPatientDetailsServlet.do?id=<%= row.getUser().getId() %>">View</a>
@@ -105,10 +126,10 @@
                     </tr>
                 <%  }
                 } else { %>
-                    <tr><td colspan="10" class="empty">No active emergency-alert patients assigned to this hospital yet</td></tr>
+                    <tr><td colspan="6" class="empty">No active emergency-alert patients assigned to this hospital yet</td></tr>
                 <% } %>
                 <tr id="noSearchResults" class="hidden">
-                    <td colspan="10" class="empty">No matching alert patients found</td>
+                    <td colspan="6" class="empty">No matching alert patients found</td>
                 </tr>
             </table>
         </div>
