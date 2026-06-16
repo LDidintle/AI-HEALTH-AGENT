@@ -117,15 +117,16 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             _uiState.update {
+                val displayReadings = savedReadings.withCurrentFreshValues(it.latestReadings, it.heartRateRange)
                 it.copy(
                     isLoggedIn = true,
                     userProfile = profile,
                     isProfileOpen = profile?.isVerified == true && profile.isIncomplete(),
-                    latestReadings = savedReadings,
+                    latestReadings = displayReadings,
                     heartRateRange = null,
-                    trendPoints = savedReadings?.toUiTrendPoints() ?: emptyList(),
+                    trendPoints = displayReadings?.toUiTrendPoints() ?: emptyList(),
                     lastSectionSyncAt = null,
-                    lastSyncSummary = savedReadings?.takeIf { reading -> reading.hasAnyReading() }
+                    lastSyncSummary = displayReadings?.takeIf { reading -> reading.hasAnyReading() }
                         ?.let { "Loaded latest saved readings from SmartHealth." },
                     password = "",
                     errorMessage = null,
@@ -146,14 +147,15 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 val savedReadings = latestSavedReadingsOrNull()
                 loadContextSettingsFromBackend()
                 _uiState.update {
+                    val displayReadings = savedReadings.withCurrentFreshValues(it.latestReadings, it.heartRateRange)
                     it.copy(
                         isLoggedIn = true,
                         isRestoringSession = false,
                         userProfile = profile,
                         isProfileOpen = false,
-                        latestReadings = savedReadings,
-                        trendPoints = savedReadings?.toUiTrendPoints() ?: emptyList(),
-                        lastSyncSummary = savedReadings?.takeIf { reading -> reading.hasAnyReading() }
+                        latestReadings = displayReadings,
+                        trendPoints = displayReadings?.toUiTrendPoints() ?: emptyList(),
+                        lastSyncSummary = displayReadings?.takeIf { reading -> reading.hasAnyReading() }
                             ?.let { "Loaded latest saved readings from SmartHealth." },
                         errorMessage = null,
                         infoMessage = if (profile?.isVerified == true) {
@@ -278,13 +280,14 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             val hasSavedReadings = savedReadings?.hasAnyReading() == true
 
             _uiState.update {
+                val displayReadings = savedReadings.withCurrentFreshValues(it.latestReadings, it.heartRateRange)
                 it.copy(
                     isLoggedIn = true,
                     isRestoringSession = false,
                     userProfile = profile,
-                    latestReadings = savedReadings,
-                    heartRateRange = null,
-                    trendPoints = savedReadings?.toUiTrendPoints() ?: emptyList(),
+                    latestReadings = displayReadings,
+                    heartRateRange = it.heartRateRange,
+                    trendPoints = displayReadings?.toUiTrendPoints() ?: emptyList(),
                     lastSectionSyncAt = null,
                     lastSyncSummary = if (hasSavedReadings) {
                         "Loaded latest saved readings from SmartHealth."
@@ -1220,6 +1223,49 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
+    private fun LatestReadingsResponse?.withCurrentFreshValues(
+        currentReadings: LatestReadingsResponse?,
+        currentRange: HeartRateRangeSummary?
+    ): LatestReadingsResponse? {
+        if (this == null) {
+            return currentReadings?.withFreshHeartRateRange(currentRange)
+                ?: currentRange?.toLatestHeartRateReadings()
+        }
+
+        val display = copy(
+            heartRate = if (heartRate.isOlderThan(currentReadings?.heartRate)) currentReadings?.heartRate ?: heartRate else heartRate,
+            temperature = if (temperature.isOlderThan(currentReadings?.temperature)) currentReadings?.temperature ?: temperature else temperature,
+            bloodPressure = if (bloodPressure.isOlderThan(currentReadings?.bloodPressure)) currentReadings?.bloodPressure ?: bloodPressure else bloodPressure
+        )
+        return display.withFreshHeartRateRange(currentRange)
+    }
+
+    private fun LatestReadingsResponse.withFreshHeartRateRange(
+        currentRange: HeartRateRangeSummary?
+    ): LatestReadingsResponse {
+        val rangeHeartRate = currentRange?.toHeartRateReading()
+        return if (heartRate.isOlderThan(rangeHeartRate)) {
+            copy(heartRate = rangeHeartRate ?: heartRate)
+        } else {
+            this
+        }
+    }
+
+    private fun HeartRateRangeSummary.toLatestHeartRateReadings(): LatestReadingsResponse? {
+        return toHeartRateReading()?.let {
+            LatestReadingsResponse(success = true, heartRate = it)
+        }
+    }
+
+    private fun HeartRateRangeSummary.toHeartRateReading(): ReadingValue? {
+        val value = latest ?: return null
+        return ReadingValue(
+            value = value,
+            recordedAt = windowEnd,
+            source = source
+        )
+    }
+
     private fun ReadingValue?.isOlderThan(sectionEnd: String): Boolean {
         return isRecordedBefore(this?.recordedAt, sectionEnd)
     }
@@ -1232,10 +1278,28 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         return isRecordedBefore(this?.recordedAt, sectionEnd)
     }
 
+    private fun ReadingValue?.isOlderThan(other: ReadingValue?): Boolean {
+        return isRecordedBeforeOther(this?.recordedAt, other?.recordedAt)
+    }
+
+    private fun TemperatureValue?.isOlderThan(other: TemperatureValue?): Boolean {
+        return isRecordedBeforeOther(this?.recordedAt, other?.recordedAt)
+    }
+
+    private fun BloodPressureValue?.isOlderThan(other: BloodPressureValue?): Boolean {
+        return isRecordedBeforeOther(this?.recordedAt, other?.recordedAt)
+    }
+
     private fun isRecordedBefore(recordedAt: String?, sectionEnd: String): Boolean {
         val sectionInstant = parseInstant(sectionEnd) ?: return false
         val recordedInstant = parseInstant(recordedAt) ?: return true
         return recordedInstant.isBefore(sectionInstant)
+    }
+
+    private fun isRecordedBeforeOther(recordedAt: String?, otherRecordedAt: String?): Boolean {
+        val otherInstant = parseInstant(otherRecordedAt) ?: return false
+        val recordedInstant = parseInstant(recordedAt) ?: return true
+        return recordedInstant.isBefore(otherInstant)
     }
 
     private fun parseInstant(value: String?): Instant? {
