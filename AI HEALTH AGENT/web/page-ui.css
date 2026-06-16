@@ -267,12 +267,12 @@ button.btn {
     overflow-wrap: anywhere;
 }
 
-.data-table th:nth-child(1) { width: 24%; }
-.data-table th:nth-child(2) { width: 20%; }
-.data-table th:nth-child(3) { width: 16%; }
-.data-table th:nth-child(4) { width: 13%; }
-.data-table th:nth-child(5) { width: 20%; }
-.data-table th:nth-child(6) { width: 7%; }
+.data-table th:nth-child(1) { width: 22%; }
+.data-table th:nth-child(2) { width: 18%; }
+.data-table th:nth-child(3) { width: 14%; }
+.data-table th:nth-child(4) { width: 14%; }
+.data-table th:nth-child(5) { width: 16%; }
+.data-table th:nth-child(6) { width: 16%; }
 
 .status-pill {
     display: inline-flex;
@@ -303,6 +303,7 @@ button.btn {
     flex-wrap: wrap;
     gap: 8px;
     min-width: 72px;
+    align-items: flex-start;
 }
 
 .inline-form {
@@ -366,7 +367,27 @@ button.btn {
 
 .screening-note {
     color: #26364d;
-    max-width: 22rem;
+}
+
+.details-stack {
+    display: grid;
+    gap: 12px;
+}
+
+.detail-card {
+    display: grid;
+    gap: 6px;
+    color: #26364d;
+}
+
+.detail-label {
+    color: var(--ink-dark);
+    font-size: 0.82rem;
+}
+
+.detail-meta {
+    color: #667085;
+    font-size: 0.82rem;
 }
 
 .data-table tr:hover {

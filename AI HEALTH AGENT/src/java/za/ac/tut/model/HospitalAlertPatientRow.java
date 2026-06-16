@@ -7,6 +7,7 @@ public class HospitalAlertPatientRow extends PatientSummaryRow {
     private String latestAlertStatus;
     private String assignmentStatus;
     private Timestamp latestAlertCreatedAt;
+    private ClinicalNote clinicalNote;
 
     public Integer getLatestAlertId() {
         return latestAlertId;
@@ -38,5 +39,13 @@ public class HospitalAlertPatientRow extends PatientSummaryRow {
 
     public void setLatestAlertCreatedAt(Timestamp latestAlertCreatedAt) {
         this.latestAlertCreatedAt = latestAlertCreatedAt;
+    }
+
+    public ClinicalNote getClinicalNote() {
+        return clinicalNote;
+    }
+
+    public void setClinicalNote(ClinicalNote clinicalNote) {
+        this.clinicalNote = clinicalNote;
     }
 }

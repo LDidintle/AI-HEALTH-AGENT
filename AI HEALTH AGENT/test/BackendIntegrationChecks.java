@@ -33,6 +33,7 @@ public class BackendIntegrationChecks {
             verifiesPatientContextSettings(conn);
             verifiesSamsungSleepTemperaturePrediction(conn);
             verifiesSamsungSleepTemperatureStaffSummary(conn);
+            verifiesLegacySummaryFallbackWhenSyncSectionsMissing(conn);
             verifiesEmergencyAlertPersistence(conn);
             verifiesAuditConsentAndAlertLifecycle(conn);
             verifiesClinicalNotes(conn);
@@ -242,6 +243,24 @@ public class BackendIntegrationChecks {
         assertEquals(1, vitals.getRows().size(), "temperature trend test patient should appear in vitals report");
         assertTrue(vitals.getRows().get(0).get("risk").startsWith("LOW"),
                 "vitals report screening note must not score Samsung sleep-temperature trend as fever");
+    }
+
+    private static void verifiesLegacySummaryFallbackWhenSyncSectionsMissing(Connection conn) throws Exception {
+        int userId = PatientAccountProcedureService.createPatientAccount(
+                conn, "Ms", "Legacy", "Summary", Date.valueOf("1996-09-10"),
+                "legacy-summary@example.com", PasswordUtils.hashPassword("Legacy22!"));
+        try (Statement statement = conn.createStatement()) {
+            statement.executeUpdate("INSERT INTO pulse_readings (user_id, bpm, source) VALUES ("
+                    + userId + ", 138, 'LEGACY_IMPORT')");
+            statement.executeUpdate("INSERT INTO blood_pressure_readings (user_id, systolic, diastolic, source) VALUES ("
+                    + userId + ", 184, 121, 'LEGACY_IMPORT')");
+        }
+
+        PatientSummary summary = PatientSummaryService.loadSummary(conn, userId);
+        assertFalse(summary.getPrediction().contains("No heart rate, temperature, or blood pressure reading was available."),
+                "legacy readings should not be shown as missing screening data");
+        assertTrue(summary.getPrediction().contains("Average blood pressure is high."),
+                "legacy readings should still produce a meaningful high blood pressure screening note");
     }
 
     private static void verifiesClinicalNotes(Connection conn) throws Exception {

@@ -13,6 +13,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import za.ac.tut.model.HospitalAlertPatientRow;
 import za.ac.tut.model.User;
+import za.ac.tut.util.ClinicalNoteService;
 import za.ac.tut.util.Database;
 import za.ac.tut.util.HospitalAlertStatusService;
 import za.ac.tut.util.PatientMapper;
@@ -56,6 +57,7 @@ public class HospitalPatientsServlet extends HttpServlet {
                     HospitalAlertPatientRow row = new HospitalAlertPatientRow();
                     row.setUser(user);
                     row.setSummary(PatientSummaryService.loadSummary(conn, user.getId()));
+                    row.setClinicalNote(ClinicalNoteService.load(conn, user.getId()));
                     if (!legacyHospital) {
                         loadLatestAlert(conn, hospitalId, row);
                     }

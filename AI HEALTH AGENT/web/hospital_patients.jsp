@@ -116,11 +116,20 @@
                             <span><strong>BP</strong> <%= formatDecimal(row.getSummary().getAverageSystolic()) %>/<%= formatDecimal(row.getSummary().getAverageDiastolic()) %></span>
                         </td>
                         <td class="screening-note">
-                            <%= row.getSummary().getPrediction() %>
+                            <div class="detail-card">
+                                <span><%= escapeHtml(screeningPreview(row)) %></span>
+                            </div>
                         </td>
-                        <td>
-                            <div class="row-actions">
-                                <a class="btn primary compact" href="HospitalPatientDetailsServlet.do?id=<%= row.getUser().getId() %>">View</a>
+                        <td class="details-cell">
+                            <div class="details-stack">
+                                <div class="detail-card">
+                                    <strong class="detail-label"><%= detailHeading(row) %></strong>
+                                    <span><%= escapeHtml(detailPreview(row)) %></span>
+                                    <span class="detail-meta"><%= escapeHtml(detailMeta(row)) %></span>
+                                </div>
+                                <div class="row-actions">
+                                    <a class="btn primary compact" href="HospitalPatientDetailsServlet.do?id=<%= row.getUser().getId() %>">View</a>
+                                </div>
                             </div>
                         </td>
                     </tr>
@@ -169,12 +178,74 @@
         return value == null ? "" : value;
     }
 
+    private String screeningPreview(HospitalAlertPatientRow row) {
+        if (row == null || row.getSummary() == null || !hasText(row.getSummary().getPrediction())) {
+            return "Awaiting screening note.";
+        }
+        if (row.getSummary().getReadingCount() <= 0) {
+            return "Awaiting synced vitals before screening. Open the patient record to review patient context.";
+        }
+        return truncate(row.getSummary().getPrediction(), 180);
+    }
+
+    private String detailHeading(HospitalAlertPatientRow row) {
+        return hasText(noteText(row)) ? "Clinical note" : "Patient context";
+    }
+
+    private String detailPreview(HospitalAlertPatientRow row) {
+        String noteText = noteText(row);
+        if (hasText(noteText)) {
+            return truncate(noteText, 160);
+        }
+
+        String conditions = clean(row.getUser().getChronicConditions());
+        String allergies = clean(row.getUser().getKnownAllergies());
+
+        if (conditions != null && allergies != null) {
+            return "Conditions: " + conditions + ". Allergies: " + allergies + ".";
+        }
+        if (conditions != null) {
+            return "Conditions: " + conditions + ".";
+        }
+        if (allergies != null) {
+            return "Allergies: " + allergies + ".";
+        }
+        return "No clinical notes saved yet. Open the patient record to add findings and review history.";
+    }
+
+    private String detailMeta(HospitalAlertPatientRow row) {
+        String noteText = noteText(row);
+        if (hasText(noteText)) {
+            String updatedAt = compactTimestamp(row.getClinicalNote().getUpdatedAt());
+            String role = clean(row.getClinicalNote().getUpdatedByRole());
+            if (updatedAt.isEmpty() && role == null) {
+                return "Saved clinical note";
+            }
+            if (updatedAt.isEmpty()) {
+                return "Updated by " + role;
+            }
+            if (role == null) {
+                return "Updated " + updatedAt;
+            }
+            return "Updated " + updatedAt + " by " + role;
+        }
+        return "View full patient details and add clinical notes.";
+    }
+
     private String formatDecimal(BigDecimal value) {
         return value == null ? "No data" : value.setScale(1, java.math.RoundingMode.HALF_UP).toPlainString();
     }
 
     private String formatTimestamp(Timestamp value) {
         return value == null ? "No alert date" : value.toString();
+    }
+
+    private String compactTimestamp(Timestamp value) {
+        if (value == null) {
+            return "";
+        }
+        String text = value.toString();
+        return text.length() > 16 ? text.substring(0, 16).replace('T', ' ') : text;
     }
 
     private String displayAssignmentStatus(String value) {
@@ -197,5 +268,41 @@
                 ? HospitalAlertStatusService.ASSIGNED
                 : current.trim();
         return option.equalsIgnoreCase(status) ? "selected" : "";
+    }
+
+    private String noteText(HospitalAlertPatientRow row) {
+        return row.getClinicalNote() == null ? null : row.getClinicalNote().getNoteText();
+    }
+
+    private String clean(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private boolean hasText(String value) {
+        return clean(value) != null;
+    }
+
+    private String truncate(String value, int maxLength) {
+        String cleaned = clean(value);
+        if (cleaned == null || cleaned.length() <= maxLength) {
+            return cleaned == null ? "" : cleaned;
+        }
+        return cleaned.substring(0, Math.max(0, maxLength - 1)).trim() + "…";
+    }
+
+    private String escapeHtml(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;");
     }
 %>
