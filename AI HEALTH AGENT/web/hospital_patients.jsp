@@ -87,7 +87,7 @@
                                     <input type="hidden" name="alertId" value="<%= row.getLatestAlertId() %>">
                                     <label for="alertStatus<%= row.getLatestAlertId() %>">Hospital status</label>
                                     <div class="status-control">
-                                        <select id="alertStatus<%= row.getLatestAlertId() %>" name="action">
+                                        <select id="alertStatus<%= row.getLatestAlertId() %>" name="statusAction">
                                             <option value="not_solved" <%= selectedAssignment(row.getAssignmentStatus(), HospitalAlertStatusService.ASSIGNED) %>>Not solved</option>
                                             <option value="ongoing" <%= selectedAssignment(row.getAssignmentStatus(), HospitalAlertStatusService.ONGOING) %>>Ongoing</option>
                                             <option value="resolved" <%= selectedAssignment(row.getAssignmentStatus(), HospitalAlertStatusService.RESOLVED) %>>Resolved</option>

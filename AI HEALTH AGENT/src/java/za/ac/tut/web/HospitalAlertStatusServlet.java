@@ -25,7 +25,10 @@ public class HospitalAlertStatusServlet extends HttpServlet {
             return;
         }
 
-        String status = HospitalAlertStatusService.statusForAction(request.getParameter("action"));
+        String status = HospitalAlertStatusService.statusForSubmission(
+                request.getParameter("action"),
+                request.getParameter("statusAction")
+        );
         int alertId = parsePositiveInt(request.getParameter("alertId"));
         Integer hospitalId = (Integer) session.getAttribute("hospitalId");
 

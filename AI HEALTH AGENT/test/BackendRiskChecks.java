@@ -47,6 +47,7 @@ public class BackendRiskChecks {
         enforcesRoleAccessMatrix();
         validatesAlertLifecycleTransitions();
         validatesHospitalAlertAssignmentStatuses();
+        resolvesHospitalAlertSubmissionActions();
         explainsSamsungDeviceCapabilities();
         System.out.println("Backend risk checks passed.");
     }
@@ -267,6 +268,20 @@ public class BackendRiskChecks {
         assertTrue(HospitalAlertStatusService.isVisibleInHospitalPortal(null), "blank existing assignments should remain visible");
         assertFalse(HospitalAlertStatusService.isVisibleInHospitalPortal("REMOVED"), "removed assignments should be hidden");
         assertFalse(HospitalAlertStatusService.statusForAction("delete") != null, "unsupported destructive actions must not be accepted");
+    }
+
+    private static void resolvesHospitalAlertSubmissionActions() {
+        assertEquals("REMOVED",
+                HospitalAlertStatusService.statusForSubmission("remove", "resolved"),
+                "explicit remove submissions must override the selected status");
+        assertEquals("RESOLVED",
+                HospitalAlertStatusService.statusForSubmission(null, "resolved"),
+                "status-only submissions should still update the hospital workflow state");
+        assertEquals("ONGOING",
+                HospitalAlertStatusService.statusForSubmission("ongoing", null),
+                "legacy single-parameter submissions should remain supported");
+        assertFalse(HospitalAlertStatusService.statusForSubmission(null, "delete") != null,
+                "unsupported status submissions must still be rejected");
     }
 
     private static void explainsSamsungDeviceCapabilities() {

@@ -28,6 +28,14 @@ public final class HospitalAlertStatusService {
         }
     }
 
+    public static String statusForSubmission(String action, String statusAction) {
+        String directAction = clean(action);
+        if (directAction != null) {
+            return statusForAction(directAction);
+        }
+        return statusForAction(statusAction);
+    }
+
     public static boolean isVisibleInHospitalPortal(String status) {
         return !REMOVED.equalsIgnoreCase(clean(status));
     }
