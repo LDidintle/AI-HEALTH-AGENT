@@ -92,12 +92,12 @@
             <% if (hospital) { %>This report is filtered to the signed-in hospital account.<% } %>
         </p>
 
-        <div class="table-wrap">
-            <table class="data-table">
+        <div class="table-wrap report-table-wrap">
+            <table class="data-table report-table">
                 <tr>
                     <% if (report != null) {
                         for (ReportColumn column : report.getColumns()) { %>
-                            <th><%= h(column.getLabel()) %></th>
+                            <th class="col-<%= h(column.getKey()) %>"><%= h(column.getLabel()) %></th>
                     <%  }
                     } %>
                 </tr>
@@ -106,7 +106,7 @@
                     for (Map<String, String> row : report.getRows()) { %>
                         <tr>
                             <% for (ReportColumn column : report.getColumns()) { %>
-                                <td><%= cell(row.get(column.getKey())) %></td>
+                                <td class="col-<%= h(column.getKey()) %>"><%= cell(row.get(column.getKey())) %></td>
                             <% } %>
                         </tr>
                 <%  }

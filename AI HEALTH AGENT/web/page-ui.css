@@ -243,10 +243,11 @@ button.btn {
 }
 
 .data-table {
-    width: 100%;
+    width: max-content;
+    min-width: 100%;
     border-collapse: collapse;
     color: var(--ink-dark);
-    table-layout: fixed;
+    table-layout: auto;
 }
 
 .data-table th {
@@ -263,14 +264,19 @@ button.btn {
     border-bottom: 1px solid var(--line);
     font-size: 0.9rem;
     line-height: 1.28;
-    vertical-align: middle;
+    vertical-align: top;
     overflow-wrap: anywhere;
 }
 
-.data-table th:nth-child(1) { width: 22%; }
-.data-table th:nth-child(2) { width: 18%; }
-.data-table th:nth-child(3) { width: 16%; }
-.data-table th:nth-child(4) { width: 44%; }
+#patientsTable {
+    width: 100%;
+    table-layout: fixed;
+}
+
+#patientsTable th:nth-child(1) { width: 22%; }
+#patientsTable th:nth-child(2) { width: 18%; }
+#patientsTable th:nth-child(3) { width: 16%; }
+#patientsTable th:nth-child(4) { width: 44%; }
 
 .status-pill {
     display: inline-flex;
@@ -410,6 +416,46 @@ button.btn {
 
 .vitals-context .btn.compact {
     min-width: 82px;
+}
+
+.report-table {
+    min-width: 1280px;
+}
+
+.report-table .col-patient {
+    min-width: 220px;
+}
+
+.report-table .col-email {
+    min-width: 220px;
+}
+
+.report-table .col-risk {
+    min-width: 260px;
+}
+
+.report-table .col-latest,
+.report-table .col-created {
+    min-width: 160px;
+}
+
+.directory-table {
+    min-width: 1560px;
+}
+
+.directory-table .table-contact,
+.directory-table .table-address {
+    color: #475467;
+    line-height: 1.45;
+}
+
+.directory-table .table-address {
+    min-width: 260px;
+}
+
+.table-actions {
+    margin-top: 0;
+    align-items: flex-start;
 }
 
 .data-table tr:hover {

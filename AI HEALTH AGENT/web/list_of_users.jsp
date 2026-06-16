@@ -33,8 +33,8 @@
 
         <div class="result-count" id="resultCount"></div>
 
-        <div class="table-wrap">
-            <table class="data-table" id="usersTable">
+        <div class="table-wrap directory-table-wrap">
+            <table class="data-table directory-table" id="usersTable">
                 <tr>
                     <th>ID</th>
                     <th>Title</th>
@@ -66,15 +66,15 @@
                     <td><span class="status-pill <%= u.isVerified() ? "verified" : "pending" %>"><%= u.isVerified() ? "Verified" : "Pending" %></span></td>
                     <td><%= u.getCellNumber() %></td>
                     <td><%= u.getIdNumber() != null ? u.getIdNumber() : "" %></td>
-                    <td><%= u.getEmergencyContactName() != null ? u.getEmergencyContactName() : "" %><br><%= u.getEmergencyContactNumber() != null ? u.getEmergencyContactNumber() : "" %></td>
-                    <td><%= u.getAddress() %></td>
+                    <td class="table-contact"><%= u.getEmergencyContactName() != null ? u.getEmergencyContactName() : "" %><br><%= u.getEmergencyContactNumber() != null ? u.getEmergencyContactNumber() : "" %></td>
+                    <td class="table-address"><%= u.getAddress() %></td>
                     <td>
-                        <div class="actions">
-                            <a class="btn primary" href="EditUserServlet.do?id=<%= u.getId() %>">Edit</a>
+                        <div class="actions table-actions">
+                            <a class="btn primary compact" href="EditUserServlet.do?id=<%= u.getId() %>">Edit</a>
                             <form action="DeleteUserServlet.do" method="post">
                                 <input type="hidden" name="<%= CsrfUtil.PARAMETER %>" value="<%= CsrfUtil.token(request) %>">
                                 <input type="hidden" name="id" value="<%= u.getId() %>">
-                                <button class="btn secondary" type="submit" onclick="return confirm('Delete this user?');">Delete</button>
+                                <button class="btn secondary compact" type="submit" onclick="return confirm('Delete this user?');">Delete</button>
                             </form>
                         </div>
                     </td>
