@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initReadingContext();
     initChart();
     loadLatestReadings({ manual: false });
-    setInterval(loadLatestReadings, LIVE_REFRESH_INTERVAL_MS);
+    setInterval(() => loadLatestReadings({ manual: false }), LIVE_REFRESH_INTERVAL_MS);
 });
 
 function refreshLatestReadings() {

@@ -148,7 +148,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private companion object {
-        const val FOREGROUND_SYNC_INTERVAL_MILLIS = 2L * 60L * 1000L
+        const val FOREGROUND_SYNC_INTERVAL_MILLIS = 20L * 1000L
         const val AUTO_SYNC_COOLDOWN_MILLIS = FOREGROUND_SYNC_INTERVAL_MILLIS
     }
 }

@@ -90,7 +90,7 @@ public class ReadingServlet extends HttpServlet {
     }
 
     private Integer getLatestHeartRate(Connection conn, int userId) throws Exception {
-        String sql = "SELECT bpm FROM pulse_readings WHERE user_id = ? ORDER BY synced_at DESC, recorded_at DESC, pulse_id DESC LIMIT 1";
+        String sql = "SELECT bpm FROM pulse_readings WHERE user_id = ? ORDER BY recorded_at DESC, synced_at DESC, pulse_id DESC LIMIT 1";
 
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, userId);
@@ -106,7 +106,7 @@ public class ReadingServlet extends HttpServlet {
     }
 
     private String getLatestTemperature(Connection conn, int userId) throws Exception {
-        String sql = "SELECT temperature FROM temperature_readings WHERE user_id = ? ORDER BY synced_at DESC, recorded_at DESC, temp_id DESC LIMIT 1";
+        String sql = "SELECT temperature FROM temperature_readings WHERE user_id = ? ORDER BY recorded_at DESC, synced_at DESC, temp_id DESC LIMIT 1";
 
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, userId);
@@ -123,7 +123,7 @@ public class ReadingServlet extends HttpServlet {
 
     private String getLatestBloodPressure(Connection conn, int userId) throws Exception {
         String sql = "SELECT systolic, diastolic FROM blood_pressure_readings "
-                + "WHERE user_id = ? ORDER BY synced_at DESC, recorded_at DESC, bp_id DESC LIMIT 1";
+                + "WHERE user_id = ? ORDER BY recorded_at DESC, synced_at DESC, bp_id DESC LIMIT 1";
 
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, userId);
