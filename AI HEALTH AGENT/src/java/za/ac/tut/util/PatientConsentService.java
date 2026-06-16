@@ -3,6 +3,7 @@ package za.ac.tut.util;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.Savepoint;
 
 public final class PatientConsentService {
 
@@ -12,13 +13,25 @@ public final class PatientConsentService {
     }
 
     public static void recordHealthSyncConsent(Connection conn, int userId, String version) {
-        try (PreparedStatement ps = conn.prepareStatement(
-                "INSERT INTO patient_consents (user_id, consent_type, consent_version, accepted) VALUES (?, ?, ?, TRUE)")) {
-            ps.setInt(1, userId);
-            ps.setString(2, HEALTH_SYNC);
-            ps.setString(3, version);
-            ps.executeUpdate();
+        Savepoint savepoint = null;
+        try {
+            if (!conn.getAutoCommit()) {
+                savepoint = conn.setSavepoint("optional_patient_consent");
+            }
+
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "INSERT INTO patient_consents (user_id, consent_type, consent_version, accepted) VALUES (?, ?, ?, TRUE)")) {
+                ps.setInt(1, userId);
+                ps.setString(2, HEALTH_SYNC);
+                ps.setString(3, version);
+                ps.executeUpdate();
+            }
+
+            if (savepoint != null) {
+                conn.releaseSavepoint(savepoint);
+            }
         } catch (Exception ignored) {
+            rollbackOptionalWrite(conn, savepoint);
             // Older demo databases may not have this table until the production migration is applied.
         }
     }
@@ -39,5 +52,16 @@ public final class PatientConsentService {
         String productName = conn.getMetaData().getDatabaseProductName();
         return productName != null && productName.toLowerCase().contains("derby")
                 ? "FETCH FIRST 1 ROW ONLY" : "LIMIT 1";
+    }
+
+    private static void rollbackOptionalWrite(Connection conn, Savepoint savepoint) {
+        if (savepoint == null) {
+            return;
+        }
+        try {
+            conn.rollback(savepoint);
+        } catch (Exception ignored) {
+            // Preserve the original best-effort behavior.
+        }
     }
 }
