@@ -12,7 +12,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
 import kotlin.math.sin
@@ -951,10 +953,16 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 try {
                     val savedReadings = repository.getLatestReadings()
+                    val sectionReadings = payload.toLatestReadings()
+                    val displayReadings = savedReadings.withFreshSectionValues(sectionReadings, payload.windowEnd)
                     _uiState.update {
                         it.copy(
-                            latestReadings = savedReadings,
-                            trendPoints = if (it.trendPoints.isEmpty()) savedReadings.toUiTrendPoints() else it.trendPoints
+                            latestReadings = displayReadings,
+                            trendPoints = if (it.trendPoints.isEmpty()) {
+                                displayReadings.toUiTrendPoints()
+                            } else {
+                                it.trendPoints
+                            }
                         )
                     }
                 } catch (e: Exception) {
@@ -1199,6 +1207,48 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun VitalTrendPoint.hasAnyReading(): Boolean {
         return heartRate != null || systolic != null || temperature != null
+    }
+
+    private fun LatestReadingsResponse.withFreshSectionValues(
+        sectionReadings: LatestReadingsResponse,
+        sectionEnd: String
+    ): LatestReadingsResponse {
+        return copy(
+            heartRate = if (heartRate.isOlderThan(sectionEnd)) sectionReadings.heartRate ?: heartRate else heartRate,
+            temperature = if (temperature.isOlderThan(sectionEnd)) sectionReadings.temperature ?: temperature else temperature,
+            bloodPressure = if (bloodPressure.isOlderThan(sectionEnd)) sectionReadings.bloodPressure ?: bloodPressure else bloodPressure
+        )
+    }
+
+    private fun ReadingValue?.isOlderThan(sectionEnd: String): Boolean {
+        return isRecordedBefore(this?.recordedAt, sectionEnd)
+    }
+
+    private fun TemperatureValue?.isOlderThan(sectionEnd: String): Boolean {
+        return isRecordedBefore(this?.recordedAt, sectionEnd)
+    }
+
+    private fun BloodPressureValue?.isOlderThan(sectionEnd: String): Boolean {
+        return isRecordedBefore(this?.recordedAt, sectionEnd)
+    }
+
+    private fun isRecordedBefore(recordedAt: String?, sectionEnd: String): Boolean {
+        val sectionInstant = parseInstant(sectionEnd) ?: return false
+        val recordedInstant = parseInstant(recordedAt) ?: return true
+        return recordedInstant.isBefore(sectionInstant)
+    }
+
+    private fun parseInstant(value: String?): Instant? {
+        val clean = value?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+        return try {
+            Instant.parse(clean)
+        } catch (_: Exception) {
+            try {
+                LocalDateTime.parse(clean.replace(' ', 'T')).atZone(ZoneId.systemDefault()).toInstant()
+            } catch (_: Exception) {
+                null
+            }
+        }
     }
 
     private fun formatBloodPressure(systolic: Int?, diastolic: Int?): String {
