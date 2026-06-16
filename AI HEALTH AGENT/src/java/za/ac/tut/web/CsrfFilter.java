@@ -40,7 +40,8 @@ public class CsrfFilter implements Filter {
     }
 
     private boolean isApiRequest(HttpServletRequest request) {
-        return request.getRequestURI() != null && request.getRequestURI().contains("/api/mobile/");
+        String uri = request.getRequestURI();
+        return uri != null && (uri.contains("/api/mobile/") || uri.endsWith("/AIChatServlet.do"));
     }
 
     private boolean isPublicLoginPost(HttpServletRequest request) {

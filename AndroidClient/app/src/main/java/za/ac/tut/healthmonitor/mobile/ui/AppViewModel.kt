@@ -106,6 +106,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         launchLoadingTask {
             repository.login(currentState.email.trim(), currentState.password)
             val profile = repository.getProfile().user
+            val savedReadings = latestSavedReadingsOrNull()
             loadContextSettingsFromBackend()
             val verificationMessage = if (profile?.isVerified == true) {
                 "Signed in. SmartHealth will sync recent watch readings automatically."
@@ -118,11 +119,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     isLoggedIn = true,
                     userProfile = profile,
                     isProfileOpen = profile?.isVerified == true && profile.isIncomplete(),
-                    latestReadings = null,
+                    latestReadings = savedReadings,
                     heartRateRange = null,
-                    trendPoints = emptyList(),
+                    trendPoints = savedReadings?.toUiTrendPoints() ?: emptyList(),
                     lastSectionSyncAt = null,
-                    lastSyncSummary = null,
+                    lastSyncSummary = savedReadings?.takeIf { reading -> reading.hasAnyReading() }
+                        ?.let { "Loaded latest saved readings from SmartHealth." },
                     password = "",
                     errorMessage = null,
                     infoMessage = if (profile?.isVerified == true && profile.isIncomplete()) {
@@ -139,6 +141,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val profile = repository.getProfile().user
+                val savedReadings = latestSavedReadingsOrNull()
                 loadContextSettingsFromBackend()
                 _uiState.update {
                     it.copy(
@@ -146,6 +149,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                         isRestoringSession = false,
                         userProfile = profile,
                         isProfileOpen = false,
+                        latestReadings = savedReadings,
+                        trendPoints = savedReadings?.toUiTrendPoints() ?: emptyList(),
+                        lastSyncSummary = savedReadings?.takeIf { reading -> reading.hasAnyReading() }
+                            ?.let { "Loaded latest saved readings from SmartHealth." },
                         errorMessage = null,
                         infoMessage = if (profile?.isVerified == true) {
                             "Session restored. SmartHealth will sync recent watch readings automatically."
@@ -265,18 +272,28 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun refreshDashboard() {
         launchLoadingTask {
             val profile = repository.getProfile().user
+            val savedReadings = latestSavedReadingsOrNull()
+            val hasSavedReadings = savedReadings?.hasAnyReading() == true
 
             _uiState.update {
                 it.copy(
                     isLoggedIn = true,
                     isRestoringSession = false,
                     userProfile = profile,
-                    latestReadings = null,
+                    latestReadings = savedReadings,
                     heartRateRange = null,
-                    trendPoints = emptyList(),
+                    trendPoints = savedReadings?.toUiTrendPoints() ?: emptyList(),
                     lastSectionSyncAt = null,
-                    lastSyncSummary = null,
-                    infoMessage = "Dashboard cleared. SmartHealth will sync recent watch readings automatically.",
+                    lastSyncSummary = if (hasSavedReadings) {
+                        "Loaded latest saved readings from SmartHealth."
+                    } else {
+                        null
+                    },
+                    infoMessage = if (hasSavedReadings) {
+                        "Loaded latest saved readings. SmartHealth will keep syncing recent watch readings automatically."
+                    } else {
+                        "No saved readings yet. SmartHealth will sync recent watch readings automatically."
+                    },
                     errorMessage = null
                 )
             }
@@ -980,6 +997,14 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             _uiState.update { it.copy(sleepStart = sleepStart, sleepEnd = sleepEnd) }
         } catch (_: Exception) {
             // Local settings remain the offline fallback.
+        }
+    }
+
+    private fun latestSavedReadingsOrNull(): LatestReadingsResponse? {
+        return try {
+            repository.getLatestReadings().takeIf { it.hasAnyReading() }
+        } catch (_: Exception) {
+            null
         }
     }
 
