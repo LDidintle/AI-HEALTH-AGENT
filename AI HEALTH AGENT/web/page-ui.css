@@ -269,10 +269,8 @@ button.btn {
 
 .data-table th:nth-child(1) { width: 22%; }
 .data-table th:nth-child(2) { width: 18%; }
-.data-table th:nth-child(3) { width: 14%; }
-.data-table th:nth-child(4) { width: 14%; }
-.data-table th:nth-child(5) { width: 16%; }
-.data-table th:nth-child(6) { width: 16%; }
+.data-table th:nth-child(3) { width: 16%; }
+.data-table th:nth-child(4) { width: 44%; }
 
 .status-pill {
     display: inline-flex;
@@ -365,15 +363,6 @@ button.btn {
     color: var(--ink-dark);
 }
 
-.screening-note {
-    color: #26364d;
-}
-
-.details-stack {
-    display: grid;
-    gap: 12px;
-}
-
 .detail-card {
     display: grid;
     gap: 6px;
@@ -388,6 +377,39 @@ button.btn {
 .detail-meta {
     color: #667085;
     font-size: 0.82rem;
+}
+
+.vitals-cell {
+    min-width: 0;
+}
+
+.vitals-snapshot {
+    display: grid;
+    grid-template-columns: minmax(180px, 0.9fr) minmax(240px, 1.1fr);
+    gap: 18px 24px;
+    align-items: start;
+}
+
+.vitals-metrics {
+    display: grid;
+    gap: 8px;
+    min-width: 0;
+    padding-right: 20px;
+    border-right: 1px solid var(--line);
+}
+
+.vitals-context {
+    display: grid;
+    gap: 12px;
+    min-width: 0;
+}
+
+.vitals-context .row-actions {
+    align-items: center;
+}
+
+.vitals-context .btn.compact {
+    min-width: 82px;
 }
 
 .data-table tr:hover {
@@ -513,5 +535,18 @@ button.btn {
 
     .data-table {
         min-width: 900px;
+    }
+}
+
+@media (max-width: 1180px) {
+    .vitals-snapshot {
+        grid-template-columns: 1fr;
+    }
+
+    .vitals-metrics {
+        padding-right: 0;
+        padding-bottom: 14px;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
     }
 }

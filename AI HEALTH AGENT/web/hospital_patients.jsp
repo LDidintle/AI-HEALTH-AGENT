@@ -69,8 +69,6 @@
                     <th>Patient</th>
                     <th>Contact</th>
                     <th>Vitals</th>
-                    <th>Screening Note</th>
-                    <th>Details</th>
                 </tr>
                 <% if (patients != null && !patients.isEmpty()) {
                     for (HospitalAlertPatientRow row : patients) { %>
@@ -110,35 +108,33 @@
                             <span><%= safe(row.getUser().getEmergencyContactNumber()) %></span>
                             <span>Blood group <%= safe(row.getUser().getBloodGroup()) %></span>
                         </td>
-                        <td class="vitals-list">
-                            <span><strong>HR</strong> <%= formatDecimal(row.getSummary().getAveragePulse()) %> BPM</span>
-                            <span><strong>Temp</strong> <%= formatDecimal(row.getSummary().getAverageTemperature()) %> °C</span>
-                            <span><strong>BP</strong> <%= formatDecimal(row.getSummary().getAverageSystolic()) %>/<%= formatDecimal(row.getSummary().getAverageDiastolic()) %></span>
-                        </td>
-                        <td class="screening-note">
-                            <div class="detail-card">
-                                <span><%= escapeHtml(screeningPreview(row)) %></span>
-                            </div>
-                        </td>
-                        <td class="details-cell">
-                            <div class="details-stack">
-                                <div class="detail-card">
-                                    <strong class="detail-label"><%= detailHeading(row) %></strong>
-                                    <span><%= escapeHtml(detailPreview(row)) %></span>
-                                    <span class="detail-meta"><%= escapeHtml(detailMeta(row)) %></span>
+                        <td class="vitals-cell">
+                            <div class="vitals-snapshot">
+                                <div class="vitals-metrics">
+                                    <span><strong>HR</strong> <%= formatDecimal(row.getSummary().getAveragePulse()) %> BPM</span>
+                                    <span><strong>Temp</strong> <%= formatDecimal(row.getSummary().getAverageTemperature()) %> °C</span>
+                                    <span><strong>BP</strong> <%= formatDecimal(row.getSummary().getAverageSystolic()) %>/<%= formatDecimal(row.getSummary().getAverageDiastolic()) %></span>
+                                    <span><strong>Readings</strong> <%= row.getSummary().getReadingCount() %></span>
                                 </div>
-                                <div class="row-actions">
-                                    <a class="btn primary compact" href="HospitalPatientDetailsServlet.do?id=<%= row.getUser().getId() %>">View</a>
+                                <div class="vitals-context">
+                                    <div class="detail-card">
+                                        <strong class="detail-label"><%= contextHeading(row) %></strong>
+                                        <span><%= escapeHtml(contextPreview(row)) %></span>
+                                        <span class="detail-meta"><%= escapeHtml(contextMeta(row)) %></span>
+                                    </div>
+                                    <div class="row-actions">
+                                        <a class="btn primary compact" href="HospitalPatientDetailsServlet.do?id=<%= row.getUser().getId() %>">View</a>
+                                    </div>
                                 </div>
                             </div>
                         </td>
                     </tr>
                 <%  }
                 } else { %>
-                    <tr><td colspan="6" class="empty">No active emergency-alert patients assigned to this hospital yet</td></tr>
+                    <tr><td colspan="4" class="empty">No active emergency-alert patients assigned to this hospital yet</td></tr>
                 <% } %>
                 <tr id="noSearchResults" class="hidden">
-                    <td colspan="6" class="empty">No matching alert patients found</td>
+                    <td colspan="4" class="empty">No matching alert patients found</td>
                 </tr>
             </table>
         </div>
@@ -178,24 +174,14 @@
         return value == null ? "" : value;
     }
 
-    private String screeningPreview(HospitalAlertPatientRow row) {
-        if (row == null || row.getSummary() == null || !hasText(row.getSummary().getPrediction())) {
-            return "Awaiting screening note.";
-        }
-        if (row.getSummary().getReadingCount() <= 0) {
-            return "Awaiting synced vitals before screening. Open the patient record to review patient context.";
-        }
-        return truncate(row.getSummary().getPrediction(), 180);
-    }
-
-    private String detailHeading(HospitalAlertPatientRow row) {
+    private String contextHeading(HospitalAlertPatientRow row) {
         return hasText(noteText(row)) ? "Clinical note" : "Patient context";
     }
 
-    private String detailPreview(HospitalAlertPatientRow row) {
+    private String contextPreview(HospitalAlertPatientRow row) {
         String noteText = noteText(row);
         if (hasText(noteText)) {
-            return truncate(noteText, 160);
+            return truncate(noteText, 190);
         }
 
         String conditions = clean(row.getUser().getChronicConditions());
@@ -213,7 +199,7 @@
         return "No clinical notes saved yet. Open the patient record to add findings and review history.";
     }
 
-    private String detailMeta(HospitalAlertPatientRow row) {
+    private String contextMeta(HospitalAlertPatientRow row) {
         String noteText = noteText(row);
         if (hasText(noteText)) {
             String updatedAt = compactTimestamp(row.getClinicalNote().getUpdatedAt());
@@ -229,7 +215,7 @@
             }
             return "Updated " + updatedAt + " by " + role;
         }
-        return "View full patient details and add clinical notes.";
+        return "Open the patient record to review history and add clinical notes.";
     }
 
     private String formatDecimal(BigDecimal value) {
