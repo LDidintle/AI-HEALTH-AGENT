@@ -70,6 +70,22 @@
                             <span class="status-pill <%= "CRITICAL".equals(row.getLatestAlertStatus()) ? "pending" : "verified" %>"><%= safe(row.getLatestAlertStatus()) %></span><br>
                             <span class="status-pill <%= assignmentClass(row.getAssignmentStatus()) %>"><%= displayAssignmentStatus(row.getAssignmentStatus()) %></span><br>
                             <%= formatTimestamp(row.getLatestAlertCreatedAt()) %>
+                            <% if (row.getLatestAlertId() != null) { %>
+                                <form action="HospitalAlertStatusServlet.do" method="post" class="alert-status-form">
+                                    <input type="hidden" name="<%= CsrfUtil.PARAMETER %>" value="<%= csrfToken %>">
+                                    <input type="hidden" name="alertId" value="<%= row.getLatestAlertId() %>">
+                                    <label for="alertStatus<%= row.getLatestAlertId() %>">Hospital status</label>
+                                    <div class="status-control">
+                                        <select id="alertStatus<%= row.getLatestAlertId() %>" name="action">
+                                            <option value="not_solved" <%= selectedAssignment(row.getAssignmentStatus(), HospitalAlertStatusService.ASSIGNED) %>>Not solved</option>
+                                            <option value="ongoing" <%= selectedAssignment(row.getAssignmentStatus(), HospitalAlertStatusService.ONGOING) %>>Ongoing</option>
+                                            <option value="resolved" <%= selectedAssignment(row.getAssignmentStatus(), HospitalAlertStatusService.RESOLVED) %>>Resolved</option>
+                                        </select>
+                                        <button class="btn primary compact" type="submit">Update</button>
+                                    </div>
+                                    <button class="btn danger compact" type="submit" name="action" value="remove" onclick="return confirm('Remove this attended alert from the active hospital list? Patient records will not be deleted.');">Remove alert</button>
+                                </form>
+                            <% } %>
                         </td>
                         <td><%= safe(row.getUser().getIdNumber()) %></td>
                         <td><%= safe(row.getUser().getCellNumber()) %></td>
@@ -84,28 +100,6 @@
                         <td>
                             <div class="row-actions">
                                 <a class="btn primary compact" href="HospitalPatientDetailsServlet.do?id=<%= row.getUser().getId() %>">View</a>
-                                <% if (row.getLatestAlertId() != null) { %>
-                                    <form action="HospitalAlertStatusServlet.do" method="post" class="inline-form">
-                                        <input type="hidden" name="<%= CsrfUtil.PARAMETER %>" value="<%= csrfToken %>">
-                                        <input type="hidden" name="alertId" value="<%= row.getLatestAlertId() %>">
-                                        <button class="btn secondary compact" type="submit" name="action" value="not_solved">Not solved</button>
-                                    </form>
-                                    <form action="HospitalAlertStatusServlet.do" method="post" class="inline-form">
-                                        <input type="hidden" name="<%= CsrfUtil.PARAMETER %>" value="<%= csrfToken %>">
-                                        <input type="hidden" name="alertId" value="<%= row.getLatestAlertId() %>">
-                                        <button class="btn secondary compact" type="submit" name="action" value="ongoing">Ongoing</button>
-                                    </form>
-                                    <form action="HospitalAlertStatusServlet.do" method="post" class="inline-form">
-                                        <input type="hidden" name="<%= CsrfUtil.PARAMETER %>" value="<%= csrfToken %>">
-                                        <input type="hidden" name="alertId" value="<%= row.getLatestAlertId() %>">
-                                        <button class="btn secondary compact" type="submit" name="action" value="resolved">Resolved</button>
-                                    </form>
-                                    <form action="HospitalAlertStatusServlet.do" method="post" class="inline-form">
-                                        <input type="hidden" name="<%= CsrfUtil.PARAMETER %>" value="<%= csrfToken %>">
-                                        <input type="hidden" name="alertId" value="<%= row.getLatestAlertId() %>">
-                                        <button class="btn danger compact" type="submit" name="action" value="remove">Remove</button>
-                                    </form>
-                                <% } %>
                             </div>
                         </td>
                     </tr>
@@ -175,5 +169,12 @@
             return "in-progress";
         }
         return "pending";
+    }
+
+    private String selectedAssignment(String current, String option) {
+        String status = current == null || current.trim().isEmpty()
+                ? HospitalAlertStatusService.ASSIGNED
+                : current.trim();
+        return option.equalsIgnoreCase(status) ? "selected" : "";
     }
 %>
