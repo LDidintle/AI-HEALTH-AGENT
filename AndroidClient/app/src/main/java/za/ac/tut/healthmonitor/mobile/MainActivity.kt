@@ -52,14 +52,20 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            val autoSyncSamsungHealthIfAllowed = {
+            fun autoSyncSamsungHealthIfAllowed(
+                force: Boolean = false,
+                allowPermissionPrompt: Boolean = true
+            ) {
                 coroutineScope.launch {
                     val now = System.currentTimeMillis()
-                    if (uiState.isLoggedIn && now - lastSamsungAutoSyncAt > AUTO_SYNC_COOLDOWN_MILLIS) {
+                    if (uiState.isLoggedIn && (force || now - lastSamsungAutoSyncAt > AUTO_SYNC_COOLDOWN_MILLIS)) {
                         try {
                             val hasPermission = samsungHealthDataManager.hasAnyRequiredPermission() ||
-                                (!samsungPermissionPrompted && samsungHealthDataManager.requestRequiredPermissions(this@MainActivity))
-                            samsungPermissionPrompted = true
+                                (allowPermissionPrompt && !samsungPermissionPrompted &&
+                                    samsungHealthDataManager.requestRequiredPermissions(this@MainActivity))
+                            if (allowPermissionPrompt) {
+                                samsungPermissionPrompted = true
+                            }
                             if (hasPermission) {
                                 lastSamsungAutoSyncAt = now
                                 appViewModel.syncSamsungHealthSection(samsungHealthDataManager)
@@ -79,7 +85,7 @@ class MainActivity : ComponentActivity() {
                 if (uiState.isLoggedIn) {
                     requestNotificationPermissionIfNeeded()
                     WatchAlertMonitoringService.start(applicationContext)
-                    autoSyncSamsungHealthIfAllowed()
+                    autoSyncSamsungHealthIfAllowed(force = true)
                     while (uiState.isLoggedIn) {
                         delay(FOREGROUND_SYNC_INTERVAL_MILLIS)
                         autoSyncSamsungHealthIfAllowed()
@@ -91,8 +97,14 @@ class MainActivity : ComponentActivity() {
 
             DisposableEffect(Unit) {
                 val observer = LifecycleEventObserver { _, event ->
-                    if (event == Lifecycle.Event.ON_START) {
-                        autoSyncSamsungHealthIfAllowed()
+                    when (event) {
+                        Lifecycle.Event.ON_START,
+                        Lifecycle.Event.ON_RESUME -> autoSyncSamsungHealthIfAllowed(force = true)
+                        Lifecycle.Event.ON_PAUSE -> autoSyncSamsungHealthIfAllowed(
+                            force = true,
+                            allowPermissionPrompt = false
+                        )
+                        else -> Unit
                     }
                 }
                 lifecycle.addObserver(observer)
@@ -148,7 +160,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private companion object {
-        const val FOREGROUND_SYNC_INTERVAL_MILLIS = 20L * 1000L
+        const val FOREGROUND_SYNC_INTERVAL_MILLIS = 8L * 1000L
         const val AUTO_SYNC_COOLDOWN_MILLIS = FOREGROUND_SYNC_INTERVAL_MILLIS
     }
 }
