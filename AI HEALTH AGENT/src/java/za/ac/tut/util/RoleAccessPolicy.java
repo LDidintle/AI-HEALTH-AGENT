@@ -47,6 +47,7 @@ public final class RoleAccessPolicy {
             "/HospitalPatientsServlet.do",
             "/HospitalAlertStatusServlet.do",
             "/HospitalPatientDetailsServlet.do",
+            "/UpdateClinicalNoteServlet.do",
             "/ReportsServlet.do",
             "/read_user_result.jsp"
     ));

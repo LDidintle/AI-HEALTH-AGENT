@@ -12,7 +12,7 @@
     <main class="shell">
         <p class="eyebrow">Doctor / Staff workspace</p>
         <h1>Find Patient</h1>
-        <p class="lead">Enter the patient's numeric system ID or email address to view saved details and doctor summary.</p>
+        <p class="lead">Enter the patient's numeric system ID or email address to view saved details, the predicted screening note, and editable clinical notes.</p>
 
         <%
             String errorMessage = (String) request.getAttribute("errorMessage");

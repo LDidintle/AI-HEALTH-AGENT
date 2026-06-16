@@ -1,11 +1,16 @@
+<%@page import="za.ac.tut.model.ClinicalNote"%>
 <%@page import="za.ac.tut.model.User"%>
 <%@page import="za.ac.tut.model.PatientSummary"%>
 <%@page import="java.math.BigDecimal"%>
+<%@page import="java.sql.Timestamp"%>
+<%@page import="za.ac.tut.util.CsrfUtil"%>
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
 <%
     User user = (User) request.getAttribute("user");
     PatientSummary summary = (PatientSummary) request.getAttribute("summary");
-    boolean readonlyPortal = "true".equals(String.valueOf(request.getAttribute("readonlyPortal")));
+    ClinicalNote clinicalNote = (ClinicalNote) request.getAttribute("clinicalNote");
+    boolean hospitalPortal = "true".equals(String.valueOf(request.getAttribute("hospitalPortal")));
+    String noteStatus = request.getParameter("note");
 %>
 <!DOCTYPE html>
 <html lang="en">
@@ -17,7 +22,7 @@
 </head>
 <body class="app-page">
     <main class="shell">
-        <p class="eyebrow"><%= readonlyPortal ? "Hospital portal" : "Doctor / Staff workspace" %></p>
+        <p class="eyebrow"><%= hospitalPortal ? "Hospital portal" : "Doctor / Staff workspace" %></p>
         <h1>Patient Details</h1>
 
         <% if (user == null) { %>
@@ -44,20 +49,47 @@
 
             <% if (summary != null) { %>
                 <section class="summary-panel">
-                    <h2>Doctor Summary</h2>
+                    <h2>Predicted Screening Summary</h2>
                     <dl class="readonly-list">
                         <div><dt>Average Heart Rate</dt><dd><%= formatDecimal(summary.getAveragePulse()) %> BPM</dd></div>
                         <div><dt>Average Temperature</dt><dd><%= formatDecimal(summary.getAverageTemperature()) %> °C</dd></div>
                         <div><dt>Average Blood Pressure</dt><dd><%= formatDecimal(summary.getAverageSystolic()) %>/<%= formatDecimal(summary.getAverageDiastolic()) %> mmHg</dd></div>
                         <div><dt>Readings Used</dt><dd><%= summary.getReadingCount() %></dd></div>
-                        <div><dt>Prediction</dt><dd><%= summary.getPrediction() %></dd></div>
+                        <div><dt>Screening Note</dt><dd><%= escapeHtml(summary.getPrediction()) %></dd></div>
                     </dl>
                 </section>
             <% } %>
+
+            <section class="summary-panel">
+                <h2>Clinical Notes</h2>
+                <% if ("saved".equals(noteStatus)) { %>
+                    <p class="message success">Clinical notes saved.</p>
+                <% } else if ("cleared".equals(noteStatus)) { %>
+                    <p class="message success">Clinical notes cleared.</p>
+                <% } else if ("invalid".equals(noteStatus)) { %>
+                    <p class="message error">Clinical notes must be 5000 characters or fewer.</p>
+                <% } else if ("forbidden".equals(noteStatus)) { %>
+                    <p class="message error">You do not have access to update notes for this patient.</p>
+                <% } %>
+                <form action="UpdateClinicalNoteServlet.do" method="post" class="clinical-note-form">
+                    <input type="hidden" name="<%= CsrfUtil.PARAMETER %>" value="<%= CsrfUtil.token(request) %>">
+                    <input type="hidden" name="userId" value="<%= user.getId() %>">
+                    <label for="noteText">Detailed clinician observations</label>
+                    <textarea id="noteText" name="noteText" rows="10" maxlength="5000" placeholder="Record findings, follow-up plans, and important clinical context here."><%= clinicalNote == null ? "" : escapeHtml(clinicalNote.getNoteText()) %></textarea>
+                    <p class="note-meta">
+                        <%= clinicalNote == null || clinicalNote.getUpdatedAt() == null
+                                ? "No clinical notes saved yet."
+                                : "Last updated " + formatTimestamp(clinicalNote.getUpdatedAt()) + formatUpdater(clinicalNote) %>
+                    </p>
+                    <div class="actions">
+                        <button class="btn primary" type="submit">Save Clinical Notes</button>
+                    </div>
+                </form>
+            </section>
         <% } %>
 
         <div class="actions">
-            <% if (readonlyPortal) { %>
+            <% if (hospitalPortal) { %>
                 <a class="btn primary" href="HospitalPatientsServlet.do">Back to Patient Search</a>
                 <a class="btn secondary" href="SignOutServlet.do">Logout</a>
             <% } else { %>
@@ -71,5 +103,33 @@
 <%!
     private String formatDecimal(BigDecimal value) {
         return value == null ? "No data" : value.setScale(1, java.math.RoundingMode.HALF_UP).toPlainString();
+    }
+
+    private String formatTimestamp(Timestamp value) {
+        return value == null ? "" : value.toString();
+    }
+
+    private String formatUpdater(ClinicalNote note) {
+        String role = note.getUpdatedByRole();
+        String actor = note.getUpdatedByActor();
+        if (role == null || role.trim().isEmpty()) {
+            return ".";
+        }
+        if (actor == null || actor.trim().isEmpty()) {
+            return " by " + escapeHtml(role) + ".";
+        }
+        return " by " + escapeHtml(role) + " (" + escapeHtml(actor) + ").";
+    }
+
+    private String escapeHtml(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;");
     }
 %>

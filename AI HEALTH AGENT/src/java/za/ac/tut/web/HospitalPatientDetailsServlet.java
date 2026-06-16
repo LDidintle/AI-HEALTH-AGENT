@@ -9,6 +9,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
+import za.ac.tut.util.ClinicalNoteService;
 import za.ac.tut.model.User;
 import za.ac.tut.util.Database;
 import za.ac.tut.util.HospitalAlertStatusService;
@@ -50,7 +51,8 @@ public class HospitalPatientDetailsServlet extends HttpServlet {
                     User user = PatientMapper.fromResultSet(rs);
                     request.setAttribute("user", user);
                     request.setAttribute("summary", PatientSummaryService.loadSummary(conn, user.getId()));
-                    request.setAttribute("readonlyPortal", "true");
+                    request.setAttribute("clinicalNote", ClinicalNoteService.load(conn, user.getId()));
+                    request.setAttribute("hospitalPortal", "true");
                     request.getRequestDispatcher("read_user_result.jsp").forward(request, response);
                     return;
                 }

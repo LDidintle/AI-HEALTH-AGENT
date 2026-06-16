@@ -248,6 +248,8 @@ public class BackendRiskChecks {
         assertTrue(RoleAccessPolicy.isAllowed(AuthUtil.ROLE_ADMIN, "/ReportsServlet.do", "GET"), "admin should access reports");
         assertTrue(RoleAccessPolicy.isAllowed(AuthUtil.ROLE_HOSPITAL, "/HospitalPatientsServlet.do", "GET"), "hospital should access hospital patients");
         assertTrue(RoleAccessPolicy.isAllowed(AuthUtil.ROLE_HOSPITAL, "/HospitalAlertStatusServlet.do", "POST"), "hospital should update assigned alert status");
+        assertTrue(RoleAccessPolicy.isAllowed(AuthUtil.ROLE_HOSPITAL, "/UpdateClinicalNoteServlet.do", "POST"), "hospital should save clinical notes for assigned patients");
+        assertTrue(RoleAccessPolicy.isAllowed(AuthUtil.ROLE_ADMIN, "/UpdateClinicalNoteServlet.do", "POST"), "admin should save clinical notes");
         assertFalse(RoleAccessPolicy.isAllowed(AuthUtil.ROLE_HOSPITAL, "/ViewUsersServlet.do", "GET"), "hospital must not access staff CRUD");
         assertTrue(RoleAccessPolicy.isPublic("/health"), "health check should be public");
     }

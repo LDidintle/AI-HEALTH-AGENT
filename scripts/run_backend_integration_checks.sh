@@ -14,6 +14,7 @@ javac -source 8 -target 8 \
   -cp "$APP_DIR/web/WEB-INF/lib/guava-31.1-jre.jar:$APP_DIR/web/WEB-INF/lib/mavenproject2-1.0-SNAPSHOT.jar:$APP_DIR/web/WEB-INF/lib/mariadb-java-client-2.7.2.jar:$APP_DIR/web/WEB-INF/lib/postgresql-42.7.11.jar:$SERVLET_API:$DERBY_JAR" \
   -d "$BUILD_DIR" \
   "$APP_DIR/src/java/za/ac/tut/model/PasswordUtils.java" \
+  "$APP_DIR/src/java/za/ac/tut/model/ClinicalNote.java" \
   "$APP_DIR/src/java/za/ac/tut/model/PatientSummary.java" \
   "$APP_DIR/src/java/za/ac/tut/model/ReportColumn.java" \
   "$APP_DIR/src/java/za/ac/tut/model/ReportCriteria.java" \
@@ -21,6 +22,7 @@ javac -source 8 -target 8 \
   "$APP_DIR/src/java/za/ac/tut/util/DatabaseConfig.java" \
   "$APP_DIR/src/java/za/ac/tut/util/AlertLifecycleService.java" \
   "$APP_DIR/src/java/za/ac/tut/util/AuditEventService.java" \
+  "$APP_DIR/src/java/za/ac/tut/util/ClinicalNoteService.java" \
   "$APP_DIR/src/java/za/ac/tut/util/HealthRiskPredictionService.java" \
   "$APP_DIR/src/java/za/ac/tut/util/JsonUtil.java" \
   "$APP_DIR/src/java/za/ac/tut/util/PatientConsentService.java" \

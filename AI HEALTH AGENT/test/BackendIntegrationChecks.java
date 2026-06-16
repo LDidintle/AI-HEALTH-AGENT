@@ -9,11 +9,13 @@ import za.ac.tut.model.PasswordUtils;
 import za.ac.tut.model.ReportCriteria;
 import za.ac.tut.model.ReportResult;
 import za.ac.tut.model.PatientSummary;
+import za.ac.tut.model.ClinicalNote;
 import za.ac.tut.util.PasswordResetService;
 import za.ac.tut.util.PatientContextSettingsService;
 import za.ac.tut.util.PatientAccountProcedureService;
 import za.ac.tut.util.ReportService;
 import za.ac.tut.util.PatientSummaryService;
+import za.ac.tut.util.ClinicalNoteService;
 import za.ac.tut.util.VitalAlertEvaluator;
 import za.ac.tut.util.HealthRiskPredictionService;
 import za.ac.tut.util.AuditEventService;
@@ -33,6 +35,7 @@ public class BackendIntegrationChecks {
             verifiesSamsungSleepTemperatureStaffSummary(conn);
             verifiesEmergencyAlertPersistence(conn);
             verifiesAuditConsentAndAlertLifecycle(conn);
+            verifiesClinicalNotes(conn);
             verifiesReports(conn);
         }
         System.out.println("Backend integration checks passed.");
@@ -99,6 +102,10 @@ public class BackendIntegrationChecks {
             statement.execute("CREATE TABLE hospital_alert_assignments ("
                     + "assignment_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, alert_id INTEGER NOT NULL, hospital_id INTEGER NOT NULL, "
                     + "assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, status VARCHAR(30) DEFAULT 'ASSIGNED')");
+            statement.execute("CREATE TABLE clinical_notes ("
+                    + "note_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, user_id INTEGER NOT NULL UNIQUE, "
+                    + "note_text CLOB NOT NULL, updated_by_role VARCHAR(30), updated_by_actor VARCHAR(80), "
+                    + "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
             statement.execute("CREATE TABLE ambulance_notifications ("
                     + "notification_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, alert_id INTEGER NOT NULL, "
                     + "sent_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP, response_status VARCHAR(40))");
@@ -235,6 +242,35 @@ public class BackendIntegrationChecks {
         assertEquals(1, vitals.getRows().size(), "temperature trend test patient should appear in vitals report");
         assertTrue(vitals.getRows().get(0).get("risk").startsWith("LOW"),
                 "vitals report screening note must not score Samsung sleep-temperature trend as fever");
+    }
+
+    private static void verifiesClinicalNotes(Connection conn) throws Exception {
+        int userId = PatientAccountProcedureService.createPatientAccount(
+                conn, "Ms", "Clinical", "Notes", Date.valueOf("1997-06-07"),
+                "clinical-notes@example.com", PasswordUtils.hashPassword("Clinical22!"));
+
+        ClinicalNote missing = ClinicalNoteService.load(conn, userId);
+        assertEquals(null, missing.getNoteText(), "missing clinical note should load as empty");
+
+        ClinicalNoteService.save(conn, userId, "Initial doctor finding.", "ADMIN", "staff");
+        ClinicalNote first = ClinicalNoteService.load(conn, userId);
+        assertEquals("Initial doctor finding.", first.getNoteText(), "saved note text should round-trip");
+        assertEquals("ADMIN", first.getUpdatedByRole(), "actor role should persist");
+        assertEquals(1, count(conn, "SELECT COUNT(*) FROM clinical_notes WHERE user_id = " + userId),
+                "clinical notes should store one row per patient");
+
+        ClinicalNoteService.save(conn, userId, "Updated hospital observation.", "HOSPITAL", "2");
+        ClinicalNote updated = ClinicalNoteService.load(conn, userId);
+        assertEquals("Updated hospital observation.", updated.getNoteText(), "latest note text should replace the prior note");
+        assertEquals("HOSPITAL", updated.getUpdatedByRole(), "latest actor role should replace the prior role");
+        assertEquals(1, count(conn, "SELECT COUNT(*) FROM clinical_notes WHERE user_id = " + userId),
+                "updating a note must not create duplicate rows");
+
+        ClinicalNoteService.save(conn, userId, "   ", "ADMIN", "staff");
+        ClinicalNote cleared = ClinicalNoteService.load(conn, userId);
+        assertEquals(null, cleared.getNoteText(), "blank save should clear the clinical note");
+        assertEquals(0, count(conn, "SELECT COUNT(*) FROM clinical_notes WHERE user_id = " + userId),
+                "clearing a note should delete the stored row");
     }
 
     private static void verifiesReports(Connection conn) throws Exception {

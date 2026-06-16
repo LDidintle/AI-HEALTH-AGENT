@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.List;
 import za.ac.tut.model.PatientSummary;
 
 public final class PatientSummaryService {
@@ -18,10 +19,7 @@ public final class PatientSummaryService {
         summary.setAverageSystolic(queryAverage(conn, "SELECT AVG(systolic) FROM blood_pressure_readings WHERE user_id = ?", userId));
         summary.setAverageDiastolic(queryAverage(conn, "SELECT AVG(diastolic) FROM blood_pressure_readings WHERE user_id = ?", userId));
         summary.setReadingCount(queryCount(conn, userId));
-        BigDecimal averageScorableTemperature = queryAverage(conn,
-                "SELECT AVG(temperature) FROM temperature_readings WHERE user_id = ? "
-                + "AND UPPER(COALESCE(source, '')) <> 'SAMSUNG_HEALTH_DATA'", userId);
-        summary.setPrediction(predict(summary, averageScorableTemperature));
+        summary.setPrediction(formatPrediction(HealthRiskPredictionService.predictForUser(conn, userId)));
         return summary;
     }
 
@@ -50,43 +48,9 @@ public final class PatientSummaryService {
         }
     }
 
-    private static String predict(PatientSummary summary, BigDecimal averageScorableTemperature) {
-        if (summary.getReadingCount() == 0) {
-            return "No synced vitals yet. Ask the patient to sync from the mobile app before clinical review.";
-        }
-
-        if (greaterOrEqual(summary.getAverageSystolic(), 140) || greaterOrEqual(summary.getAverageDiastolic(), 90)) {
-            return "Average blood pressure is high. Review repeated readings and consider follow-up.";
-        }
-
-        if (lessThan(summary.getAveragePulse(), 50)) {
-            return "Average pulse is low. Check symptoms and review with a clinician if persistent.";
-        }
-
-        if (greaterThan(summary.getAveragePulse(), 100)) {
-            return "Average pulse is high. Recheck resting readings and review possible causes.";
-        }
-
-        if (greaterThan(averageScorableTemperature, new BigDecimal("37.5"))) {
-            return "Average temperature is raised. Monitor fever symptoms and follow up if persistent.";
-        }
-
-        return "Average vitals are within the expected screening range.";
-    }
-
-    private static boolean greaterThan(BigDecimal value, int threshold) {
-        return value != null && value.compareTo(BigDecimal.valueOf(threshold)) > 0;
-    }
-
-    private static boolean greaterThan(BigDecimal value, BigDecimal threshold) {
-        return value != null && value.compareTo(threshold) > 0;
-    }
-
-    private static boolean greaterOrEqual(BigDecimal value, int threshold) {
-        return value != null && value.compareTo(BigDecimal.valueOf(threshold)) >= 0;
-    }
-
-    private static boolean lessThan(BigDecimal value, int threshold) {
-        return value != null && value.compareTo(BigDecimal.valueOf(threshold)) < 0;
+    private static String formatPrediction(HealthRiskPredictionService.PredictionResult prediction) {
+        List<String> reasons = prediction.getReasons();
+        String lead = reasons.isEmpty() ? prediction.getSummary() : reasons.get(0);
+        return prediction.getRiskLevel().name() + " - " + lead + " " + prediction.getRecommendedAction();
     }
 }
