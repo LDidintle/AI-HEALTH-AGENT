@@ -53,6 +53,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import za.ac.tut.healthmonitor.mobile.data.model.BloodPressureValue
+import za.ac.tut.healthmonitor.mobile.data.model.EmergencyAlertNotification
 import za.ac.tut.healthmonitor.mobile.data.model.HealthPrediction
 import za.ac.tut.healthmonitor.mobile.data.model.LatestReadingsResponse
 import za.ac.tut.healthmonitor.mobile.data.model.ReadingValue
@@ -384,6 +385,8 @@ private fun DashboardContent(
 ) {
     val copy = copyFor(uiState.selectedLanguage)
     var showEmergencyConfirm by remember { mutableStateOf(false) }
+    var dismissedAlertDialogId by remember { mutableStateOf<Int?>(null) }
+    val activeAlert = uiState.activeAlert
 
     Column(
         modifier = Modifier
@@ -447,6 +450,13 @@ private fun DashboardContent(
         }
 
         EmergencyNotificationCard(uiState)
+
+        if (activeAlert != null && dismissedAlertDialogId != activeAlert.id) {
+            EmergencyAlertDialog(
+                alert = activeAlert,
+                onDismiss = { dismissedAlertDialogId = activeAlert.id }
+            )
+        }
 
         AiSuggestionsCard(uiState.latestReadings, uiState.readingContext, uiState.sleepStart, uiState.sleepEnd, copy)
         Spacer(modifier = Modifier.height(20.dp))
@@ -947,25 +957,77 @@ private fun EmergencyNotificationCard(uiState: AppUiState) {
         return
     }
 
-    Card(colors = CardDefaults.cardColors(containerColor = Danger), shape = RoundedCornerShape(18.dp)) {
-        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("SmartHealth Demo Alert", color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
+    Card(colors = CardDefaults.cardColors(containerColor = Danger), shape = RoundedCornerShape(16.dp)) {
+        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(
+                alert?.status?.takeIf { it.isNotBlank() } ?: "DEMO ALERT",
+                color = Color(0xFFFFE4D6),
+                fontWeight = FontWeight.Black,
+                style = MaterialTheme.typography.labelLarge
+            )
+            Text("Critical patient alert", color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.headlineSmall)
             Text(
                 text = alert?.message ?: "Demo emergency alert recorded for hospital/staff review. This is not real emergency dispatch.",
                 color = Color.White,
                 style = MaterialTheme.typography.bodyLarge
             )
-            alert?.hospitalName?.takeIf { it.isNotBlank() }?.let {
-                Text("Assigned hospital: $it", color = Color.White, style = MaterialTheme.typography.bodyMedium)
+
+            alert?.let {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    AlertDetailRow("Hospital", it.hospitalName?.takeIf { name -> name.isNotBlank() } ?: "Hospital staff")
+                    AlertDetailRow("Heart rate", it.bpm?.let { bpm -> "$bpm BPM" } ?: "Not recorded")
+                    AlertDetailRow("Queue status", it.assignmentStatus?.takeIf { status -> status.isNotBlank() } ?: it.lifecycleStatus ?: "Review pending")
+                    AlertDetailRow("Alert time", formatAlertTime(it.createdAt))
+                }
             }
-            alert?.status?.takeIf { it.isNotBlank() }?.let {
-                Text("Status: $it", color = Color.White, style = MaterialTheme.typography.bodyMedium)
-            }
-            alert?.bpm?.let {
-                Text("Heart rate: $it BPM", color = Color.White, style = MaterialTheme.typography.bodyMedium)
-            }
+
+            Text(
+                "If this is a real emergency, call local emergency services now. SmartHealth demo alerts are not real emergency dispatch.",
+                color = Color(0xFFFFF1E9),
+                style = MaterialTheme.typography.bodySmall
+            )
         }
     }
+}
+
+@Composable
+private fun AlertDetailRow(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.White.copy(alpha = 0.12f), RoundedCornerShape(8.dp))
+            .padding(10.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(label, color = Color(0xFFFFE4D6), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+        Text(value, color = Color.White, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+private fun EmergencyAlertDialog(alert: EmergencyAlertNotification, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Emergency warning pattern detected") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(alert.message ?: "SmartHealth demo alert recorded for hospital/staff review.")
+                Text("Assigned hospital: ${alert.hospitalName?.takeIf { it.isNotBlank() } ?: "Hospital staff"}")
+                alert.bpm?.let { Text("Heart rate: $it BPM") }
+                Text("If this is a real emergency, call local emergency services now. This is not real emergency dispatch.")
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("I understand")
+            }
+        }
+    )
+}
+
+private fun formatAlertTime(value: String?): String {
+    return value?.takeIf { it.isNotBlank() } ?: "Just now"
 }
 
 @Composable

@@ -62,23 +62,26 @@
 
         <div class="result-count" id="resultCount"></div>
 
-        <div class="table-wrap">
-            <table class="data-table" id="patientsTable">
-                <tr>
-                    <th>Alert</th>
-                    <th>Patient</th>
-                    <th>Contact</th>
-                    <th>Vitals</th>
-                </tr>
-                <% if (patients != null && !patients.isEmpty()) {
-                    for (HospitalAlertPatientRow row : patients) { %>
-                    <tr data-patient-row>
-                        <td class="alert-cell">
+        <section class="alert-queue" aria-label="Active hospital alert queue">
+            <% if (patients != null && !patients.isEmpty()) {
+                for (HospitalAlertPatientRow row : patients) { %>
+                <article class="alert-card" data-patient-row>
+                    <div class="alert-card-header">
+                        <div>
                             <div class="pill-stack">
                                 <span class="status-pill <%= "CRITICAL".equals(row.getLatestAlertStatus()) ? "pending" : "verified" %>"><%= safe(row.getLatestAlertStatus()) %></span>
                                 <span class="status-pill <%= assignmentClass(row.getAssignmentStatus()) %>"><%= displayAssignmentStatus(row.getAssignmentStatus()) %></span>
                             </div>
-                            <div class="muted-line"><%= formatTimestamp(row.getLatestAlertCreatedAt()) %></div>
+                            <h2><%= row.getUser().getFirstName() %> <%= row.getUser().getSurname() %></h2>
+                            <p><%= row.getUser().getEmail() %></p>
+                        </div>
+                        <a class="btn primary compact" href="HospitalPatientDetailsServlet.do?id=<%= row.getUser().getId() %>">View details</a>
+                    </div>
+
+                    <div class="alert-card-grid">
+                        <section class="alert-panel">
+                            <h3>Alert</h3>
+                            <p class="muted-line"><%= formatTimestamp(row.getLatestAlertCreatedAt()) %></p>
                             <% if (row.getLatestAlertId() != null) { %>
                                 <form action="HospitalAlertStatusServlet.do" method="post" class="alert-status-form">
                                     <input type="hidden" name="<%= CsrfUtil.PARAMETER %>" value="<%= csrfToken %>">
@@ -92,52 +95,55 @@
                                         </select>
                                         <button class="btn primary compact" type="submit">Update</button>
                                     </div>
-                                    <button class="btn danger compact" type="submit" name="action" value="remove" onclick="return confirm('Remove this attended alert from the active hospital list? Patient records will not be deleted.');">Remove alert</button>
+                                </form>
+                                <form action="HospitalAlertStatusServlet.do" method="post" class="remove-alert-form">
+                                    <input type="hidden" name="<%= CsrfUtil.PARAMETER %>" value="<%= csrfToken %>">
+                                    <input type="hidden" name="alertId" value="<%= row.getLatestAlertId() %>">
+                                    <input type="hidden" name="action" value="remove">
+                                    <button class="btn danger compact" type="submit" onclick="return confirm('Remove this attended alert from the active hospital list? Patient records will not be deleted.');">Remove alert</button>
                                 </form>
                             <% } %>
-                        </td>
-                        <td class="patient-cell">
-                            <strong><%= row.getUser().getFirstName() %> <%= row.getUser().getSurname() %></strong>
-                            <span><%= row.getUser().getEmail() %></span>
-                            <span>System ID <%= row.getUser().getId() %></span>
-                            <span>ID <%= safe(row.getUser().getIdNumber()) %></span>
-                        </td>
-                        <td class="patient-cell">
-                            <strong><%= safe(row.getUser().getCellNumber()) %></strong>
-                            <span><%= safe(row.getUser().getEmergencyContactName()) %></span>
-                            <span><%= safe(row.getUser().getEmergencyContactNumber()) %></span>
-                            <span>Blood group <%= safe(row.getUser().getBloodGroup()) %></span>
-                        </td>
-                        <td class="vitals-cell">
-                            <div class="vitals-snapshot">
-                                <div class="vitals-metrics">
-                                    <span><strong>HR</strong> <%= formatDecimal(row.getSummary().getAveragePulse()) %> BPM</span>
-                                    <span><strong>Temp</strong> <%= formatDecimal(row.getSummary().getAverageTemperature()) %> °C</span>
-                                    <span><strong>BP</strong> <%= formatDecimal(row.getSummary().getAverageSystolic()) %>/<%= formatDecimal(row.getSummary().getAverageDiastolic()) %></span>
-                                    <span><strong>Readings</strong> <%= row.getSummary().getReadingCount() %></span>
-                                </div>
-                                <div class="vitals-context">
-                                    <div class="detail-card">
-                                        <strong class="detail-label"><%= contextHeading(row) %></strong>
-                                        <span><%= escapeHtml(contextPreview(row)) %></span>
-                                        <span class="detail-meta"><%= escapeHtml(contextMeta(row)) %></span>
-                                    </div>
-                                    <div class="row-actions">
-                                        <a class="btn primary compact" href="HospitalPatientDetailsServlet.do?id=<%= row.getUser().getId() %>">View</a>
-                                    </div>
-                                </div>
+                        </section>
+
+                        <section class="alert-panel">
+                            <h3>Patient</h3>
+                            <dl class="compact-details">
+                                <div><dt>System ID</dt><dd><%= row.getUser().getId() %></dd></div>
+                                <div><dt>ID number</dt><dd><%= safe(row.getUser().getIdNumber()) %></dd></div>
+                                <div><dt>Cell</dt><dd><%= safe(row.getUser().getCellNumber()) %></dd></div>
+                                <div><dt>Blood</dt><dd><%= safe(row.getUser().getBloodGroup()) %></dd></div>
+                            </dl>
+                        </section>
+
+                        <section class="alert-panel">
+                            <h3>Emergency Contact</h3>
+                            <p><strong><%= safe(row.getUser().getEmergencyContactName()) %></strong></p>
+                            <p class="muted-line"><%= safe(row.getUser().getEmergencyContactNumber()) %></p>
+                        </section>
+
+                        <section class="alert-panel">
+                            <h3>Vitals</h3>
+                            <div class="vitals-metrics">
+                                <span><strong>HR</strong> <%= formatDecimal(row.getSummary().getAveragePulse()) %> BPM</span>
+                                <span><strong>Temp</strong> <%= formatDecimal(row.getSummary().getAverageTemperature()) %> °C</span>
+                                <span><strong>BP</strong> <%= formatDecimal(row.getSummary().getAverageSystolic()) %>/<%= formatDecimal(row.getSummary().getAverageDiastolic()) %></span>
+                                <span><strong>Readings</strong> <%= row.getSummary().getReadingCount() %></span>
                             </div>
-                        </td>
-                    </tr>
-                <%  }
-                } else { %>
-                    <tr><td colspan="4" class="empty">No active emergency-alert patients assigned to this hospital yet</td></tr>
-                <% } %>
-                <tr id="noSearchResults" class="hidden">
-                    <td colspan="4" class="empty">No matching alert patients found</td>
-                </tr>
-            </table>
-        </div>
+                        </section>
+
+                        <section class="alert-panel alert-panel-wide">
+                            <h3><%= contextHeading(row) %></h3>
+                            <p><%= escapeHtml(contextPreview(row)) %></p>
+                            <p class="detail-meta"><%= escapeHtml(contextMeta(row)) %></p>
+                        </section>
+                    </div>
+                </article>
+            <%  }
+            } else { %>
+                <p class="empty">No active emergency-alert patients assigned to this hospital yet</p>
+            <% } %>
+            <p id="noSearchResults" class="empty hidden">No matching alert patients found</p>
+        </section>
     </main>
 
     <script>

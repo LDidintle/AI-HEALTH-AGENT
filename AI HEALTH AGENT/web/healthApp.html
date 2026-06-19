@@ -137,6 +137,35 @@
                 <span id="alert_p">ALERT SENT TO PARAMEDICS!</span>
                 <i class="fas fa-bolt"></i>
             </div>
+            <section class="patient-alert-card hidden" id="patientAlertCard" aria-live="polite">
+                <div class="patient-alert-header">
+                    <div>
+                        <p class="patient-alert-kicker" id="patientAlertStatus">CRITICAL</p>
+                        <h3 id="patientAlertHeading">Critical patient alert</h3>
+                    </div>
+                    <button class="alert-detail-button" type="button" onclick="openPatientAlertModal()">View</button>
+                </div>
+                <p class="patient-alert-message" id="patientAlertMessage">Hospital staff should review this patient now.</p>
+                <dl class="patient-alert-grid">
+                    <div>
+                        <dt>Hospital</dt>
+                        <dd id="patientAlertHospital">Hospital staff</dd>
+                    </div>
+                    <div>
+                        <dt>Heart rate</dt>
+                        <dd id="patientAlertHeartRate">Not recorded</dd>
+                    </div>
+                    <div>
+                        <dt>Alert time</dt>
+                        <dd id="patientAlertCreatedAt">Just now</dd>
+                    </div>
+                    <div>
+                        <dt>Queue status</dt>
+                        <dd id="patientAlertAssignment">Review pending</dd>
+                    </div>
+                </dl>
+                <p class="patient-alert-safety" id="patientAlertSafety">If this is a real emergency, call local emergency services now. SmartHealth demo alerts are not real emergency dispatch.</p>
+            </section>
             <p id="syncStatus" class="sync-status">Waiting for synced phone data...</p>
 
             <div class="card causes-card">
@@ -189,6 +218,18 @@
                 <input type="text" id="chatInput" placeholder="Type your message..." onkeydown="handleKey(event)" />
                 <button onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
             </div>
+        </div>
+    </div>
+
+    <div class="patient-alert-modal" id="patientAlertModal" role="dialog" aria-modal="true" aria-labelledby="patientAlertModalTitle">
+        <div class="patient-alert-modal-card">
+            <p class="patient-alert-kicker" id="patientAlertModalStatus">CRITICAL</p>
+            <h2 id="patientAlertModalTitle">Emergency warning pattern detected</h2>
+            <p id="patientAlertModalMessage">Hospital staff should review this patient now.</p>
+            <div class="patient-alert-modal-actions">
+                <button type="button" onclick="closePatientAlertModal()">I understand</button>
+            </div>
+            <p id="patientAlertModalSafety">If this is a real emergency, call local emergency services now. SmartHealth demo alerts are not real emergency dispatch.</p>
         </div>
     </div>
 

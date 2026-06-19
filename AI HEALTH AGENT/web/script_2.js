@@ -58,6 +58,8 @@ const chartSeries = {
 };
 let isSignedOut = false;
 let currentLiveReadings = null;
+let activePatientAlert = null;
+let lastOpenedPatientAlertId = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     applyLanguage('en');
@@ -336,6 +338,7 @@ function loadLatestReadings(options = {}) {
             if (!hasAnyReading(data)) {
                 currentLiveReadings = data;
                 clearLiveReadings();
+                updatePatientAlert(data.activeAlert);
                 updateSyncMeta(data.latestSection);
                 return updateSyncStatus('No synced app data found yet. Sync from the mobile app, then refresh this dashboard.');
             }
@@ -346,6 +349,7 @@ function loadLatestReadings(options = {}) {
             setText('temperatureValue', data.temperature === null ? '--' : data.temperature);
             updateChartSeries(data);
             updateAlertBanner(data);
+            updatePatientAlert(data.activeAlert);
             updateWellnessSuggestions(data);
             updateSyncMeta(data.latestSection, { hasReadings: true });
             updateSyncStatus(buildSyncStatus(data.latestSyncedAt));
@@ -422,6 +426,60 @@ function normalizeMobileReadings(data) {
     };
 }
 
+function buildPatientAlertViewModel(alert) {
+    if (!alert) {
+        return {
+            visible: false,
+            heading: '',
+            status: '',
+            hospital: '',
+            heartRate: '',
+            createdAt: '',
+            assignmentStatus: '',
+            message: '',
+            safetyCopy: ''
+        };
+    }
+
+    const status = alert.status || 'ALERT';
+    const hospital = alert.hospitalName || 'hospital staff';
+    const createdAt = formatAlertTimestamp(alert.createdAt);
+    const heartRate = alert.bpm === null || alert.bpm === undefined ? 'Not recorded' : `${alert.bpm} BPM`;
+    const assignmentStatus = alert.assignmentStatus || alert.lifecycleStatus || 'Review pending';
+    const isCritical = String(status).toUpperCase() === 'CRITICAL';
+    const heading = isCritical ? 'Critical patient alert' : 'Patient warning alert';
+    const message = alert.message || `SmartHealth demo alert sent to ${hospital}. hospital staff should review this patient now.`;
+
+    return {
+        visible: true,
+        heading,
+        status,
+        hospital,
+        heartRate,
+        createdAt,
+        assignmentStatus,
+        message,
+        safetyCopy: 'If this is a real emergency, call local emergency services now. SmartHealth demo alerts are not real emergency dispatch.'
+    };
+}
+
+function shouldOpenPatientAlertModal(alert, lastOpenedAlertId) {
+    return Boolean(alert && alert.id !== null && alert.id !== undefined && alert.id !== lastOpenedAlertId);
+}
+
+function formatAlertTimestamp(value) {
+    if (!value) {
+        return 'Just now';
+    }
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+        return 'Just now';
+    }
+
+    return date.toLocaleString();
+}
+
 function latestTimestamp(values) {
     const timestamps = values
         .filter(Boolean)
@@ -492,6 +550,7 @@ function clearLiveReadings() {
     chartSeries.temperature = [];
     redrawChart();
     updateAlertBanner({ heartRate: null, temperature: null });
+    updatePatientAlert(null);
 }
 
 function updateAlertBanner(data) {
@@ -519,6 +578,52 @@ function updateAlertBanner(data) {
 
     alertText.innerText = text.alert;
     banner.style.display = shouldWarn ? 'flex' : 'none';
+}
+
+function updatePatientAlert(alert) {
+    activePatientAlert = alert || null;
+    const viewModel = buildPatientAlertViewModel(activePatientAlert);
+    const card = document.getElementById('patientAlertCard');
+    if (!card) return;
+
+    card.classList.toggle('hidden', !viewModel.visible);
+    if (!viewModel.visible) {
+        closePatientAlertModal();
+        return;
+    }
+
+    setText('patientAlertStatus', viewModel.status);
+    setText('patientAlertHeading', viewModel.heading);
+    setText('patientAlertMessage', viewModel.message);
+    setText('patientAlertHospital', viewModel.hospital);
+    setText('patientAlertHeartRate', viewModel.heartRate);
+    setText('patientAlertCreatedAt', viewModel.createdAt);
+    setText('patientAlertAssignment', viewModel.assignmentStatus);
+    setText('patientAlertSafety', viewModel.safetyCopy);
+    setText('patientAlertModalStatus', viewModel.status);
+    setText('patientAlertModalTitle', viewModel.heading);
+    setText('patientAlertModalMessage', viewModel.message);
+    setText('patientAlertModalSafety', viewModel.safetyCopy);
+
+    if (shouldOpenPatientAlertModal(activePatientAlert, lastOpenedPatientAlertId)) {
+        lastOpenedPatientAlertId = activePatientAlert.id;
+        openPatientAlertModal();
+    }
+}
+
+function openPatientAlertModal() {
+    if (!activePatientAlert) return;
+    const modal = document.getElementById('patientAlertModal');
+    if (modal) {
+        modal.style.display = 'flex';
+    }
+}
+
+function closePatientAlertModal() {
+    const modal = document.getElementById('patientAlertModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
 }
 
 function updateSyncStatus(message) {

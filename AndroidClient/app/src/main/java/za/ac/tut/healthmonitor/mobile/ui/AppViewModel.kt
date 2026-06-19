@@ -840,7 +840,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             val wave = sin((demoTick + index) / 2.0)
             val smallWave = sin((demoTick + index) / 3.0)
             HealthSectionTrendPoint(
-                heartRate = (78 + wave * 8 + Random.nextInt(-2, 3)).roundToInt().coerceIn(58, 112),
+                heartRate = (20+ wave * 8 + Random.nextInt(-2, 3)).roundToInt().coerceIn(58, 112),
                 systolic = (124 + smallWave * 6 + Random.nextInt(-2, 3)).roundToInt().coerceIn(105, 145),
                 temperature = 36.7 + smallWave * 0.25 + Random.nextDouble(-0.08, 0.09)
             )
